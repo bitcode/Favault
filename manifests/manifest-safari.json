@@ -1,0 +1,31 @@
+{
+  "manifest_version": 2,
+  "name": "FaVault - Custom New Tab",
+  "version": "1.0.0",
+  "description": "A custom, visually appealing new tab page with organized bookmarks and search functionality",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "permissions": [
+    "bookmarks"
+  ],
+  "chrome_url_overrides": {
+    "newtab": "newtab.html"
+  },
+  "background": {
+    "scripts": ["service-worker.js"],
+    "persistent": false
+  },
+  "commands": {
+    "toggle-search": {
+      "suggested_key": {
+        "default": "Ctrl+F",
+        "mac": "Command+F"
+      },
+      "description": "Focus search input"
+    }
+  }
+}

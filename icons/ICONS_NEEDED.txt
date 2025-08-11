@@ -1,0 +1,14 @@
+# Icon Placeholder Files
+
+This extension needs icon files in PNG format:
+- icon16.png (16x16 pixels)
+- icon32.png (32x32 pixels)
+- icon48.png (48x48 pixels)
+- icon128.png (128x128 pixels)
+
+The SVG template (icon.svg) can be converted to PNG files using tools like:
+- Online converters
+- ImageMagick: convert icon.svg -resize 16x16 icon16.png
+- Inkscape: inkscape icon.svg --export-png=icon16.png --export-width=16
+
+For production, replace with professionally designed icons.
