@@ -2,8 +2,14 @@
   import { onMount } from 'svelte';
   import SearchBar from './lib/SearchBar.svelte';
   import BookmarkFolder from './lib/BookmarkFolder.svelte';
+  import SettingsPanel from './lib/SettingsPanel.svelte';
+  import EditModeToggle from './lib/EditModeToggle.svelte';
+  import KeyboardShortcuts from './lib/KeyboardShortcuts.svelte';
+  import DragDropTest from './lib/DragDropTest.svelte';
+  import { BraveDebugger } from './lib/brave-debug';
   import { BookmarkManager } from './lib/bookmarks';
-  import { bookmarkFolders, filteredBookmarks, isLoading, error } from './lib/stores';
+  import { bookmarkFolders, filteredBookmarks, isLoading, error, settingsManager, editMode } from './lib/stores';
+  import { ExtensionAPI } from './lib/api';
   
   let searchBarComponent: SearchBar;
   
@@ -15,11 +21,57 @@
       fallback.classList.add('hidden');
     }
 
+    // Load settings first
+    settingsManager.loadSettings();
+
     // Set up keyboard shortcut listener
     document.addEventListener('keydown', handleKeydown);
 
+    // Initialize Brave debugger (makes it globally available)
+    if (typeof window !== 'undefined') {
+      console.log('🦁 Exposing BraveDebugger to global scope...');
+      (window as any).BraveDebugger = BraveDebugger;
+
+      // Add simple test functions to window for easy console access
+      (window as any).testBraveDrag = () => {
+        console.log('🦁 Testing Brave Drag-Drop...');
+        const detection = BraveDebugger.detectBrave();
+        console.log('🦁 Brave Detection Result:', detection);
+
+        if (detection.isBrave) {
+          console.log('🦁 Brave browser confirmed! Drag-drop should use Brave-specific manager.');
+        } else {
+          console.log('🦁 Not Brave browser. Using standard drag-drop manager.');
+        }
+
+        return detection;
+      };
+
+      (window as any).showBraveDebug = () => {
+        return BraveDebugger.createDebugOverlay();
+      };
+
+      (window as any).runBraveDiagnostic = () => {
+        return BraveDebugger.runDiagnostic();
+      };
+
+      console.log('🦁 Global functions available: testBraveDrag(), showBraveDebug(), runBraveDiagnostic()');
+      console.log('🦁 BraveDebugger class available as: BraveDebugger');
+    }
+
     // Load bookmarks asynchronously
     loadBookmarks();
+
+    // Listen for messages from service worker
+    ExtensionAPI.onMessage((message, sender, sendResponse) => {
+      if (message.type === 'FOCUS_SEARCH') {
+        if (searchBarComponent) {
+          searchBarComponent.focusSearch();
+        }
+      } else if (message.type === 'TOGGLE_EDIT_MODE') {
+        settingsManager.updateEditMode({ enabled: !$editMode });
+      }
+    });
 
     return () => {
       document.removeEventListener('keydown', handleKeydown);
@@ -44,6 +96,11 @@
   
   // Handle keyboard shortcuts
   function handleKeydown(event: KeyboardEvent) {
+    // Don't handle shortcuts if user is typing in an input
+    if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+      return;
+    }
+
     // Ctrl/Cmd + F to focus search
     if ((event.ctrlKey || event.metaKey) && event.key === 'f') {
       event.preventDefault();
@@ -51,6 +108,43 @@
         searchBarComponent.focusSearch();
       }
     }
+
+    // Ctrl/Cmd + E to toggle edit mode
+    if ((event.ctrlKey || event.metaKey) && event.key === 'e') {
+      event.preventDefault();
+      toggleEditMode();
+    }
+
+    // Escape to exit edit mode
+    if (event.key === 'Escape' && $editMode) {
+      event.preventDefault();
+      settingsManager.updateEditMode({ enabled: false });
+    }
+
+    // Ctrl/Cmd + S to save all changes (in edit mode)
+    if ((event.ctrlKey || event.metaKey) && event.key === 's' && $editMode) {
+      event.preventDefault();
+      // Trigger save event for any active editors
+      document.dispatchEvent(new CustomEvent('save-all-edits'));
+    }
+
+    // Ctrl/Cmd + R to refresh bookmarks
+    if ((event.ctrlKey || event.metaKey) && event.key === 'r') {
+      event.preventDefault();
+      refreshBookmarks();
+    }
+
+    // Ctrl/Cmd + D to show debug overlay (for Brave testing)
+    if ((event.ctrlKey || event.metaKey) && event.key === 'd') {
+      event.preventDefault();
+      BraveDebugger.createDebugOverlay();
+    }
+  }
+
+  // Toggle edit mode
+  async function toggleEditMode() {
+    const newEditMode = !$editMode;
+    await settingsManager.updateEditMode({ enabled: newEditMode });
   }
   
   // Refresh bookmarks
@@ -71,7 +165,19 @@
   }
 </script>
 
-<main class="app">
+<main class="app" class:edit-mode={$editMode}>
+  <!-- Edit Mode Controls -->
+  <EditModeToggle />
+
+  <!-- Settings Panel -->
+  <SettingsPanel />
+
+  <!-- Keyboard Shortcuts Help -->
+  <KeyboardShortcuts />
+
+  <!-- Drag Drop Test (temporary) -->
+  <DragDropTest />
+
   <div class="container">
     <header class="header">
       <h1 class="title">FaVault</h1>
@@ -127,6 +233,24 @@
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     padding: 2rem 1rem;
     position: relative;
+    transition: all 0.3s ease;
+  }
+
+  .app.edit-mode {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    position: relative;
+  }
+
+  .app.edit-mode::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(102, 126, 234, 0.1);
+    pointer-events: none;
+    z-index: 1;
   }
   
   .app::before {

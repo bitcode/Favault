@@ -33,6 +33,9 @@ class ServiceWorker {
       case 'toggle-search':
         await this.focusSearchInput();
         break;
+      case 'toggle-edit-mode':
+        await this.toggleEditMode();
+        break;
       default:
         console.log('Unknown command:', command);
     }
@@ -56,6 +59,27 @@ class ServiceWorker {
       }
     } catch (error) {
       console.error('Failed to focus search input:', error);
+    }
+  }
+
+  private async toggleEditMode(): Promise<void> {
+    try {
+      // Get all tabs
+      const tabs = await browserAPI.tabs.query({ active: true, currentWindow: true });
+
+      if (tabs.length > 0) {
+        const activeTab = tabs[0];
+
+        // Check if the active tab is a new tab page
+        if (activeTab.url === 'chrome://newtab/' || activeTab.url?.includes('newtab.html')) {
+          // Send message to the new tab page to toggle edit mode
+          await browserAPI.runtime.sendMessage({
+            type: 'TOGGLE_EDIT_MODE'
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Failed to toggle edit mode:', error);
     }
   }
 

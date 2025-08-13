@@ -10,7 +10,8 @@
     "128": "icons/icon128.png"
   },
   "permissions": [
-    "bookmarks"
+    "bookmarks",
+    "storage"
   ],
   "chrome_url_overrides": {
     "newtab": "newtab.html"
@@ -25,6 +26,13 @@
         "mac": "Command+F"
       },
       "description": "Focus search input"
+    },
+    "toggle-edit-mode": {
+      "suggested_key": {
+        "default": "Ctrl+E",
+        "mac": "Command+E"
+      },
+      "description": "Toggle edit/settings mode"
     }
   }
 }
