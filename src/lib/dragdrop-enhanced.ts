@@ -1,0 +1,1798 @@
+// Enhanced drag and drop functionality for FaVault
+// Integrates console script features with existing Svelte extension architecture
+// Supports folder reordering with protected folder detection and error recovery
+
+import { BookmarkEditAPI, type BookmarkItem, type BookmarkFolder, browserAPI } from './api';
+import { bookmarkFolders } from './stores';
+
+// Enhanced interfaces with console script features
+export interface DragData {
+  type: 'bookmark' | 'folder';
+  id: string;
+  title: string;
+  parentId?: string;
+  index?: number;
+  url?: string;
+  bookmarkId?: string; // Real Chrome bookmark ID
+}
+
+export interface DropZoneData {
+  type: 'folder' | 'insertion-point' | 'folder-reorder';
+  targetId: string;
+  targetIndex?: number;
+  parentId?: string;
+}
+
+export interface SystemState {
+  initialized: boolean;
+  lastError: Error | null;
+  operationCount: number;
+  failedOperations: number;
+}
+
+export interface FolderMappingResult {
+  success: boolean;
+  mappedCount: number;
+  protectedCount: number;
+  totalFolders: number;
+  error?: string;
+}
+
+// Enhanced drag and drop manager with console script integration
+export class EnhancedDragDropManager {
+  private static editModeEnabled = false;
+  private static currentDragData: DragData | null = null;
+  private static dragEnterCounters = new Map<string, number>();
+  private static folderBookmarkIds = new Map<number, string>();
+  private static protectedFolderIds = new Set<string>();
+  private static systemState: SystemState = {
+    initialized: false,
+    lastError: null,
+    operationCount: 0,
+    failedOperations: 0
+  };
+
+  // DOM observer for dynamic folder detection
+  private static domObserver: MutationObserver | null = null;
+  private static folderSetupRetryCount = 0;
+  private static maxRetryAttempts = 5;
+  private static retryTimeouts: Set<number> = new Set();
+
+  // Auto-scroll prevention properties
+  private static originalScrollPosition: { x: number; y: number } | null = null;
+  private static lastManualScrollTime: number | null = null;
+  private static scrollPreventionHandler: ((e: Event) => void) | null = null;
+  private static manualScrollHandler: (() => void) | null = null;
+
+  // Protected folder patterns from console script
+  private static readonly PROTECTED_TITLES = [
+    'Bookmarks Bar',
+    'Bookmarks',
+    'Other Bookmarks', 
+    'Mobile Bookmarks',
+    'Bookmarks Menu'
+  ];
+
+  /**
+   * Initialize the enhanced drag-drop system
+   */
+  static async initialize(): Promise<{ success: boolean; error?: string }> {
+    console.log('🦁 Initializing enhanced drag-drop system...');
+    
+    try {
+      // Check Chrome API access
+      const apiCheck = await this.checkBookmarkAPI();
+      if (!apiCheck.success) {
+        throw new Error(`Bookmark API not accessible: ${apiCheck.error}`);
+      }
+
+      // Restore bookmark mappings with protection detection
+      const mappingResult = await this.restoreBookmarkMapping();
+      if (!mappingResult.success) {
+        throw new Error(`Failed to restore bookmark mappings: ${mappingResult.error}`);
+      }
+
+      // Setup enhanced styles
+      this.setupEnhancedStyles();
+
+      // Mark system as initialized
+      this.systemState.initialized = true;
+
+      console.log('✅ Enhanced drag-drop system initialized successfully');
+      console.log(`📊 ${mappingResult.mappedCount}/${mappingResult.totalFolders} folders mapped`);
+      console.log(`🔒 ${mappingResult.protectedCount} protected folders identified`);
+
+      return { success: true };
+    } catch (error) {
+      console.error('❌ Enhanced drag-drop initialization failed:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Check bookmark API access
+   */
+  private static async checkBookmarkAPI(): Promise<{ success: boolean; error?: string; tree?: any }> {
+    try {
+      if (!browserAPI || !browserAPI.bookmarks) {
+        throw new Error('Bookmark API not available');
+      }
+      
+      const tree = await browserAPI.bookmarks.getTree();
+      return { success: true, tree };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Restore bookmark folder mappings with protection detection
+   */
+  private static async restoreBookmarkMapping(): Promise<FolderMappingResult> {
+    console.log('🦁 Restoring bookmark folder mappings...');
+    
+    try {
+      const apiCheck = await this.checkBookmarkAPI();
+      if (!apiCheck.success) {
+        throw new Error(`Bookmark API not accessible: ${apiCheck.error}`);
+      }
+      
+      const bookmarkTree = apiCheck.tree;
+      this.folderBookmarkIds.clear();
+      this.protectedFolderIds.clear();
+      
+      const folders = document.querySelectorAll('.folder-container');
+      let mappedCount = 0;
+      let protectedCount = 0;
+
+      console.log(`🦁 Found ${folders.length} folder containers in DOM`);
+
+      // If no folders found, this might be called too early - that's OK, we'll retry later
+      if (folders.length === 0) {
+        console.log('🦁 No folder containers found yet - will retry when edit mode is enabled');
+      }
+      
+      folders.forEach((folder, index) => {
+        const folderTitle = folder.querySelector('.folder-title, h3, .folder-name')?.textContent?.trim();
+        
+        if (folderTitle) {
+          const bookmarkFolder = this.findBookmarkFolderByTitle(bookmarkTree, folderTitle);
+          
+          if (bookmarkFolder) {
+            this.folderBookmarkIds.set(index, bookmarkFolder.id);
+            
+            // Check if this is a protected folder
+            if (this.isProtectedFolder(bookmarkFolder.id, folderTitle)) {
+              console.log(`🔒 Protected: "${folderTitle}" (${index}) → ${bookmarkFolder.id} [PROTECTED]`);
+              protectedCount++;
+            } else {
+              console.log(`📁 Mapped: "${folderTitle}" (${index}) → ${bookmarkFolder.id}`);
+            }
+            mappedCount++;
+          } else {
+            console.warn(`⚠️ Could not find bookmark folder for "${folderTitle}"`);
+            this.folderBookmarkIds.set(index, `placeholder-${index}`);
+          }
+        } else {
+          console.warn(`⚠️ No title found for folder at index ${index}`);
+          this.folderBookmarkIds.set(index, `placeholder-${index}`);
+        }
+      });
+      
+      console.log(`✅ Restored ${mappedCount} bookmark mappings (${protectedCount} protected) out of ${folders.length} folders`);
+      return { 
+        success: true, 
+        mappedCount, 
+        protectedCount,
+        totalFolders: folders.length 
+      };
+      
+    } catch (error) {
+      console.error('🦁 ERROR: Failed to restore bookmark mappings:', error);
+      return { success: false, mappedCount: 0, protectedCount: 0, totalFolders: 0, error: error.message };
+    }
+  }
+
+  /**
+   * Find bookmark folder by title in bookmark tree
+   */
+  private static findBookmarkFolderByTitle(bookmarkTree: any[], title: string): any {
+    const searchNode = (node: any): any => {
+      if (node.title === title && node.children && !node.url) {
+        return node;
+      }
+      
+      if (node.children) {
+        for (const child of node.children) {
+          const result = searchNode(child);
+          if (result) return result;
+        }
+      }
+      
+      return null;
+    };
+    
+    for (const rootNode of bookmarkTree) {
+      const result = searchNode(rootNode);
+      if (result) return result;
+    }
+    
+    return null;
+  }
+
+  /**
+   * Check if a folder is protected (cannot be moved)
+   */
+  static isProtectedFolder(bookmarkId: string, folderTitle: string): boolean {
+    // Root folder IDs are typically '1', '2', '3'
+    const isRootId = bookmarkId && (bookmarkId === '1' || bookmarkId === '2' || bookmarkId === '3');
+    const isProtectedTitle = this.PROTECTED_TITLES.includes(folderTitle);
+    
+    if (isRootId || isProtectedTitle) {
+      this.protectedFolderIds.add(bookmarkId);
+      return true;
+    }
+    
+    return false;
+  }
+
+  /**
+   * Check folder protection before operations
+   */
+  static checkFolderProtection(fromIndex: number, toIndex?: number): boolean {
+    const fromBookmarkId = this.folderBookmarkIds.get(fromIndex);
+    const fromFolder = document.querySelectorAll('.folder-container')[fromIndex];
+    const fromTitle = fromFolder?.querySelector('.folder-title, h3, .folder-name')?.textContent?.trim();
+    
+    if (fromTitle && fromBookmarkId && this.isProtectedFolder(fromBookmarkId, fromTitle)) {
+      console.warn(`🔒 PROTECTED FOLDER: "${fromTitle}" (ID: ${fromBookmarkId}) cannot be moved`);
+      this.showNotification(`Cannot move protected folder "${fromTitle}"`, 'error');
+      return false;
+    }
+    
+    if (toIndex !== undefined) {
+      const toBookmarkId = this.folderBookmarkIds.get(toIndex);
+      const toFolder = document.querySelectorAll('.folder-container')[toIndex];
+      const toTitle = toFolder?.querySelector('.folder-title, h3, .folder-name')?.textContent?.trim();
+      
+      if (toTitle && toBookmarkId && this.isProtectedFolder(toBookmarkId, toTitle)) {
+        console.warn(`🔒 PROTECTED TARGET: "${toTitle}" (ID: ${toBookmarkId}) cannot be used as target`);
+        this.showNotification(`Cannot use protected folder "${toTitle}" as target`, 'error');
+        return false;
+      }
+    }
+    
+    return true;
+  }
+
+  /**
+   * Enhanced error handling from console script
+   */
+  static handleOperationError(error: Error, operation: string, context: any = {}): { handled: boolean; recoverable: boolean } {
+    this.systemState.lastError = error;
+    this.systemState.failedOperations++;
+    
+    console.error(`🦁 OPERATION ERROR [${operation}]:`, error);
+    console.error('🦁 Context:', context);
+    
+    // Specific error handling
+    if (error.message.includes("Can't modify the root bookmark folders")) {
+      const folderTitle = context.folderTitle || 'Unknown folder';
+      this.showNotification(`Cannot move system folder "${folderTitle}" - it's protected by Chrome`, 'error');
+      
+      // Mark as protected for future operations
+      if (context.bookmarkId) {
+        this.protectedFolderIds.add(context.bookmarkId);
+      }
+      
+      return { handled: true, recoverable: true };
+    }
+    
+    if (error.message.includes('Cannot read properties of null')) {
+      console.warn('🦁 Null reference error - attempting recovery...');
+      
+      // Attempt to refresh the system state
+      setTimeout(() => {
+        this.refreshSystemState();
+      }, 1000);
+      
+      return { handled: true, recoverable: true };
+    }
+    
+    // Generic error handling
+    this.showNotification(`Operation failed: ${error.message}`, 'error');
+    return { handled: false, recoverable: false };
+  }
+
+  /**
+   * Refresh system state after errors
+   */
+  static async refreshSystemState(): Promise<boolean> {
+    console.log('🦁 Refreshing system state after error...');
+
+    try {
+      // Re-restore bookmark mappings
+      const mappingResult = await this.restoreBookmarkMapping();
+
+      if (mappingResult.success) {
+        console.log(`✅ System state refreshed - ${mappingResult.mappedCount} mappings restored`);
+        this.showNotification('System state refreshed successfully');
+
+        // Trigger UI refresh
+        await this.refreshUI();
+
+        return true;
+      } else {
+        throw new Error('Failed to refresh bookmark mappings');
+      }
+    } catch (error) {
+      console.error('🦁 Failed to refresh system state:', error);
+      this.showNotification('Failed to refresh system state', 'error');
+      return false;
+    }
+  }
+
+  /**
+   * Refresh the UI by triggering bookmark reload
+   */
+  static async refreshUI(): Promise<boolean> {
+    console.log('🔄 Refreshing UI after folder reordering...');
+
+    try {
+      // Detect browser for specific handling
+      const isChrome = !!(window as any).chrome && !(navigator as any).brave;
+      const isBrave = !!(navigator as any).brave;
+
+      console.log(`🌐 Browser detection: Chrome=${isChrome}, Brave=${isBrave}`);
+
+      // Clear bookmark cache first to ensure fresh data
+      if (typeof (window as any).BookmarkManager !== 'undefined' &&
+          typeof (window as any).BookmarkManager.clearCache === 'function') {
+        console.log('🔄 Clearing bookmark cache...');
+        (window as any).BookmarkManager.clearCache();
+      }
+
+      // Chrome-specific: Add extra delay for cache clearing
+      if (isChrome) {
+        console.log('🌐 Chrome detected: Adding extra delay for cache clearing...');
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+
+      // Method 1: Try global loadBookmarks function
+      if (typeof (window as any).loadBookmarks === 'function') {
+        console.log('🔄 Calling global loadBookmarks function...');
+        await (window as any).loadBookmarks();
+        console.log('✅ UI refreshed via global loadBookmarks');
+
+        // Chrome-specific: Verify UI actually updated
+        if (isChrome) {
+          console.log('🌐 Chrome: Verifying UI update...');
+          await new Promise(resolve => setTimeout(resolve, 500));
+
+          // Dispatch additional refresh event for Chrome
+          const chromeRefreshEvent = new CustomEvent('favault-chrome-refresh-verify', {
+            detail: { timestamp: Date.now() }
+          });
+          document.dispatchEvent(chromeRefreshEvent);
+        }
+
+        return true;
+      }
+
+      // Method 2: Try custom event with browser-specific details
+      console.log('🔄 Dispatching bookmark refresh event...');
+      const refreshEvent = new CustomEvent('favault-refresh-bookmarks', {
+        detail: {
+          source: 'folder-reordering',
+          timestamp: Date.now(),
+          clearCache: true,
+          browser: isChrome ? 'chrome' : isBrave ? 'brave' : 'unknown',
+          forceRefresh: isChrome // Chrome needs force refresh
+        }
+      });
+      document.dispatchEvent(refreshEvent);
+      console.log('✅ UI refresh event dispatched');
+
+      // Method 3: Browser-specific fallback timing
+      const fallbackDelay = isChrome ? 3000 : 5000; // Chrome gets shorter timeout
+      setTimeout(() => {
+        if (typeof (window as any).location !== 'undefined') {
+          console.log(`🔄 Fallback: Forcing page reload for UI refresh (${fallbackDelay}ms timeout)...`);
+          window.location.reload();
+        }
+      }, fallbackDelay);
+
+      return true;
+    } catch (error) {
+      console.error('❌ Failed to refresh UI:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Show notification to user
+   */
+  static showNotification(message: string, type: 'success' | 'error' = 'success'): void {
+    const bgColor = type === 'success' ? '#10b981' : '#ef4444';
+    const icon = type === 'success' ? '✅' : '❌';
+    
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: ${bgColor};
+      color: white;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: bold;
+      z-index: 10000;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      max-width: 300px;
+      animation: slideInRight 0.3s ease;
+    `;
+    notification.textContent = `${icon} ${message}`;
+    
+    if (!document.getElementById('notification-styles')) {
+      const style = document.createElement('style');
+      style.id = 'notification-styles';
+      style.textContent = `
+        @keyframes slideInRight {
+          from { transform: translateX(100%); opacity: 0; }
+          to { transform: translateX(0); opacity: 1; }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+      if (notification.parentNode) {
+        notification.remove();
+      }
+    }, type === 'success' ? 4000 : 6000);
+  }
+
+  /**
+   * Prevent auto-scrolling during drag operations
+   */
+  static preventAutoScroll(): void {
+    console.log('🦁 Preventing auto-scroll during drag operation');
+
+    // Store current scroll position
+    this.originalScrollPosition = {
+      x: window.scrollX,
+      y: window.scrollY
+    };
+
+    // Disable smooth scrolling
+    document.documentElement.style.scrollBehavior = 'auto';
+    document.body.style.scrollBehavior = 'auto';
+
+    // Prevent scroll position changes
+    document.documentElement.style.overflowAnchor = 'none';
+    document.body.style.overflowAnchor = 'none';
+
+    // Add event listener to prevent programmatic scrolling
+    this.scrollPreventionHandler = (e: Event) => {
+      if (e.type === 'scroll' && this.currentDragData) {
+        // Allow manual scrolling but prevent programmatic scrolling
+        const currentTime = Date.now();
+        if (!this.lastManualScrollTime || currentTime - this.lastManualScrollTime > 100) {
+          // This might be programmatic scrolling, prevent it
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }
+    };
+
+    // Track manual scroll events
+    this.manualScrollHandler = () => {
+      this.lastManualScrollTime = Date.now();
+    };
+
+    window.addEventListener('wheel', this.manualScrollHandler, { passive: true });
+    window.addEventListener('touchmove', this.manualScrollHandler, { passive: true });
+    window.addEventListener('keydown', (e) => {
+      if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End'].includes(e.key)) {
+        this.lastManualScrollTime = Date.now();
+      }
+    });
+  }
+
+  /**
+   * Restore normal scroll behavior after drag operations
+   */
+  static restoreAutoScroll(): void {
+    console.log('🦁 Restoring normal scroll behavior');
+
+    // Restore scroll behavior
+    document.documentElement.style.scrollBehavior = '';
+    document.body.style.scrollBehavior = '';
+
+    // Restore overflow anchor
+    document.documentElement.style.overflowAnchor = '';
+    document.body.style.overflowAnchor = '';
+
+    // Remove event listeners
+    if (this.scrollPreventionHandler) {
+      window.removeEventListener('scroll', this.scrollPreventionHandler);
+    }
+
+    if (this.manualScrollHandler) {
+      window.removeEventListener('wheel', this.manualScrollHandler);
+      window.removeEventListener('touchmove', this.manualScrollHandler);
+    }
+
+    // Clear stored data
+    this.originalScrollPosition = null;
+    this.lastManualScrollTime = null;
+    this.scrollPreventionHandler = null;
+    this.manualScrollHandler = null;
+  }
+
+  /**
+   * Add visual feedback for successful folder move
+   */
+  static addMoveSuccessVisualFeedback(folderTitle: string, insertionIndex: number): void {
+    // Find the moved folder by title (since DOM may have been updated)
+    const folders = document.querySelectorAll('.folder-container');
+    let movedFolder: Element | null = null;
+
+    folders.forEach(folder => {
+      const titleElement = folder.querySelector('.folder-title, h3, .folder-name');
+      if (titleElement && titleElement.textContent?.trim() === folderTitle) {
+        movedFolder = folder;
+      }
+    });
+
+    if (movedFolder) {
+      // Add green highlighting for successful move
+      const htmlElement = movedFolder as HTMLElement;
+      htmlElement.style.background = 'rgba(0, 255, 0, 0.2)';
+      htmlElement.style.border = '2px solid green';
+      htmlElement.style.transform = 'scale(1.05)';
+      htmlElement.style.transition = 'all 0.3s ease';
+
+      console.log(`✅ Added visual feedback for moved folder: "${folderTitle}"`);
+
+      // Remove visual feedback after animation
+      setTimeout(() => {
+        htmlElement.style.background = '';
+        htmlElement.style.border = '';
+        htmlElement.style.transform = '';
+      }, 2000);
+    } else {
+      console.warn(`⚠️ Could not find moved folder "${folderTitle}" for visual feedback`);
+    }
+  }
+
+  /**
+   * Check if edit mode is enabled
+   */
+  static isEditModeEnabled(): boolean {
+    return this.editModeEnabled || 
+           document.body.classList.contains('edit-mode') ||
+           document.querySelector('.app.edit-mode') !== null;
+  }
+
+  /**
+   * Insert folder at specific position (from console script)
+   */
+  static async insertFolderAtPosition(fromIndex: number, toIndex: number): Promise<{ success: boolean; error?: string; [key: string]: any }> {
+    console.log(`🦁 API: insertFolderAtPosition(${fromIndex}, ${toIndex})`);
+    this.systemState.operationCount++;
+
+    try {
+      // Check for protected folders
+      if (!this.checkFolderProtection(fromIndex)) {
+        return { success: false, error: 'Protected folder cannot be moved', fromIndex, toIndex };
+      }
+
+      let folderBookmarkId = this.folderBookmarkIds.get(fromIndex);
+
+      // If we have a placeholder ID, try to refresh the mappings
+      if (!folderBookmarkId || folderBookmarkId.startsWith('placeholder-')) {
+        console.log('🦁 Placeholder ID detected, refreshing bookmark mappings...');
+        const mappingResult = await this.restoreBookmarkFolderMappings();
+
+        if (mappingResult.success) {
+          folderBookmarkId = this.folderBookmarkIds.get(fromIndex);
+          console.log(`🦁 After refresh: folderBookmarkId=${folderBookmarkId}`);
+        }
+
+        // Check again after refresh
+        if (!folderBookmarkId || folderBookmarkId.startsWith('placeholder-')) {
+          throw new Error(`No real bookmark ID found for folder at index ${fromIndex} after refresh. ID: ${folderBookmarkId}`);
+        }
+      }
+
+      console.log(`🦁 Moving bookmark folder ID ${folderBookmarkId} from position ${fromIndex} to ${toIndex}`);
+
+      const [bookmarkFolder] = await browserAPI.bookmarks.get(folderBookmarkId);
+      console.log('🦁 Current bookmark folder:', bookmarkFolder);
+
+      const parentId = bookmarkFolder.parentId;
+      const parentChildren = await browserAPI.bookmarks.getChildren(parentId);
+      console.log(`🦁 Parent folder has ${parentChildren.length} children`);
+
+      const currentIndex = parentChildren.findIndex(child => child.id === folderBookmarkId);
+      console.log(`🦁 Current index in bookmark system: ${currentIndex}`);
+
+      // Calculate target index with proper position mapping
+      let newIndex = toIndex;
+      console.log(`🦁 Position calculation: currentIndex=${currentIndex}, toIndex=${toIndex}`);
+
+      if (currentIndex !== -1 && currentIndex < toIndex) {
+        // Moving forward: adjust for removal of current position
+        newIndex = toIndex - 1;
+        console.log(`🦁 Moving forward: adjusted newIndex to ${newIndex}`);
+      } else {
+        // Moving backward or same position: direct mapping
+        newIndex = toIndex;
+        console.log(`🦁 Moving backward/same: newIndex remains ${newIndex}`);
+      }
+
+      // Ensure index is within valid bounds
+      newIndex = Math.max(0, Math.min(newIndex, parentChildren.length - 1));
+
+      console.log(`🦁 Moving to index ${newIndex} in parent ${parentId}`);
+
+      const result = await browserAPI.bookmarks.move(folderBookmarkId, {
+        parentId: parentId,
+        index: newIndex
+      });
+
+      console.log('🦁 SUCCESS: Bookmark folder moved:', result);
+
+      this.showNotification(`Folder "${bookmarkFolder.title}" moved to position ${toIndex + 1}`);
+
+      // Immediately refresh UI to show new folder order
+      console.log('🔄 Triggering immediate UI refresh...');
+      await this.refreshUI();
+
+      // Schedule system state refresh
+      setTimeout(() => {
+        this.refreshSystemState();
+      }, 500);
+
+      return {
+        success: true,
+        bookmarkId: folderBookmarkId,
+        fromIndex,
+        toIndex,
+        newIndex,
+        result
+      };
+
+    } catch (error) {
+      const context = {
+        operation: 'insertFolderAtPosition',
+        fromIndex,
+        toIndex,
+        bookmarkId: this.folderBookmarkIds.get(fromIndex),
+        folderTitle: document.querySelectorAll('.folder-container')[fromIndex]?.querySelector('.folder-title, h3, .folder-name')?.textContent?.trim()
+      };
+
+      const errorResult = this.handleOperationError(error, 'insertFolderAtPosition', context);
+
+      return {
+        success: false,
+        error: error.message,
+        fromIndex,
+        toIndex,
+        handled: errorResult.handled,
+        recoverable: errorResult.recoverable
+      };
+    }
+  }
+
+  /**
+   * Move folder to specific insertion position (for insertion point drops)
+   */
+  static async moveFolderToPosition(fromIndex: number, insertionIndex: number): Promise<{ success: boolean; error?: string; [key: string]: any }> {
+    console.log(`🦁 API: moveFolderToPosition(${fromIndex}, ${insertionIndex})`);
+    this.systemState.operationCount++;
+
+    try {
+      // Check for protected folders
+      if (this.protectedFolderIds.has(this.folderBookmarkIds.get(fromIndex) || '')) {
+        return { success: false, error: 'Protected folder cannot be moved', fromIndex, insertionIndex };
+      }
+
+      let fromBookmarkId = this.folderBookmarkIds.get(fromIndex);
+
+      // If we have placeholder ID, try to refresh the mappings
+      if (!fromBookmarkId || fromBookmarkId.startsWith('placeholder-')) {
+        console.log('🦁 Placeholder ID detected, refreshing bookmark mappings...');
+        const mappingResult = await this.restoreBookmarkFolderMappings();
+
+        if (mappingResult.success) {
+          fromBookmarkId = this.folderBookmarkIds.get(fromIndex);
+          console.log(`🦁 After refresh: from=${fromBookmarkId}`);
+        }
+
+        if (!fromBookmarkId || fromBookmarkId.startsWith('placeholder-')) {
+          throw new Error(`Missing real bookmark ID after refresh: from=${fromBookmarkId}`);
+        }
+      }
+
+      console.log(`🦁 Moving folder ${fromBookmarkId} to insertion position ${insertionIndex}`);
+
+      const [fromFolder] = await browserAPI.bookmarks.get(fromBookmarkId);
+      const parentChildren = await browserAPI.bookmarks.getChildren(fromFolder.parentId);
+
+      // Calculate the actual target index in the bookmark system
+      // CRITICAL FIX: Insertion points represent positions BETWEEN folders, not final positions
+      // Insertion point 0 = before folder 0 (position 0)
+      // Insertion point 1 = before folder 1 (position 1)
+      // Insertion point 2 = before folder 2 (position 2)
+      // So insertionIndex directly maps to the target position
+      const currentIndex = parentChildren.findIndex(child => child.id === fromBookmarkId);
+      let targetIndex = insertionIndex;
+
+      console.log(`🦁 Position calculation: currentIndex=${currentIndex}, insertionIndex=${insertionIndex}`);
+      console.log(`🦁 FIXED LOGIC: Insertion point ${insertionIndex} means "place at position ${insertionIndex}"`);
+
+      // When moving a folder within the same parent, we need to account for the removal
+      if (currentIndex !== -1) {
+        if (insertionIndex > currentIndex) {
+          // Moving forward: the target index needs to be reduced by 1
+          // because the folder will be removed from its current position first
+          targetIndex = insertionIndex - 1;
+          console.log(`🦁 Moving forward: currentIndex=${currentIndex} -> insertionIndex=${insertionIndex}, adjusted targetIndex=${targetIndex}`);
+        } else if (insertionIndex <= currentIndex) {
+          // Moving backward or to the same position: insertion index is the final position
+          targetIndex = insertionIndex;
+          console.log(`🦁 Moving backward/same: currentIndex=${currentIndex} -> insertionIndex=${insertionIndex}, targetIndex=${targetIndex}`);
+        }
+      } else {
+        // Folder not found in current parent (shouldn't happen, but handle gracefully)
+        targetIndex = insertionIndex;
+        console.log(`🦁 Folder not found in parent, using insertionIndex=${insertionIndex} as targetIndex`);
+      }
+
+      // Ensure target index is within bounds
+      const maxIndex = parentChildren.length - 1;
+      const boundedTargetIndex = Math.max(0, Math.min(targetIndex, maxIndex));
+
+      if (boundedTargetIndex !== targetIndex) {
+        console.log(`🦁 Target index ${targetIndex} was out of bounds, adjusted to ${boundedTargetIndex} (max: ${maxIndex})`);
+      }
+      targetIndex = boundedTargetIndex;
+
+      console.log(`🦁 FINAL CALCULATION: Moving from currentIndex=${currentIndex} to targetIndex=${targetIndex}`);
+      console.log(`🦁 VISUAL MAPPING: User dropped at insertion point ${insertionIndex} -> folder will be at position ${targetIndex + 1}`);
+
+      const result = await browserAPI.bookmarks.move(fromBookmarkId, {
+        parentId: fromFolder.parentId,
+        index: targetIndex
+      });
+
+      console.log(`🦁 Moved folder ${fromBookmarkId} to position ${targetIndex}`);
+
+      // Show accurate notification based on final position
+      const finalPosition = targetIndex + 1; // Convert to 1-based for user display
+      this.showNotification(`Folder "${fromFolder.title}" moved to position ${finalPosition}`);
+
+      // Immediately refresh UI to show new folder order
+      console.log('🔄 Triggering immediate UI refresh...');
+      const refreshResult = await this.refreshUI();
+
+      if (refreshResult) {
+        console.log('✅ UI refresh completed successfully');
+      } else {
+        console.error('❌ UI refresh failed');
+      }
+
+      // Add visual feedback for successful move (after UI refresh)
+      setTimeout(() => {
+        this.addMoveSuccessVisualFeedback(fromFolder.title, insertionIndex);
+      }, 100);
+
+      // Schedule system state refresh
+      setTimeout(() => {
+        this.refreshSystemState();
+      }, 500);
+
+      return {
+        success: true,
+        fromBookmarkId,
+        fromIndex,
+        insertionIndex,
+        targetIndex,
+        result
+      };
+
+    } catch (error) {
+      const context = {
+        operation: 'moveFolderToPosition',
+        fromIndex,
+        insertionIndex,
+        error: error instanceof Error ? error.message : String(error)
+      };
+
+      console.error('🦁 MOVE FOLDER ERROR:', context);
+      this.handleOperationError(error, 'moveFolderToPosition', context);
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        fromIndex,
+        insertionIndex
+      };
+    }
+  }
+
+  /**
+   * Reorder folders by swapping positions (from console script)
+   */
+  static async reorderFolder(fromIndex: number, toIndex: number): Promise<{ success: boolean; error?: string; [key: string]: any }> {
+    console.log(`🦁 API: reorderFolder(${fromIndex}, ${toIndex})`);
+    this.systemState.operationCount++;
+
+    try {
+      // Check for protected folders
+      if (!this.checkFolderProtection(fromIndex, toIndex)) {
+        return { success: false, error: 'Protected folder cannot be moved', fromIndex, toIndex };
+      }
+
+      let fromBookmarkId = this.folderBookmarkIds.get(fromIndex);
+      let toBookmarkId = this.folderBookmarkIds.get(toIndex);
+
+      // If we have placeholder IDs, try to refresh the mappings
+      if (!fromBookmarkId || !toBookmarkId ||
+          fromBookmarkId.startsWith('placeholder-') ||
+          toBookmarkId.startsWith('placeholder-')) {
+
+        console.log('🦁 Placeholder IDs detected, refreshing bookmark mappings...');
+        const mappingResult = await this.restoreBookmarkFolderMappings();
+
+        if (mappingResult.success) {
+          fromBookmarkId = this.folderBookmarkIds.get(fromIndex);
+          toBookmarkId = this.folderBookmarkIds.get(toIndex);
+          console.log(`🦁 After refresh: from=${fromBookmarkId}, to=${toBookmarkId}`);
+        }
+
+        // Check again after refresh
+        if (!fromBookmarkId || !toBookmarkId ||
+            fromBookmarkId.startsWith('placeholder-') ||
+            toBookmarkId.startsWith('placeholder-')) {
+          throw new Error(`Missing real bookmark IDs after refresh: from=${fromBookmarkId}, to=${toBookmarkId}`);
+        }
+      }
+
+      console.log(`🦁 Swapping positions: ${fromBookmarkId} ↔ ${toBookmarkId}`);
+
+      const [fromFolder] = await browserAPI.bookmarks.get(fromBookmarkId);
+      const [toFolder] = await browserAPI.bookmarks.get(toBookmarkId);
+
+      const parentChildren = await browserAPI.bookmarks.getChildren(fromFolder.parentId);
+
+      const currentFromIndex = parentChildren.findIndex(child => child.id === fromBookmarkId);
+      const currentToIndex = parentChildren.findIndex(child => child.id === toBookmarkId);
+
+      console.log(`🦁 Current bookmark indices: from=${currentFromIndex}, to=${currentToIndex}`);
+
+      if (currentFromIndex === -1 || currentToIndex === -1) {
+        throw new Error('Could not find current positions in bookmark system');
+      }
+
+      const result = await browserAPI.bookmarks.move(fromBookmarkId, {
+        parentId: fromFolder.parentId,
+        index: currentToIndex
+      });
+
+      console.log(`🦁 Moved folder ${fromBookmarkId} to position ${currentToIndex}`);
+
+      this.showNotification(`Folders "${fromFolder.title}" and "${toFolder.title}" reordered`);
+
+      // Immediately refresh UI to show new folder order
+      console.log('🔄 Triggering immediate UI refresh...');
+      await this.refreshUI();
+
+      // Schedule system state refresh
+      setTimeout(() => {
+        this.refreshSystemState();
+      }, 500);
+
+      return {
+        success: true,
+        fromBookmarkId,
+        toBookmarkId,
+        fromIndex,
+        toIndex,
+        result
+      };
+
+    } catch (error) {
+      const context = {
+        operation: 'reorderFolder',
+        fromIndex,
+        toIndex,
+        fromBookmarkId: this.folderBookmarkIds.get(fromIndex),
+        toBookmarkId: this.folderBookmarkIds.get(toIndex),
+        fromFolderTitle: document.querySelectorAll('.folder-container')[fromIndex]?.querySelector('.folder-title, h3, .folder-name')?.textContent?.trim(),
+        toFolderTitle: document.querySelectorAll('.folder-container')[toIndex]?.querySelector('.folder-title, h3, .folder-name')?.textContent?.trim()
+      };
+
+      const errorResult = this.handleOperationError(error, 'reorderFolder', context);
+
+      return {
+        success: false,
+        error: error.message,
+        fromIndex,
+        toIndex,
+        handled: errorResult.handled,
+        recoverable: errorResult.recoverable
+      };
+    }
+  }
+
+  /**
+   * Setup enhanced styles from console script
+   */
+  private static setupEnhancedStyles(): void {
+    if (document.getElementById('enhanced-drag-drop-styles')) return;
+
+    const styles = document.createElement('style');
+    styles.id = 'enhanced-drag-drop-styles';
+    styles.textContent = `
+      /* Enhanced draggable elements */
+      .folder-container[draggable="true"]:not(.protected-folder) {
+        cursor: grab !important;
+        transition: all 0.2s ease !important;
+        border: 2px solid transparent !important;
+        border-radius: 8px !important;
+        position: relative !important;
+      }
+
+      .bookmark-item[draggable="true"] {
+        cursor: grab !important;
+        transition: all 0.2s ease !important;
+        border: 1px solid transparent !important;
+        border-radius: 4px !important;
+      }
+
+      .folder-container.protected-folder {
+        cursor: not-allowed !important;
+        opacity: 0.6 !important;
+        background: rgba(239, 68, 68, 0.05) !important;
+        border: 2px dashed rgba(239, 68, 68, 0.3) !important;
+      }
+
+      .folder-container[draggable="true"]:not(.protected-folder):hover {
+        border-color: #3b82f6 !important;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2) !important;
+        transform: translateY(-2px) !important;
+        background: rgba(59, 130, 246, 0.05) !important;
+      }
+
+      .folder-container.protected-folder:hover::after {
+        content: "Protected folder - cannot be moved";
+        position: absolute;
+        top: -30px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #ef4444;
+        color: white;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        white-space: nowrap;
+        z-index: 1001;
+      }
+
+      /* Enhanced dragging states */
+      .dragging {
+        opacity: 0.5 !important;
+        transform: rotate(3deg) scale(0.95) !important;
+        z-index: 1000 !important;
+        box-shadow: 0 15px 30px rgba(0,0,0,0.3) !important;
+      }
+
+      /* Drop zones - using test-compatible class names */
+      .drop-zone-active,
+      .drop-zone,
+      .drop-target {
+        background: rgba(16, 185, 129, 0.1) !important;
+        border: 2px dashed #10b981 !important;
+        transform: scale(1.02) !important;
+      }
+
+      .drop-zone-folder-reorder {
+        background: rgba(59, 130, 246, 0.1) !important;
+        border-top: 4px solid #3b82f6 !important;
+        border-bottom: 4px solid #3b82f6 !important;
+      }
+
+      .drop-zone-bookmark-target {
+        background: rgba(34, 197, 94, 0.1) !important;
+        border: 2px dashed #22c55e !important;
+        transform: scale(1.02) !important;
+        position: relative !important;
+      }
+
+      .drop-zone-bookmark-target::after {
+        content: "📁 Drop bookmark here";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(34, 197, 94, 0.9);
+        color: white;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: bold;
+        pointer-events: none;
+        z-index: 1000;
+      }
+
+      /* Drag ghost/preview for test compatibility */
+      .dragging {
+        opacity: 0.5 !important;
+        transform: rotate(2deg) scale(0.95) !important;
+        z-index: 1000 !important;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3) !important;
+      }
+
+      .drag-ghost,
+      .drag-preview {
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3) !important;
+        opacity: 0.8 !important;
+        transform: rotate(2deg) !important;
+        z-index: 1000 !important;
+      }
+
+      /* Success animation */
+      @keyframes successPulse {
+        0%, 100% { transform: scale(1); }
+        25% { transform: scale(1.05); box-shadow: 0 0 20px rgba(16, 185, 129, 0.4); }
+        50% { transform: scale(1.02); }
+        75% { transform: scale(1.05); box-shadow: 0 0 20px rgba(16, 185, 129, 0.4); }
+      }
+
+      .drop-success {
+        background: rgba(16, 185, 129, 0.2) !important;
+        border: 2px solid #10b981 !important;
+        animation: successPulse 2s ease !important;
+      }
+    `;
+
+    document.head.appendChild(styles);
+    console.log('✅ Enhanced drag-drop styles added');
+  }
+
+  /**
+   * Setup bookmark drag functionality
+   */
+  static setupBookmarkDragDrop(): { draggable: number } {
+    const bookmarks = document.querySelectorAll('.bookmark-item');
+    console.log(`🦁 Setting up enhanced bookmark drag for ${bookmarks.length} bookmarks...`);
+
+    let draggableCount = 0;
+
+    bookmarks.forEach((bookmark, bookmarkIndex) => {
+      // Clear existing handlers
+      ['dragstart', 'dragend'].forEach(event => {
+        const handler = (bookmark as any)[`_${event}Handler`];
+        if (handler) {
+          bookmark.removeEventListener(event, handler);
+        }
+      });
+
+      // Get bookmark data from element or attributes
+      const titleElement = bookmark.querySelector('.bookmark-title');
+      const bookmarkTitle = titleElement?.textContent?.trim() || 'Unknown Bookmark';
+      const bookmarkId = bookmark.getAttribute('data-bookmark-id') ||
+                        bookmark.getAttribute('data-id') ||
+                        `bookmark-${bookmarkIndex}`;
+      const bookmarkUrl = bookmark.getAttribute('data-url') || '';
+
+      // Set up draggable
+      bookmark.setAttribute('draggable', 'true');
+      bookmark.classList.add('enhanced-draggable-bookmark');
+
+      // Drag start handler for bookmarks
+      (bookmark as any)._dragstartHandler = (e: DragEvent) => {
+        this.currentDragData = {
+          type: 'bookmark',
+          id: bookmarkId,
+          title: bookmarkTitle,
+          url: bookmarkUrl,
+          index: bookmarkIndex
+        };
+
+        console.log(`🦁 BOOKMARK DRAG START: "${bookmarkTitle}" (id: ${bookmarkId})`);
+
+        // Set drag data with both formats for compatibility
+        const dragDataStr = JSON.stringify(this.currentDragData);
+        e.dataTransfer?.setData('text/plain', dragDataStr);
+        e.dataTransfer?.setData('application/x-favault-bookmark', dragDataStr);
+        if (e.dataTransfer) {
+          e.dataTransfer.effectAllowed = 'move';
+        }
+
+        bookmark.classList.add('dragging');
+        document.body.classList.add('dragging-bookmark-active');
+      };
+
+      // Drag end handler for bookmarks
+      (bookmark as any)._dragendHandler = (e: DragEvent) => {
+        console.log(`🦁 BOOKMARK DRAG END: "${bookmarkTitle}"`);
+
+        bookmark.classList.remove('dragging');
+        document.body.classList.remove('dragging-bookmark-active');
+
+        // Clear drag data
+        this.currentDragData = null;
+
+        // Clear all drop zone indicators
+        document.querySelectorAll('.drop-zone').forEach(zone => {
+          zone.classList.remove('drop-zone', 'drop-target', 'drop-zone-bookmark-target');
+          zone.removeAttribute('data-drop-zone');
+        });
+      };
+
+      // Attach event listeners
+      bookmark.addEventListener('dragstart', (bookmark as any)._dragstartHandler);
+      bookmark.addEventListener('dragend', (bookmark as any)._dragendHandler);
+
+      draggableCount++;
+    });
+
+    console.log(`✅ Enhanced bookmark drag setup complete: ${draggableCount} draggable bookmarks`);
+    return { draggable: draggableCount };
+  }
+
+  /**
+   * Initialize DOM observer to detect when folder containers are added
+   */
+  private static initializeDOMObserver(): void {
+    if (this.domObserver) {
+      this.domObserver.disconnect();
+    }
+
+    this.domObserver = new MutationObserver((mutations) => {
+      let folderContainersAdded = false;
+      let attributeChanges = false;
+
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'childList') {
+          mutation.addedNodes.forEach((node) => {
+            if (node.nodeType === Node.ELEMENT_NODE) {
+              const element = node as Element;
+              // Check if the added node is a folder container or contains folder containers
+              if (element.classList?.contains('folder-container') ||
+                  element.querySelector?.('.folder-container')) {
+                folderContainersAdded = true;
+                console.log('🦁 DOM Observer: Folder container added to DOM:', element.className);
+              }
+            }
+          });
+        } else if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+          // Also watch for class changes that might indicate folder containers becoming available
+          const element = mutation.target as Element;
+          if (element.classList?.contains('folder-container')) {
+            attributeChanges = true;
+            console.log('🦁 DOM Observer: Folder container class changed:', element.className);
+          }
+        }
+      });
+
+      if ((folderContainersAdded || attributeChanges) && this.editModeEnabled) {
+        console.log('🦁 DOM Observer: Folder containers detected, setting up drag-drop...');
+        // Debounce the setup to avoid multiple rapid calls
+        setTimeout(() => {
+          const result = this.setupFolderDragDrop();
+          console.log(`🦁 DOM Observer setup result: ${result.draggable} draggable, ${result.protected} protected`);
+        }, 150);
+      }
+    });
+
+    // Observe the entire document for changes
+    this.domObserver.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['class', 'draggable']
+    });
+
+    console.log('✅ DOM Observer initialized for folder container detection (watching childList, attributes)');
+  }
+
+  /**
+   * Setup folder drag-drop functionality with protection and retry logic
+   */
+  static setupFolderDragDrop(): { draggable: number; protected: number } {
+    const folders = document.querySelectorAll('.folder-container');
+    console.log(`🦁 Setting up enhanced drag-drop for ${folders.length} folders...`);
+
+    // If no folders found and we haven't exceeded retry attempts, schedule a retry
+    if (folders.length === 0 && this.folderSetupRetryCount < this.maxRetryAttempts) {
+      this.folderSetupRetryCount++;
+      const retryDelay = Math.min(500 * this.folderSetupRetryCount, 2000); // Exponential backoff, max 2s
+
+      console.log(`🦁 No folder containers found (attempt ${this.folderSetupRetryCount}/${this.maxRetryAttempts}), retrying in ${retryDelay}ms...`);
+
+      const timeoutId = window.setTimeout(() => {
+        this.retryTimeouts.delete(timeoutId);
+        this.setupFolderDragDrop();
+      }, retryDelay);
+
+      this.retryTimeouts.add(timeoutId);
+      return { draggable: 0, protected: 0 };
+    }
+
+    // Reset retry count on successful folder detection
+    if (folders.length > 0) {
+      this.folderSetupRetryCount = 0;
+    }
+
+    let draggableCount = 0;
+    let protectedCount = 0;
+
+    folders.forEach((folder, folderIndex) => {
+      // Clear existing handlers
+      ['dragstart', 'dragend', 'dragover', 'dragenter', 'dragleave', 'drop'].forEach(event => {
+        const handler = (folder as any)[`_${event}Handler`];
+        if (handler) {
+          folder.removeEventListener(event, handler);
+        }
+      });
+
+      const folderTitle = folder.querySelector('.folder-title, h3, .folder-name')?.textContent?.trim() || `Folder ${folderIndex + 1}`;
+      const bookmarkId = this.folderBookmarkIds.get(folderIndex);
+
+      // Check if this is a protected folder
+      const isProtected = this.protectedFolderIds.has(bookmarkId) || (bookmarkId && this.isProtectedFolder(bookmarkId, folderTitle));
+
+      if (isProtected) {
+        // Mark as protected and make non-draggable
+        folder.classList.add('protected-folder');
+        folder.setAttribute('draggable', 'false');
+        (folder as HTMLElement).draggable = false;
+        (folder as HTMLElement).style.cursor = 'not-allowed';
+
+        // Add protected indicator
+        if (!folder.querySelector('.protected-indicator')) {
+          const indicator = document.createElement('div');
+          indicator.className = 'protected-indicator';
+          indicator.innerHTML = '🔒';
+          indicator.style.cssText = `
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            color: #ef4444;
+            font-size: 14px;
+            z-index: 10;
+          `;
+          folder.appendChild(indicator);
+        }
+
+        console.log(`🔒 Protected folder: "${folderTitle}" (index: ${folderIndex})`);
+        protectedCount++;
+        return; // Skip drag-drop setup for protected folders
+      }
+
+      // Setup draggable folder
+      folder.classList.remove('protected-folder');
+      folder.setAttribute('draggable', 'true');
+      (folder as HTMLElement).draggable = true;
+      folder.classList.add('draggable-folder');
+      (folder as HTMLElement).style.cursor = 'grab';
+      (folder as HTMLElement).style.position = 'relative';
+
+      // Add drag handle if not exists
+      if (!folder.querySelector('.enhanced-drag-handle')) {
+        const handle = document.createElement('div');
+        handle.className = 'enhanced-drag-handle';
+        handle.innerHTML = '⋮⋮';
+        handle.style.cssText = `
+          position: absolute;
+          top: 8px;
+          right: 8px;
+          color: #6b7280;
+          font-size: 14px;
+          opacity: 0;
+          transition: opacity 0.2s ease;
+          pointer-events: none;
+          z-index: 10;
+        `;
+        folder.appendChild(handle);
+      }
+
+      // Drag start handler
+      (folder as any)._dragstartHandler = (e: DragEvent) => {
+        // Double-check protection at drag start
+        if (this.protectedFolderIds.has(bookmarkId) || (bookmarkId && this.isProtectedFolder(bookmarkId, folderTitle))) {
+          e.preventDefault();
+          this.showNotification(`Cannot move protected folder "${folderTitle}"`, 'error');
+          return;
+        }
+
+        this.currentDragData = {
+          type: 'folder',
+          id: bookmarkId || '',
+          title: folderTitle,
+          index: folderIndex,
+          bookmarkId: bookmarkId
+        };
+
+        console.log(`🦁 DRAG START: "${folderTitle}" (index: ${folderIndex}, bookmarkId: ${bookmarkId})`);
+
+        // Set drag data with both formats for compatibility
+        const dragDataStr = JSON.stringify(this.currentDragData);
+        e.dataTransfer?.setData('text/plain', dragDataStr);
+        e.dataTransfer?.setData('application/x-favault-bookmark', dragDataStr);
+        if (e.dataTransfer) {
+          e.dataTransfer.effectAllowed = 'move';
+        }
+
+        // Visual feedback - add test-compatible classes
+        folder.classList.add('dragging', 'drag-ghost');
+        folder.setAttribute('data-dragging', 'true');
+        document.body.classList.add('dragging-folder-active', 'drag-active');
+        document.body.style.cursor = 'grabbing';
+
+        // Add drag-active class to app container for insertion point visibility
+        const appContainer = document.querySelector('.app');
+        if (appContainer) {
+          appContainer.classList.add('drag-active');
+        }
+
+        // Prevent auto-scrolling during drag operations
+        this.preventAutoScroll();
+      };
+
+      // Drag end handler
+      (folder as any)._dragendHandler = (e: DragEvent) => {
+        console.log(`🦁 DRAG END: "${folderTitle}"`);
+
+        folder.classList.remove('dragging', 'drag-ghost');
+        folder.removeAttribute('data-dragging');
+        document.body.classList.remove('dragging-folder-active', 'drag-active');
+        document.body.style.cursor = '';
+
+        // Remove drag-active class from app container
+        const appContainer = document.querySelector('.app');
+        if (appContainer) {
+          appContainer.classList.remove('drag-active');
+        }
+
+        // Clean up visual states - include test-compatible classes
+        document.querySelectorAll('.folder-container').forEach(f => {
+          f.classList.remove('drop-zone-active', 'drop-zone-folder-reorder', 'drop-success', 'drop-zone', 'drop-target');
+          f.removeAttribute('data-drop-zone');
+        });
+
+        // Clean up insertion point drag-over states
+        document.querySelectorAll('.insertion-point').forEach(point => {
+          point.classList.remove('drag-over');
+        });
+
+        // Restore normal scroll behavior
+        this.restoreAutoScroll();
+
+        this.currentDragData = null;
+        this.dragEnterCounters.clear();
+      };
+
+      // Drop zone handlers - folder reordering now handled by insertion points
+      (folder as any)._dragoverHandler = (e: DragEvent) => {
+        // Allow bookmark drops into folders
+        if (this.currentDragData?.type === 'bookmark' &&
+            !this.protectedFolderIds.has(bookmarkId)) {
+          e.preventDefault();
+          if (e.dataTransfer) {
+            e.dataTransfer.dropEffect = 'move';
+          }
+          return;
+        }
+      };
+
+      (folder as any)._dragenterHandler = (e: DragEvent) => {
+        const folderId = `folder-${folderIndex}`;
+        if (!this.dragEnterCounters.has(folderId)) {
+          this.dragEnterCounters.set(folderId, 0);
+        }
+        this.dragEnterCounters.set(folderId, this.dragEnterCounters.get(folderId)! + 1);
+
+        if (this.dragEnterCounters.get(folderId) === 1) {
+          // Folder reordering is now handled by insertion points, not folder drop zones
+          // Only handle bookmark drops into folders
+          if (this.currentDragData?.type === 'bookmark' &&
+              !this.protectedFolderIds.has(bookmarkId)) {
+            console.log(`🦁 BOOKMARK DROP TARGET: "${folderTitle}"`);
+            folder.classList.add('drop-zone-bookmark-target', 'drop-zone', 'drop-target');
+            folder.setAttribute('data-drop-zone', 'true');
+          }
+        }
+      };
+
+      (folder as any)._dragleaveHandler = (e: DragEvent) => {
+        const folderId = `folder-${folderIndex}`;
+        const count = this.dragEnterCounters.get(folderId) || 0;
+        this.dragEnterCounters.set(folderId, Math.max(0, count - 1));
+
+        if (this.dragEnterCounters.get(folderId) === 0) {
+          // Remove all drop zone classes
+          folder.classList.remove(
+            'drop-zone-folder-reorder',
+            'drop-zone-bookmark-target',
+            'drop-zone',
+            'drop-target'
+          );
+          folder.removeAttribute('data-drop-zone');
+        }
+      };
+
+      // Drop handler with error handling
+      (folder as any)._dropHandler = async (e: DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const folderId = `folder-${folderIndex}`;
+        this.dragEnterCounters.set(folderId, 0);
+        // Remove all drop zone classes
+        folder.classList.remove(
+          'drop-zone-folder-reorder',
+          'drop-zone-bookmark-target',
+          'drop-zone',
+          'drop-target'
+        );
+        folder.removeAttribute('data-drop-zone');
+
+        // Folder reordering is now handled by insertion points, not folder drops
+        // Only handle bookmark drops into folders
+        if (this.currentDragData?.type === 'bookmark' &&
+                 !this.protectedFolderIds.has(bookmarkId)) {
+
+          console.log(`🦁 BOOKMARK DROP: "${this.currentDragData.title}" → "${folderTitle}"`);
+
+          // Show loading state
+          folder.classList.add('drop-zone-active');
+
+          try {
+            const result = await this.moveBookmarkToFolder(this.currentDragData, bookmarkId);
+
+            if (result.success) {
+              console.log('✅ BOOKMARK DROP SUCCESS:', result);
+              folder.classList.add('drop-success');
+              this.showNotification(`Bookmark "${this.currentDragData.title}" moved to "${folderTitle}"`);
+
+              // Auto-refresh after successful move
+              setTimeout(() => {
+                this.showRefreshPrompt();
+              }, 1000);
+            } else {
+              console.error('❌ BOOKMARK DROP FAILED:', result);
+              this.showNotification(`Drop failed: ${result.error}`, 'error');
+            }
+          } catch (error) {
+            console.error('🦁 BOOKMARK DROP ERROR:', error);
+            this.handleOperationError(error, 'bookmarkDrop', {
+              bookmarkId: this.currentDragData.id,
+              bookmarkTitle: this.currentDragData.title,
+              targetFolderId: bookmarkId,
+              targetFolderTitle: folderTitle
+            });
+          }
+
+          // Reset visual state
+          setTimeout(() => {
+            folder.classList.remove('drop-zone-active', 'drop-success');
+          }, 3000);
+        }
+      };
+
+      // Attach all event listeners
+      folder.addEventListener('dragstart', (folder as any)._dragstartHandler);
+      folder.addEventListener('dragend', (folder as any)._dragendHandler);
+      folder.addEventListener('dragover', (folder as any)._dragoverHandler);
+      folder.addEventListener('dragenter', (folder as any)._dragenterHandler);
+      folder.addEventListener('dragleave', (folder as any)._dragleaveHandler);
+      folder.addEventListener('drop', (folder as any)._dropHandler);
+
+      draggableCount++;
+    });
+
+    console.log(`✅ Enhanced drag-drop setup complete: ${draggableCount} draggable, ${protectedCount} protected`);
+    return { draggable: draggableCount, protected: protectedCount };
+  }
+
+  /**
+   * Show refresh prompt after successful operations
+   */
+  static showRefreshPrompt(): void {
+    const existing = document.getElementById('refresh-prompt');
+    if (existing) existing.remove();
+
+    const refreshDiv = document.createElement('div');
+    refreshDiv.id = 'refresh-prompt';
+    refreshDiv.style.cssText = `
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #3b82f6;
+      color: white;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: bold;
+      z-index: 10000;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      cursor: pointer;
+      transition: all 0.3s ease;
+    `;
+    refreshDiv.innerHTML = `
+      🔄 Refresh page to see new bookmark order<br>
+      <small style="opacity: 0.8;">Click to refresh now</small>
+    `;
+
+    refreshDiv.onclick = () => {
+      console.log('🦁 Refreshing page to show new bookmark order...');
+      window.location.reload();
+    };
+
+    refreshDiv.onmouseenter = () => {
+      refreshDiv.style.transform = 'scale(1.05)';
+    };
+
+    refreshDiv.onmouseleave = () => {
+      refreshDiv.style.transform = 'scale(1)';
+    };
+
+    document.body.appendChild(refreshDiv);
+
+    setTimeout(() => {
+      if (refreshDiv.parentNode) {
+        refreshDiv.remove();
+      }
+    }, 10000);
+  }
+
+  /**
+   * Restore bookmark folder mappings (called during initialization)
+   */
+  static async restoreBookmarkFolderMappings(): Promise<{ success: boolean; mappedCount: number; protectedCount: number; totalFolders: number; error?: string }> {
+    try {
+      console.log('🦁 Restoring bookmark folder mappings...');
+
+      // Get the bookmark tree from Chrome
+      const bookmarkTree = await browserAPI.bookmarks.getTree();
+
+      this.folderBookmarkIds.clear();
+      this.protectedFolderIds.clear();
+
+      const folders = document.querySelectorAll('.folder-container, [data-testid="bookmark-folder"]');
+      let mappedCount = 0;
+      let protectedCount = 0;
+
+      console.log(`🦁 Found ${folders.length} folder containers in DOM`);
+
+      // If no folders found, this might be called too early - that's OK, we'll retry later
+      if (folders.length === 0) {
+        console.log('🦁 No folder containers found yet - will retry when edit mode is enabled');
+      }
+
+      folders.forEach((folder, index) => {
+        const folderTitle = folder.querySelector('.folder-title, h3, .folder-name, [data-testid="folder-title"]')?.textContent?.trim();
+
+        if (folderTitle) {
+          const bookmarkFolder = this.findBookmarkFolderByTitle(bookmarkTree, folderTitle);
+
+          if (bookmarkFolder) {
+            this.folderBookmarkIds.set(index, bookmarkFolder.id);
+
+            // Check if this is a protected folder
+            if (this.isProtectedFolder(bookmarkFolder.id, folderTitle)) {
+              console.log(`🔒 Protected: "${folderTitle}" (${index}) → ${bookmarkFolder.id} [PROTECTED]`);
+              protectedCount++;
+            } else {
+              console.log(`📁 Mapped: "${folderTitle}" (${index}) → ${bookmarkFolder.id}`);
+            }
+            mappedCount++;
+          } else {
+            console.warn(`⚠️ Could not find bookmark folder for "${folderTitle}"`);
+            this.folderBookmarkIds.set(index, `placeholder-${index}`);
+          }
+        } else {
+          console.warn(`⚠️ No title found for folder at index ${index}`);
+          this.folderBookmarkIds.set(index, `placeholder-${index}`);
+        }
+      });
+
+      console.log(`✅ Restored ${mappedCount} bookmark mappings (${protectedCount} protected) out of ${folders.length} folders`);
+      return {
+        success: true,
+        mappedCount,
+        protectedCount,
+        totalFolders: folders.length
+      };
+
+    } catch (error) {
+      console.error('🦁 ERROR: Failed to restore bookmark mappings:', error);
+      return { success: false, mappedCount: 0, protectedCount: 0, totalFolders: 0, error: error.message };
+    }
+  }
+
+  /**
+   * Move a bookmark to a different folder
+   */
+  static async moveBookmarkToFolder(dragData: any, targetFolderId: string): Promise<{ success: boolean; error?: string; result?: any }> {
+    console.log(`🦁 API: moveBookmarkToFolder("${dragData.title}", ${targetFolderId})`);
+    this.systemState.operationCount++;
+
+    try {
+      if (!dragData.id) {
+        throw new Error('Invalid bookmark data - missing ID');
+      }
+
+      console.log(`🦁 Moving bookmark ${dragData.id} to folder ${targetFolderId}`);
+
+      // Get current bookmark info
+      const [bookmark] = await browserAPI.bookmarks.get(dragData.id);
+      console.log('🦁 Current bookmark:', bookmark);
+
+      // Move the bookmark to the target folder
+      const result = await browserAPI.bookmarks.move(dragData.id, {
+        parentId: targetFolderId
+      });
+
+      console.log('🦁 SUCCESS: Bookmark moved:', result);
+      this.showNotification(`Bookmark "${dragData.title}" moved successfully`);
+
+      return {
+        success: true,
+        result: result
+      };
+
+    } catch (error) {
+      const context = {
+        operation: 'moveBookmarkToFolder',
+        bookmarkId: dragData.id,
+        bookmarkTitle: dragData.title,
+        targetFolderId: targetFolderId
+      };
+
+      const handled = this.handleOperationError(error, 'moveBookmarkToFolder', context);
+      return {
+        success: false,
+        error: error.message,
+        handled: handled.handled,
+        recoverable: handled.recoverable
+      };
+    }
+  }
+
+  /**
+   * Enable edit mode with enhanced functionality
+   */
+  static async enableEditMode(): Promise<void> {
+    this.editModeEnabled = true;
+    document.body.classList.add('edit-mode');
+
+    // Re-initialize folder mappings in case they weren't found during initial setup
+    console.log('🦁 Restoring bookmark folder mappings for edit mode...');
+    const mappingResult = await this.restoreBookmarkFolderMappings();
+
+    if (mappingResult.success) {
+      console.log(`✅ Successfully mapped ${mappingResult.mappedCount} folders (${mappingResult.protectedCount} protected)`);
+    } else {
+      console.error('❌ Failed to restore bookmark mappings:', mappingResult.error);
+    }
+
+    // Setup enhanced styles
+    this.setupEnhancedStyles();
+
+    // Initialize DOM observer for dynamic folder detection
+    this.initializeDOMObserver();
+
+    // Setup bookmark drag functionality
+    const bookmarkResult = this.setupBookmarkDragDrop();
+    console.log(`✅ Enhanced bookmark drag enabled: ${bookmarkResult.draggable} draggable bookmarks`);
+
+    // Setup folder drag-drop with retry logic
+    const folderResult = this.setupFolderDragDrop();
+    console.log(`✅ Enhanced folder drag enabled: ${folderResult.draggable} draggable, ${folderResult.protected} protected`);
+
+    // If no folders were found initially, the retry logic will handle it
+    if (folderResult.draggable === 0 && folderResult.protected === 0) {
+      console.log('🦁 No folders found initially - DOM observer and retry logic will handle folder detection');
+    }
+
+    const combinedResult = {
+      bookmarks: bookmarkResult.draggable,
+      folders: folderResult.draggable,
+      protected: folderResult.protected,
+      total: bookmarkResult.draggable + folderResult.draggable
+    };
+
+    console.log(`✅ Enhanced edit mode enabled: ${combinedResult.total} total draggable items (${combinedResult.bookmarks} bookmarks, ${combinedResult.folders} folders, ${combinedResult.protected} protected)`);
+
+    // Set global flag for tests to check
+    (window as any).enhancedDragDropReady = true;
+    (window as any).enhancedDragDropStats = combinedResult;
+  }
+
+  /**
+   * Disable edit mode
+   */
+  static disableEditMode(): void {
+    this.editModeEnabled = false;
+    document.body.classList.remove('edit-mode', 'dragging-folder-active', 'dragging-bookmark-active');
+
+    // Clean up bookmark drag functionality
+    document.querySelectorAll('.bookmark-item').forEach(bookmark => {
+      ['dragstart', 'dragend'].forEach(event => {
+        const handler = (bookmark as any)[`_${event}Handler`];
+        if (handler) {
+          bookmark.removeEventListener(event, handler);
+          delete (bookmark as any)[`_${event}Handler`];
+        }
+      });
+
+      bookmark.classList.remove('enhanced-draggable-bookmark', 'dragging');
+      bookmark.removeAttribute('draggable');
+      (bookmark as HTMLElement).draggable = false;
+      (bookmark as HTMLElement).style.cursor = '';
+    });
+
+    // Clean up folder drag functionality
+    document.querySelectorAll('.folder-container').forEach(folder => {
+      // Remove event listeners
+      ['dragstart', 'dragend', 'dragover', 'dragenter', 'dragleave', 'drop'].forEach(event => {
+        const handler = (folder as any)[`_${event}Handler`];
+        if (handler) {
+          folder.removeEventListener(event, handler);
+          delete (folder as any)[`_${event}Handler`];
+        }
+      });
+
+      // Remove classes and attributes
+      folder.classList.remove(
+        'draggable-folder',
+        'protected-folder',
+        'dragging',
+        'drop-zone-active',
+        'drop-zone-folder-reorder',
+        'drop-zone-bookmark-target',
+        'drop-zone',
+        'drop-target',
+        'drop-success'
+      );
+      folder.removeAttribute('draggable');
+      (folder as HTMLElement).draggable = false;
+      (folder as HTMLElement).style.cursor = '';
+
+      // Remove indicators
+      folder.querySelectorAll('.protected-indicator, .enhanced-drag-handle').forEach(el => el.remove());
+    });
+
+    // Clear state
+    this.currentDragData = null;
+    this.dragEnterCounters.clear();
+
+    // Disconnect DOM observer
+    if (this.domObserver) {
+      this.domObserver.disconnect();
+      this.domObserver = null;
+      console.log('✅ DOM Observer disconnected');
+    }
+
+    // Clear retry timeouts
+    this.retryTimeouts.forEach(timeoutId => clearTimeout(timeoutId));
+    this.retryTimeouts.clear();
+    this.folderSetupRetryCount = 0;
+
+    // Clear global flags
+    (window as any).enhancedDragDropReady = false;
+    delete (window as any).enhancedDragDropStats;
+
+    console.log('✅ Enhanced edit mode disabled');
+  }
+}

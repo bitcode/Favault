@@ -351,9 +351,9 @@ export class BraveDragDropManager extends DragDropManager {
   /**
    * Enable edit mode with Brave-specific styles
    */
-  static enableEditMode(): void {
+  static async enableEditMode(): Promise<void> {
     console.log('🦁 Enabling Brave edit mode');
-    super.enableEditMode();
+    await super.enableEditMode();
     
     // Add Brave-specific styles
     if (!document.getElementById('brave-drag-styles')) {

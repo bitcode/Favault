@@ -1,0 +1,322 @@
+name: FaVault Extension Automated Testing
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+  schedule:
+    # Run tests daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      test_suite:
+        description: 'Test suite to run'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - bookmarks
+          - dragdrop
+          - ui-visual
+          - console
+          - cross-browser
+
+jobs:
+  build:
+    name: Build Extension
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build extension for all browsers
+        run: npm run build:all
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-builds
+          path: dist/
+          retention-days: 7
+
+  test-chrome:
+    name: Test Chrome Extension
+    runs-on: ubuntu-latest
+    needs: build
+    strategy:
+      matrix:
+        test-suite: [bookmarks, dragdrop, ui-visual, console]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: extension-builds
+          path: dist/
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium
+
+      - name: Run Chrome extension tests
+        run: |
+          case "${{ matrix.test-suite }}" in
+            "bookmarks") npm run test:bookmarks -- --project=chromium-extension ;;
+            "dragdrop") npm run test:dragdrop -- --project=chromium-extension ;;
+            "ui-visual") npm run test:ui-visual -- --project=chromium-extension ;;
+            "console") npm run test:console -- --project=chromium-extension ;;
+            *) npm run test:chrome ;;
+          esac
+        env:
+          CI: true
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: chrome-test-results-${{ matrix.test-suite }}
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 7
+
+  test-cross-browser:
+    name: Cross-Browser Testing
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push' || github.event.inputs.test_suite == 'cross-browser' || github.event.inputs.test_suite == 'all'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: extension-builds
+          path: dist/
+
+      - name: Install Playwright browsers
+        run: npx playwright install
+
+      - name: Run cross-browser tests
+        run: npm run test:cross-browser
+        env:
+          CI: true
+
+      - name: Upload cross-browser test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cross-browser-test-results
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 7
+
+  test-visual-regression:
+    name: Visual Regression Testing
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push' || github.event.inputs.test_suite == 'ui-visual' || github.event.inputs.test_suite == 'all'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: extension-builds
+          path: dist/
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium
+
+      - name: Run visual regression tests
+        run: npm run test:ui-visual -- --project=chromium-extension
+        env:
+          CI: true
+
+      - name: Upload visual test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: visual-regression-results
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 30
+
+  performance-testing:
+    name: Performance Testing
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'schedule' || github.event.inputs.test_suite == 'all'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: extension-builds
+          path: dist/
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium
+
+      - name: Run performance tests
+        run: npm run test:console -- --project=chromium-extension --grep="performance"
+        env:
+          CI: true
+
+      - name: Upload performance results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: performance-test-results
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 30
+
+  generate-report:
+    name: Generate Test Report
+    runs-on: ubuntu-latest
+    needs: [test-chrome, test-cross-browser, test-visual-regression]
+    if: always()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all test results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: "*-test-results*"
+          path: all-test-results/
+          merge-multiple: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate consolidated report
+        run: |
+          echo "# FaVault Extension Test Report" > test-summary.md
+          echo "" >> test-summary.md
+          echo "## Test Run Information" >> test-summary.md
+          echo "- **Date**: $(date)" >> test-summary.md
+          echo "- **Commit**: ${{ github.sha }}" >> test-summary.md
+          echo "- **Branch**: ${{ github.ref_name }}" >> test-summary.md
+          echo "" >> test-summary.md
+          
+          # Add test results summary
+          if [ -d "all-test-results" ]; then
+            echo "## Test Results Summary" >> test-summary.md
+            find all-test-results -name "*.json" -exec echo "Found result file: {}" \;
+            echo "" >> test-summary.md
+          fi
+          
+          echo "## Artifacts" >> test-summary.md
+          echo "- Extension builds available in artifacts" >> test-summary.md
+          echo "- Test reports available in artifacts" >> test-summary.md
+          echo "- Screenshots and videos available for failed tests" >> test-summary.md
+
+      - name: Upload consolidated report
+        uses: actions/upload-artifact@v4
+        with:
+          name: consolidated-test-report
+          path: |
+            test-summary.md
+            all-test-results/
+          retention-days: 30
+
+      - name: Comment PR with test results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            if (fs.existsSync('test-summary.md')) {
+              const summary = fs.readFileSync('test-summary.md', 'utf8');
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: summary
+              });
+            }
+
+  notify-status:
+    name: Notify Test Status
+    runs-on: ubuntu-latest
+    needs: [test-chrome, test-cross-browser, test-visual-regression, generate-report]
+    if: always()
+    steps:
+      - name: Determine overall status
+        id: status
+        run: |
+          if [[ "${{ needs.test-chrome.result }}" == "success" && "${{ needs.test-cross-browser.result }}" == "success" && "${{ needs.test-visual-regression.result }}" == "success" ]]; then
+            echo "status=success" >> $GITHUB_OUTPUT
+            echo "message=All FaVault extension tests passed successfully! ✅" >> $GITHUB_OUTPUT
+          else
+            echo "status=failure" >> $GITHUB_OUTPUT
+            echo "message=Some FaVault extension tests failed. Please check the test results. ❌" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Log test status
+        run: |
+          echo "Test Status: ${{ steps.status.outputs.status }}"
+          echo "Message: ${{ steps.status.outputs.message }}"

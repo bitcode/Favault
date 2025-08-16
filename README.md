@@ -15,11 +15,11 @@ A custom, visually appealing new tab page browser extension built with Svelte th
 
 | Browser | Manifest Version | Status |
 |---------|------------------|--------|
-| Chrome  | V3              | ✅ Supported |
-| Firefox | V2/V3           | ✅ Supported |
-| Safari  | V2              | ✅ Supported |
-| Edge    | V3              | ✅ Supported |
-| Brave   | V3              | ✅ Supported |
+| Chrome  | V3              | ✅ Primary target (fully supported) |
+| Edge    | V3              | ✅ Supported (Chromium-compatible) |
+| Firefox | V2/V3           | ⚠️ Secondary (best effort) |
+| Safari  | V2              | ⚠️ Secondary (best effort) |
+| Brave   | V3              | ⚠️ Not prioritized (use Chrome build) |
 
 ## Prerequisites
 
@@ -126,11 +126,19 @@ favault-extension/
 
 ## Loading the Extension
 
-### Chrome/Edge
-1. Open `chrome://extensions/` or `edge://extensions/`
-2. Enable "Developer mode"
-3. Click "Load unpacked"
-4. Select the `dist/chrome/` or `dist/edge/` folder
+### Chrome (Recommended)
+1. Run `npm run build:chrome`
+2. Open `chrome://extensions/`
+3. Enable "Developer mode"
+4. Click "Load unpacked"
+5. Select the `dist/chrome/` folder
+
+### Edge
+1. Run `npm run build:chrome` (Edge uses the Chrome build)
+2. Open `edge://extensions/`
+3. Enable "Developer mode"
+4. Click "Load unpacked"
+5. Select the `dist/edge/` or `dist/chrome/` folder
 
 ### Firefox
 1. Open `about:debugging`
@@ -145,10 +153,14 @@ favault-extension/
 4. Load the extension from `dist/safari/`
 
 ### Brave
-1. Open `brave://extensions/`
-2. Enable "Developer mode"
-3. Click "Load unpacked"
-4. Select the `dist/brave/` folder (or use `dist/chrome/` - both work identically)
+Brave is Chromium-based and typically works with the Chrome build. However, this project prioritizes Chrome. If you use Brave and encounter issues, load the Chrome build as follows:
+1. Run `npm run build:chrome`
+2. Open `brave://extensions/`
+3. Enable "Developer mode"
+4. Click "Load unpacked"
+5. Select the `dist/chrome/` folder
+
+Note: Brave-specific workarounds may exist in the codebase but are not actively maintained. For the most reliable experience, use Chrome.
 
 ## Architecture
 

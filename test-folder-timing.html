@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Folder Drag-Drop Timing Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .test-button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        .test-button:hover {
+            background: #45a049;
+        }
+        .test-button.secondary {
+            background: #2196F3;
+        }
+        .test-button.secondary:hover {
+            background: #1976D2;
+        }
+        .console-output {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            margin-top: 10px;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        .folder-container {
+            background: #e3f2fd;
+            border: 2px solid #2196F3;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .folder-container:hover {
+            background: #bbdefb;
+        }
+        .folder-container[draggable="true"] {
+            cursor: grab;
+            border-color: #4CAF50;
+            background: #e8f5e8;
+        }
+        .folder-container.protected-folder {
+            cursor: not-allowed;
+            opacity: 0.6;
+            background: rgba(239, 68, 68, 0.05);
+            border: 2px dashed rgba(239, 68, 68, 0.3);
+        }
+        .folder-title {
+            font-weight: bold;
+            font-size: 16px;
+        }
+        .instructions {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="instructions">
+        <h2>🔍 Folder Drag-Drop Timing Test</h2>
+        <p>This page tests the folder drag-drop timing fixes for the FaVault browser extension.</p>
+        <p><strong>Instructions:</strong></p>
+        <ol>
+            <li>Load the FaVault extension in your browser</li>
+            <li>Open the extension's new tab page</li>
+            <li>Enable edit mode</li>
+            <li>Run the tests below to verify folder drag-drop functionality</li>
+        </ol>
+    </div>
+
+    <div class="test-container">
+        <h3>🧪 Test Functions</h3>
+        <button class="test-button" onclick="runBasicTest()">Basic System Test</button>
+        <button class="test-button" onclick="runFolderTimingTest()">Folder Timing Test</button>
+        <button class="test-button secondary" onclick="showDiagnostics()">Show Diagnostics</button>
+        <button class="test-button secondary" onclick="forceSetup()">Force Folder Setup</button>
+        <button class="test-button secondary" onclick="clearConsole()">Clear Console</button>
+    </div>
+
+    <div class="test-container">
+        <h3>📊 Test Status</h3>
+        <div id="status-container">
+            <div class="status warning">
+                <strong>Status:</strong> Ready to test - Please load the FaVault extension first
+            </div>
+        </div>
+    </div>
+
+    <div class="test-container">
+        <h3>🖥️ Console Output</h3>
+        <div id="console-output" class="console-output">
+            Console output will appear here...
+        </div>
+    </div>
+
+    <div class="test-container">
+        <h3>📁 Mock Folder Containers (for testing)</h3>
+        <div class="folder-container" data-testid="bookmark-folder">
+            <div class="folder-title">Test Folder 1</div>
+            <p>This is a mock folder container for testing purposes</p>
+        </div>
+        <div class="folder-container" data-testid="bookmark-folder">
+            <div class="folder-title">Test Folder 2</div>
+            <p>Another mock folder container</p>
+        </div>
+        <div class="folder-container protected-folder" data-testid="bookmark-folder">
+            <div class="folder-title">Protected Folder</div>
+            <p>This folder should be marked as protected</p>
+        </div>
+    </div>
+
+    <script>
+        // Capture console output
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+        
+        const consoleOutput = document.getElementById('console-output');
+        const statusContainer = document.getElementById('status-container');
+        
+        function appendToConsole(message, type = 'log') {
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = type === 'error' ? '❌' : type === 'warn' ? '⚠️' : '📝';
+            consoleOutput.textContent += `[${timestamp}] ${prefix} ${message}\n`;
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            appendToConsole(args.join(' '), 'log');
+        };
+        
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            appendToConsole(args.join(' '), 'error');
+        };
+        
+        console.warn = function(...args) {
+            originalWarn.apply(console, args);
+            appendToConsole(args.join(' '), 'warn');
+        };
+        
+        function updateStatus(message, type = 'warning') {
+            statusContainer.innerHTML = `<div class="status ${type}"><strong>Status:</strong> ${message}</div>`;
+        }
+        
+        function clearConsole() {
+            consoleOutput.textContent = 'Console cleared...\n';
+        }
+        
+        function runBasicTest() {
+            console.log('🧪 Running Basic System Test...');
+            updateStatus('Running basic system test...', 'warning');
+            
+            try {
+                if (typeof window.testEnhancedDragDrop === 'function') {
+                    window.testEnhancedDragDrop();
+                    updateStatus('Basic test completed - check console for results', 'success');
+                } else {
+                    console.error('testEnhancedDragDrop function not available - FaVault extension may not be loaded');
+                    updateStatus('Test function not available - please load FaVault extension', 'error');
+                }
+            } catch (error) {
+                console.error('Error running basic test:', error);
+                updateStatus('Error running basic test - check console', 'error');
+            }
+        }
+        
+        function runFolderTimingTest() {
+            console.log('🔍 Running Folder Timing Test...');
+            updateStatus('Running folder timing test...', 'warning');
+            
+            try {
+                if (typeof window.testFolderTiming === 'function') {
+                    window.testFolderTiming();
+                    updateStatus('Folder timing test completed - check console for results', 'success');
+                } else {
+                    console.error('testFolderTiming function not available - FaVault extension may not be loaded');
+                    updateStatus('Timing test function not available - please load FaVault extension', 'error');
+                }
+            } catch (error) {
+                console.error('Error running folder timing test:', error);
+                updateStatus('Error running timing test - check console', 'error');
+            }
+        }
+        
+        function showDiagnostics() {
+            console.log('📊 Showing System Diagnostics...');
+            updateStatus('Showing diagnostics...', 'warning');
+            
+            try {
+                if (typeof window.showDragDropDiagnostics === 'function') {
+                    window.showDragDropDiagnostics();
+                    updateStatus('Diagnostics completed - check console for results', 'success');
+                } else {
+                    console.error('showDragDropDiagnostics function not available - FaVault extension may not be loaded');
+                    updateStatus('Diagnostics function not available - please load FaVault extension', 'error');
+                }
+            } catch (error) {
+                console.error('Error showing diagnostics:', error);
+                updateStatus('Error showing diagnostics - check console', 'error');
+            }
+        }
+        
+        function forceSetup() {
+            console.log('🔧 Forcing Folder Setup...');
+            updateStatus('Forcing folder setup...', 'warning');
+            
+            try {
+                if (typeof window.EnhancedDragDropManager !== 'undefined') {
+                    const result = window.EnhancedDragDropManager.setupFolderDragDrop();
+                    console.log('Setup result:', result);
+                    updateStatus(`Setup completed: ${result.draggable} draggable, ${result.protected} protected`, 'success');
+                } else {
+                    console.error('EnhancedDragDropManager not available - FaVault extension may not be loaded');
+                    updateStatus('EnhancedDragDropManager not available - please load FaVault extension', 'error');
+                }
+            } catch (error) {
+                console.error('Error forcing setup:', error);
+                updateStatus('Error forcing setup - check console', 'error');
+            }
+        }
+        
+        // Check if extension is loaded on page load
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                if (typeof window.EnhancedDragDropManager !== 'undefined') {
+                    updateStatus('FaVault extension detected - ready to test!', 'success');
+                    console.log('✅ FaVault extension detected');
+                } else {
+                    updateStatus('FaVault extension not detected - please load the extension', 'warning');
+                    console.log('⚠️ FaVault extension not detected');
+                }
+            }, 1000);
+        });
+        
+        console.log('🔍 Folder Drag-Drop Timing Test Page Loaded');
+        console.log('📋 Available test functions:');
+        console.log('  - runBasicTest() - Run basic system test');
+        console.log('  - runFolderTimingTest() - Test folder timing specifically');
+        console.log('  - showDiagnostics() - Show system diagnostics');
+        console.log('  - forceSetup() - Force folder drag-drop setup');
+    </script>
+</body>
+</html>

@@ -43,20 +43,8 @@ class ServiceWorker {
 
   private async focusSearchInput(): Promise<void> {
     try {
-      // Get all tabs
-      const tabs = await browserAPI.tabs.query({ active: true, currentWindow: true });
-
-      if (tabs.length > 0) {
-        const activeTab = tabs[0];
-
-        // Check if the active tab is a new tab page
-        if (activeTab.url === 'chrome://newtab/' || activeTab.url?.includes('newtab.html')) {
-          // Send message to the new tab page to focus search
-          await browserAPI.runtime.sendMessage({
-            type: 'FOCUS_SEARCH'
-          });
-        }
-      }
+      // Broadcast to all extension pages (newtab listens and will handle it)
+      await browserAPI.runtime.sendMessage({ type: 'FOCUS_SEARCH' });
     } catch (error) {
       console.error('Failed to focus search input:', error);
     }
@@ -64,20 +52,8 @@ class ServiceWorker {
 
   private async toggleEditMode(): Promise<void> {
     try {
-      // Get all tabs
-      const tabs = await browserAPI.tabs.query({ active: true, currentWindow: true });
-
-      if (tabs.length > 0) {
-        const activeTab = tabs[0];
-
-        // Check if the active tab is a new tab page
-        if (activeTab.url === 'chrome://newtab/' || activeTab.url?.includes('newtab.html')) {
-          // Send message to the new tab page to toggle edit mode
-          await browserAPI.runtime.sendMessage({
-            type: 'TOGGLE_EDIT_MODE'
-          });
-        }
-      }
+      // Broadcast to all extension pages (newtab listens and will handle it)
+      await browserAPI.runtime.sendMessage({ type: 'TOGGLE_EDIT_MODE' });
     } catch (error) {
       console.error('Failed to toggle edit mode:', error);
     }
