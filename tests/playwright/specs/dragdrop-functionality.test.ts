@@ -16,6 +16,179 @@ test.describe('Drag and Drop Functionality', () => {
   let consoleUtils: ConsoleTestUtils;
   let testDataSetup: TestDataSetup;
 
+  test('Positioning Fix Verification Test', async ({ newTabPage, context }) => {
+    console.log('🎯 Starting Positioning Fix Verification Test...');
+
+    // Initialize utilities
+    const dragDropUtils = new DragDropTestUtils(newTabPage);
+    const bookmarkUtils = new BookmarkTestUtils(newTabPage);
+    const consoleUtils = new ConsoleTestUtils(newTabPage);
+    const testDataSetup = new TestDataSetup(newTabPage, context);
+
+    // Start monitoring console output
+    await consoleUtils.startMonitoring();
+    await consoleUtils.monitorExtensionAPICalls();
+
+    // Create test bookmark data with enough folders for positioning tests
+    console.log('🔧 Setting up test bookmark data for positioning fix verification...');
+    await testDataSetup.initialize({
+      folderCount: 8,
+      bookmarksPerFolder: 1,
+      maxNestingLevel: 1,
+      includeEmptyFolders: false,
+      includeDragTestFolders: false,
+      includeReorderableItems: true,
+      includeProtectedFolders: false
+    });
+
+    await testDataSetup.generateTestData();
+    await testDataSetup.waitForBookmarkSync();
+    console.log('✅ Test bookmark data created');
+
+    // Wait for extension to load
+    await bookmarkUtils.waitForBookmarksToLoad();
+
+    // Enable edit mode
+    console.log('📋 Enabling edit mode...');
+    await ExtensionTestUtils.enableEditMode(newTabPage);
+    await newTabPage.waitForTimeout(2000);
+
+    // Test the specific positioning issues reported by the user
+    console.log('📋 Testing specific positioning issues...');
+
+    const positioningResults = await newTabPage.evaluate(async () => {
+      const results: any = {
+        testCases: [],
+        summary: { passed: 0, total: 0, success: false }
+      };
+
+      // Get initial folder state
+      const folders = Array.from(document.querySelectorAll('.folder-container'));
+      const folderTitles = folders.map(f => f.querySelector('.folder-title')?.textContent || 'Unknown');
+
+      console.log(`🎯 Initial folder order: [${folderTitles.join(', ')}]`);
+
+      if (folders.length < 6) {
+        results.error = `Not enough folders for testing (need 6, have ${folders.length})`;
+        return results;
+      }
+
+      // Test the specific reported issues
+      const testCases = [
+        {
+          from: 5,
+          to: 2,
+          description: 'Position 5 -> Position 2 (should end up at 2, not 3)',
+        },
+        {
+          from: 2,
+          to: 5,
+          description: 'Position 2 -> Position 5 (should end up at 5)',
+        }
+      ];
+
+      for (const testCase of testCases) {
+        const { from, to, description } = testCase;
+        results.testCases.push({ ...testCase, status: 'running' });
+        const currentTest = results.testCases[results.testCases.length - 1];
+
+        console.log(`🎯 Testing: ${description}`);
+
+        try {
+          // Get current state
+          const beforeFolders = Array.from(document.querySelectorAll('.folder-container'));
+          const beforeTitles = beforeFolders.map(f => f.querySelector('.folder-title')?.textContent || 'Unknown');
+          const movingFolderTitle = beforeTitles[from];
+
+          currentTest.beforeTitles = beforeTitles;
+          currentTest.movingFolderTitle = movingFolderTitle;
+
+          console.log(`  Moving: "${movingFolderTitle}" from position ${from} to position ${to}`);
+
+          // Perform the move using the enhanced drag-drop manager
+          if (typeof (window as any).EnhancedDragDropManager?.moveFolderToPosition === 'function') {
+            const moveResult = await (window as any).EnhancedDragDropManager.moveFolderToPosition(from, to);
+
+            if (moveResult.success) {
+              // Wait for UI to update
+              await new Promise(resolve => setTimeout(resolve, 1500));
+
+              // Check the result
+              const afterFolders = Array.from(document.querySelectorAll('.folder-container'));
+              const afterTitles = afterFolders.map(f => f.querySelector('.folder-title')?.textContent || 'Unknown');
+              const actualPosition = afterTitles.indexOf(movingFolderTitle);
+
+              currentTest.afterTitles = afterTitles;
+              currentTest.actualPosition = actualPosition;
+              currentTest.expectedPosition = to;
+
+              console.log(`  Result: "${movingFolderTitle}" is now at position ${actualPosition}`);
+
+              if (actualPosition === to) {
+                console.log(`  ✅ SUCCESS: Perfect positioning!`);
+                currentTest.status = 'passed';
+                results.summary.passed++;
+              } else {
+                console.log(`  ❌ FAILED: Expected position ${to}, got position ${actualPosition}`);
+                currentTest.status = 'failed';
+                currentTest.error = `Position mismatch: expected ${to}, got ${actualPosition}`;
+              }
+            } else {
+              currentTest.status = 'failed';
+              currentTest.error = `Move operation failed: ${moveResult.error}`;
+            }
+          } else {
+            currentTest.status = 'failed';
+            currentTest.error = 'EnhancedDragDropManager.moveFolderToPosition not available';
+          }
+        } catch (error) {
+          currentTest.status = 'failed';
+          currentTest.error = error.message;
+        }
+
+        results.summary.total++;
+      }
+
+      results.summary.success = results.summary.passed === results.summary.total && results.summary.total > 0;
+
+      return results;
+    });
+
+    console.log('Positioning fix test results:', positioningResults);
+
+    // Analyze results
+    console.log('📋 Analyzing positioning fix results...');
+
+    const { summary, testCases } = positioningResults;
+
+    testCases.forEach((testCase: any, index: number) => {
+      console.log(`Test ${index + 1}: ${testCase.description}`);
+      console.log(`  Status: ${testCase.status}`);
+      if (testCase.status === 'passed') {
+        console.log(`  ✅ SUCCESS: Folder moved correctly to position ${testCase.expectedPosition}`);
+      } else {
+        console.log(`  ❌ FAILED: ${testCase.error}`);
+      }
+    });
+
+    console.log('🎉 POSITIONING FIX VERIFICATION COMPLETE');
+    console.log('=========================================');
+    console.log(`Total tests: ${summary.total}`);
+    console.log(`Passed tests: ${summary.passed}`);
+    console.log(`Success rate: ${summary.total > 0 ? ((summary.passed / summary.total) * 100).toFixed(1) : 0}%`);
+
+    // Assertions
+    expect(summary.total).toBeGreaterThan(0);
+    expect(summary.passed).toBe(summary.total);
+    expect(summary.success).toBe(true);
+
+    if (summary.success) {
+      console.log('✅ SUCCESS: All positioning tests passed! The off-by-one error is fixed.');
+    } else {
+      console.log('❌ ISSUE: Some positioning tests failed. The fix needs adjustment.');
+    }
+  });
+
   test('Folder Positioning Accuracy Test', async ({ newTabPage, context }) => {
     console.log('🎯 Starting Folder Positioning Accuracy Test...');
 

@@ -725,29 +725,24 @@ export class EnhancedDragDropManager {
       const parentChildren = await browserAPI.bookmarks.getChildren(fromFolder.parentId);
 
       // Calculate the actual target index in the bookmark system
-      // CRITICAL FIX: Insertion points represent positions BETWEEN folders, not final positions
-      // Insertion point 0 = before folder 0 (position 0)
-      // Insertion point 1 = before folder 1 (position 1)
-      // Insertion point 2 = before folder 2 (position 2)
-      // So insertionIndex directly maps to the target position
+      // CRITICAL POSITIONING FIX: The user reports off-by-one errors
+      // Problem: Position 5 -> Position 2 ends up at Position 3 (off by +1)
+      // Problem: Position 5 -> Position 10 ends up at Position 11 (off by +1)
+      // Root cause: The insertion index should directly map to the final position
       const currentIndex = parentChildren.findIndex(child => child.id === fromBookmarkId);
       let targetIndex = insertionIndex;
 
       console.log(`🦁 Position calculation: currentIndex=${currentIndex}, insertionIndex=${insertionIndex}`);
-      console.log(`🦁 FIXED LOGIC: Insertion point ${insertionIndex} means "place at position ${insertionIndex}"`);
+      console.log(`🦁 USER EXPECTATION: Drop at insertion point ${insertionIndex} = final position ${insertionIndex}`);
 
-      // When moving a folder within the same parent, we need to account for the removal
+      // SIMPLIFIED LOGIC: insertionIndex should be the final position
+      // The Chrome bookmarks API handles the internal positioning correctly
       if (currentIndex !== -1) {
-        if (insertionIndex > currentIndex) {
-          // Moving forward: the target index needs to be reduced by 1
-          // because the folder will be removed from its current position first
-          targetIndex = insertionIndex - 1;
-          console.log(`🦁 Moving forward: currentIndex=${currentIndex} -> insertionIndex=${insertionIndex}, adjusted targetIndex=${targetIndex}`);
-        } else if (insertionIndex <= currentIndex) {
-          // Moving backward or to the same position: insertion index is the final position
-          targetIndex = insertionIndex;
-          console.log(`🦁 Moving backward/same: currentIndex=${currentIndex} -> insertionIndex=${insertionIndex}, targetIndex=${targetIndex}`);
-        }
+        // For moves within the same parent, insertionIndex is the desired final position
+        // Chrome API will handle the removal and insertion correctly
+        targetIndex = insertionIndex;
+        console.log(`🦁 Direct mapping: insertionIndex=${insertionIndex} -> targetIndex=${targetIndex}`);
+        console.log(`🦁 Expected result: folder will be at final position ${insertionIndex}`);
       } else {
         // Folder not found in current parent (shouldn't happen, but handle gracefully)
         targetIndex = insertionIndex;
@@ -764,7 +759,7 @@ export class EnhancedDragDropManager {
       targetIndex = boundedTargetIndex;
 
       console.log(`🦁 FINAL CALCULATION: Moving from currentIndex=${currentIndex} to targetIndex=${targetIndex}`);
-      console.log(`🦁 VISUAL MAPPING: User dropped at insertion point ${insertionIndex} -> folder will be at position ${targetIndex + 1}`);
+      console.log(`🦁 POSITIONING FIX: User dropped at insertion point ${insertionIndex} -> folder should end up at position ${targetIndex}`);
 
       const result = await browserAPI.bookmarks.move(fromBookmarkId, {
         parentId: fromFolder.parentId,
@@ -774,7 +769,9 @@ export class EnhancedDragDropManager {
       console.log(`🦁 Moved folder ${fromBookmarkId} to position ${targetIndex}`);
 
       // Show accurate notification based on final position
-      const finalPosition = targetIndex + 1; // Convert to 1-based for user display
+      // Since targetIndex now directly represents the final position (0-based),
+      // we add 1 for user-friendly 1-based display
+      const finalPosition = targetIndex + 1;
       this.showNotification(`Folder "${fromFolder.title}" moved to position ${finalPosition}`);
 
       // Immediately refresh UI to show new folder order
