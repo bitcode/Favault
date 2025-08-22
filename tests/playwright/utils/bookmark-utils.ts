@@ -1,11 +1,49 @@
-import { Page, Locator } from '@playwright/test';
+import { Page, Locator, BrowserContext } from '@playwright/test';
+import { TestDataSetup } from './test-data-setup';
 
 /**
  * Bookmark testing utilities for FaVault extension
  * Provides methods to interact with bookmarks, folders, and search functionality
  */
 export class BookmarkTestUtils {
-  constructor(private page: Page) {}
+  constructor(private page: Page, private context?: BrowserContext) {}
+
+  /**
+   * Set up test bookmarks for drag and drop testing
+   */
+  async setupTestBookmarks(): Promise<void> {
+    console.log('📚 Setting up test bookmarks...');
+
+    if (!this.context) {
+      console.log('⚠️ No browser context provided, skipping bookmark setup');
+      return;
+    }
+
+    try {
+      const testDataSetup = new TestDataSetup(this.page, this.context);
+
+      // Initialize with drag-drop focused configuration
+      await testDataSetup.initialize({
+        folderCount: 5,
+        bookmarksPerFolder: 2,
+        includeDragTestFolders: true,
+        includeEdgeCases: true,
+        includeEmptyFolders: false // Skip empty folders for position testing
+      });
+
+      // Generate test data
+      await testDataSetup.generateTestData();
+
+      // Wait for bookmarks to sync
+      await testDataSetup.waitForBookmarkSync();
+
+      console.log('✅ Test bookmarks setup completed');
+
+    } catch (error) {
+      console.log('⚠️ Test bookmark setup failed, continuing with existing bookmarks:', error.message);
+      // Don't fail the test if bookmark setup fails - use existing bookmarks
+    }
+  }
 
   /**
    * Get all bookmark folders on the page

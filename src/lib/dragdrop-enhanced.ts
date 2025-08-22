@@ -58,27 +58,96 @@ export class EnhancedDragDropManager {
   private static maxRetryAttempts = 5;
   private static retryTimeouts: Set<number> = new Set();
 
+  // DOM Observer debouncing and logging controls
+  private static domObserverDebounceTimer: number | null = null;
+  private static readonly DOM_OBSERVER_DEBOUNCE_MS = 500;
+  private static lastDomObserverTrigger = 0;
+  private static domObserverTriggerCount = 0;
+  private static readonly MAX_OBSERVER_TRIGGERS_PER_SECOND = 5;
+  private static debugLoggingEnabled = true; // Will be set based on production mode in initialize()
+
   // Auto-scroll prevention properties
   private static originalScrollPosition: { x: number; y: number } | null = null;
   private static lastManualScrollTime: number | null = null;
   private static scrollPreventionHandler: ((e: Event) => void) | null = null;
   private static manualScrollHandler: (() => void) | null = null;
 
+  // Refresh system management
+  private static pendingRefreshTimers: Set<number> = new Set();
+  private static isRefreshInProgress = false;
+  private static lastRefreshTime = 0;
+  private static readonly REFRESH_DEBOUNCE_MS = 100;
+
+  // Operation management for preventing race conditions
+  private static activeOperations: Set<string> = new Set();
+  private static lastOperationTime = 0;
+  private static readonly OPERATION_DEBOUNCE_MS = 150;
+  private static operationQueue: Array<() => Promise<any>> = [];
+
   // Protected folder patterns from console script
   private static readonly PROTECTED_TITLES = [
     'Bookmarks Bar',
     'Bookmarks',
-    'Other Bookmarks', 
+    'Other Bookmarks',
     'Mobile Bookmarks',
     'Bookmarks Menu'
   ];
 
   /**
+   * Detect if we're running in production mode
+   */
+  private static isProductionMode(): boolean {
+    // Check for common production indicators
+    return (
+      // Chrome extension in production (no dev tools context)
+      typeof chrome !== 'undefined' &&
+      chrome.runtime &&
+      !chrome.runtime.getManifest().key && // Dev extensions have a key
+      // URL-based detection
+      (window.location.protocol === 'chrome-extension:' ||
+       window.location.protocol === 'moz-extension:') &&
+      // No development flags
+      !window.location.search.includes('debug') &&
+      !window.location.search.includes('dev')
+    );
+  }
+
+  /**
+   * Control debug logging verbosity
+   */
+  static setDebugLogging(enabled: boolean): void {
+    this.debugLoggingEnabled = enabled;
+    console.log(`🦁 Debug logging ${enabled ? 'enabled' : 'disabled'}`);
+  }
+
+  /**
+   * Get current debug logging state
+   */
+  static isDebugLoggingEnabled(): boolean {
+    return this.debugLoggingEnabled;
+  }
+
+  /**
+   * Log debug messages only if debug logging is enabled
+   */
+  private static debugLog(message: string, ...args: any[]): void {
+    if (this.debugLoggingEnabled) {
+      console.log(message, ...args);
+    }
+  }
+
+  /**
    * Initialize the enhanced drag-drop system
    */
   static async initialize(): Promise<{ success: boolean; error?: string }> {
+    // Set debug logging based on production mode
+    if (this.isProductionMode()) {
+      this.debugLoggingEnabled = false;
+    }
+
     console.log('🦁 Initializing enhanced drag-drop system...');
-    
+    this.debugLog(`🔧 Production mode: ${this.isProductionMode()}, Debug logging: ${this.debugLoggingEnabled}`);
+
     try {
       // Check Chrome API access
       const apiCheck = await this.checkBookmarkAPI();
@@ -333,18 +402,31 @@ export class EnhancedDragDropManager {
   }
 
   /**
-   * Refresh the UI by triggering bookmark reload
+   * Unified refresh system - replaces multiple conflicting refresh mechanisms
    */
   static async refreshUI(): Promise<boolean> {
-    console.log('🔄 Refreshing UI after folder reordering...');
+    // Prevent multiple simultaneous refreshes
+    if (this.isRefreshInProgress) {
+      console.log('🔄 Refresh already in progress, skipping...');
+      return true;
+    }
+
+    // Debounce rapid refresh calls
+    const now = Date.now();
+    if (now - this.lastRefreshTime < this.REFRESH_DEBOUNCE_MS) {
+      console.log('🔄 Refresh debounced, too soon since last refresh');
+      return true;
+    }
+
+    this.isRefreshInProgress = true;
+    this.lastRefreshTime = now;
+
+    // Clear any pending refresh timers to prevent conflicts
+    this.clearPendingRefreshTimers();
+
+    console.log('🔄 Starting unified UI refresh...');
 
     try {
-      // Detect browser for specific handling
-      const isChrome = !!(window as any).chrome && !(navigator as any).brave;
-      const isBrave = !!(navigator as any).brave;
-
-      console.log(`🌐 Browser detection: Chrome=${isChrome}, Brave=${isBrave}`);
-
       // Clear bookmark cache first to ensure fresh data
       if (typeof (window as any).BookmarkManager !== 'undefined' &&
           typeof (window as any).BookmarkManager.clearCache === 'function') {
@@ -352,61 +434,103 @@ export class EnhancedDragDropManager {
         (window as any).BookmarkManager.clearCache();
       }
 
-      // Chrome-specific: Add extra delay for cache clearing
-      if (isChrome) {
-        console.log('🌐 Chrome detected: Adding extra delay for cache clearing...');
-        await new Promise(resolve => setTimeout(resolve, 200));
-      }
-
-      // Method 1: Try global loadBookmarks function
+      // Primary method: Try global loadBookmarks function
       if (typeof (window as any).loadBookmarks === 'function') {
         console.log('🔄 Calling global loadBookmarks function...');
         await (window as any).loadBookmarks();
         console.log('✅ UI refreshed via global loadBookmarks');
-
-        // Chrome-specific: Verify UI actually updated
-        if (isChrome) {
-          console.log('🌐 Chrome: Verifying UI update...');
-          await new Promise(resolve => setTimeout(resolve, 500));
-
-          // Dispatch additional refresh event for Chrome
-          const chromeRefreshEvent = new CustomEvent('favault-chrome-refresh-verify', {
-            detail: { timestamp: Date.now() }
-          });
-          document.dispatchEvent(chromeRefreshEvent);
-        }
-
         return true;
       }
 
-      // Method 2: Try custom event with browser-specific details
+      // Fallback method: Dispatch custom event
       console.log('🔄 Dispatching bookmark refresh event...');
       const refreshEvent = new CustomEvent('favault-refresh-bookmarks', {
         detail: {
           source: 'folder-reordering',
-          timestamp: Date.now(),
-          clearCache: true,
-          browser: isChrome ? 'chrome' : isBrave ? 'brave' : 'unknown',
-          forceRefresh: isChrome // Chrome needs force refresh
+          timestamp: now,
+          clearCache: true
         }
       });
       document.dispatchEvent(refreshEvent);
       console.log('✅ UI refresh event dispatched');
 
-      // Method 3: Browser-specific fallback timing
-      const fallbackDelay = isChrome ? 3000 : 5000; // Chrome gets shorter timeout
-      setTimeout(() => {
-        if (typeof (window as any).location !== 'undefined') {
-          console.log(`🔄 Fallback: Forcing page reload for UI refresh (${fallbackDelay}ms timeout)...`);
-          window.location.reload();
-        }
-      }, fallbackDelay);
-
       return true;
     } catch (error) {
       console.error('❌ Failed to refresh UI:', error);
       return false;
+    } finally {
+      this.isRefreshInProgress = false;
     }
+  }
+
+  /**
+   * Clear all pending refresh timers to prevent conflicts
+   */
+  private static clearPendingRefreshTimers(): void {
+    this.pendingRefreshTimers.forEach(timerId => {
+      clearTimeout(timerId);
+    });
+    this.pendingRefreshTimers.clear();
+    console.log('🔄 Cleared pending refresh timers');
+  }
+
+  /**
+   * Schedule a delayed refresh with proper timer management
+   */
+  private static scheduleDelayedRefresh(delay: number, operation: string): void {
+    const timerId = window.setTimeout(() => {
+      this.pendingRefreshTimers.delete(timerId);
+      console.log(`🔄 Executing delayed refresh for ${operation}`);
+      this.refreshSystemState();
+    }, delay);
+
+    this.pendingRefreshTimers.add(timerId);
+    console.log(`🔄 Scheduled delayed refresh for ${operation} in ${delay}ms`);
+  }
+
+  /**
+   * Check if an operation can be started (debouncing and race condition prevention)
+   */
+  private static canStartOperation(operationId: string): boolean {
+    // Check if operation is already active
+    if (this.activeOperations.has(operationId)) {
+      console.log(`🚫 Operation ${operationId} already in progress, skipping`);
+      return false;
+    }
+
+    // Check debouncing
+    const now = Date.now();
+    if (now - this.lastOperationTime < this.OPERATION_DEBOUNCE_MS) {
+      console.log(`🚫 Operation ${operationId} debounced, too soon since last operation`);
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Start an operation with proper tracking
+   */
+  private static startOperation(operationId: string): void {
+    this.activeOperations.add(operationId);
+    this.lastOperationTime = Date.now();
+    console.log(`🚀 Started operation: ${operationId}`);
+  }
+
+  /**
+   * Complete an operation and clean up tracking
+   */
+  private static completeOperation(operationId: string): void {
+    this.activeOperations.delete(operationId);
+    console.log(`✅ Completed operation: ${operationId}`);
+  }
+
+  /**
+   * Clear all active operations (for cleanup)
+   */
+  private static clearActiveOperations(): void {
+    this.activeOperations.clear();
+    console.log('🧹 Cleared all active operations');
   }
 
   /**
@@ -459,7 +583,7 @@ export class EnhancedDragDropManager {
    * Prevent auto-scrolling during drag operations
    */
   static preventAutoScroll(): void {
-    console.log('🦁 Preventing auto-scroll during drag operation');
+    this.debugLog('🦁 Preventing auto-scroll during drag operation');
 
     // Store current scroll position
     this.originalScrollPosition = {
@@ -556,7 +680,7 @@ export class EnhancedDragDropManager {
       htmlElement.style.transform = 'scale(1.05)';
       htmlElement.style.transition = 'all 0.3s ease';
 
-      console.log(`✅ Added visual feedback for moved folder: "${folderTitle}"`);
+      this.debugLog(`✅ Added visual feedback for moved folder: "${folderTitle}"`);
 
       // Remove visual feedback after animation
       setTimeout(() => {
@@ -565,7 +689,7 @@ export class EnhancedDragDropManager {
         htmlElement.style.transform = '';
       }, 2000);
     } else {
-      console.warn(`⚠️ Could not find moved folder "${folderTitle}" for visual feedback`);
+      this.debugLog(`⚠️ Could not find moved folder "${folderTitle}" for visual feedback`);
     }
   }
 
@@ -653,10 +777,8 @@ export class EnhancedDragDropManager {
       console.log('🔄 Triggering immediate UI refresh...');
       await this.refreshUI();
 
-      // Schedule system state refresh
-      setTimeout(() => {
-        this.refreshSystemState();
-      }, 500);
+      // Schedule system state refresh using the new timer management
+      this.scheduleDelayedRefresh(500, 'insertFolderAtPosition');
 
       return {
         success: true,
@@ -693,7 +815,15 @@ export class EnhancedDragDropManager {
    * Move folder to specific insertion position (for insertion point drops)
    */
   static async moveFolderToPosition(fromIndex: number, insertionIndex: number): Promise<{ success: boolean; error?: string; [key: string]: any }> {
+    const operationId = `moveFolderToPosition-${fromIndex}-${insertionIndex}`;
     console.log(`🦁 API: moveFolderToPosition(${fromIndex}, ${insertionIndex})`);
+
+    // Check if operation can be started (debouncing and race condition prevention)
+    if (!this.canStartOperation(operationId)) {
+      return { success: false, error: 'Operation blocked by debouncing or race condition prevention' };
+    }
+
+    this.startOperation(operationId);
     this.systemState.operationCount++;
 
     try {
@@ -725,24 +855,26 @@ export class EnhancedDragDropManager {
       const parentChildren = await browserAPI.bookmarks.getChildren(fromFolder.parentId);
 
       // Calculate the actual target index in the bookmark system
-      // CRITICAL POSITIONING FIX: The user reports off-by-one errors
-      // Problem: Position 5 -> Position 2 ends up at Position 3 (off by +1)
-      // Problem: Position 5 -> Position 10 ends up at Position 11 (off by +1)
-      // Root cause: The insertion index should directly map to the final position
+      // CRITICAL POSITIONING FIX: Handle Chrome bookmarks API move behavior correctly
+      // When moving within the same parent, Chrome API removes the item first, then inserts it
+      // This affects the target index calculation for moves within the same parent
       const currentIndex = parentChildren.findIndex(child => child.id === fromBookmarkId);
       let targetIndex = insertionIndex;
 
       console.log(`🦁 Position calculation: currentIndex=${currentIndex}, insertionIndex=${insertionIndex}`);
-      console.log(`🦁 USER EXPECTATION: Drop at insertion point ${insertionIndex} = final position ${insertionIndex}`);
+      console.log(`🦁 USER EXPECTATION: Drop at insertion point ${insertionIndex} = final position ${insertionIndex + 1} (1-based)`);
 
-      // SIMPLIFIED LOGIC: insertionIndex should be the final position
-      // The Chrome bookmarks API handles the internal positioning correctly
       if (currentIndex !== -1) {
-        // For moves within the same parent, insertionIndex is the desired final position
-        // Chrome API will handle the removal and insertion correctly
+        // For moves within the same parent, we need to account for the removal effect
+        // When Chrome removes the item first, indices shift:
+        // - If moving to a position AFTER the current position, no adjustment needed
+        // - If moving to a position BEFORE the current position, no adjustment needed
+        // The insertionIndex represents where the user wants the item to end up
         targetIndex = insertionIndex;
-        console.log(`🦁 Direct mapping: insertionIndex=${insertionIndex} -> targetIndex=${targetIndex}`);
-        console.log(`🦁 Expected result: folder will be at final position ${insertionIndex}`);
+
+        console.log(`🦁 Move within same parent: currentIndex=${currentIndex} -> targetIndex=${targetIndex}`);
+        console.log(`🦁 Chrome API will handle removal/insertion automatically`);
+        console.log(`🦁 Expected final position: ${targetIndex + 1} (1-based display)`);
       } else {
         // Folder not found in current parent (shouldn't happen, but handle gracefully)
         targetIndex = insertionIndex;
@@ -769,8 +901,7 @@ export class EnhancedDragDropManager {
       console.log(`🦁 Moved folder ${fromBookmarkId} to position ${targetIndex}`);
 
       // Show accurate notification based on final position
-      // Since targetIndex now directly represents the final position (0-based),
-      // we add 1 for user-friendly 1-based display
+      // targetIndex is 0-based, so add 1 for user-friendly 1-based display
       const finalPosition = targetIndex + 1;
       this.showNotification(`Folder "${fromFolder.title}" moved to position ${finalPosition}`);
 
@@ -789,10 +920,10 @@ export class EnhancedDragDropManager {
         this.addMoveSuccessVisualFeedback(fromFolder.title, insertionIndex);
       }, 100);
 
-      // Schedule system state refresh
-      setTimeout(() => {
-        this.refreshSystemState();
-      }, 500);
+      // Schedule system state refresh using the new timer management
+      this.scheduleDelayedRefresh(500, 'moveFolderToPosition');
+
+      this.completeOperation(operationId);
 
       return {
         success: true,
@@ -804,6 +935,7 @@ export class EnhancedDragDropManager {
       };
 
     } catch (error) {
+      this.completeOperation(operationId);
       const context = {
         operation: 'moveFolderToPosition',
         fromIndex,
@@ -890,10 +1022,8 @@ export class EnhancedDragDropManager {
       console.log('🔄 Triggering immediate UI refresh...');
       await this.refreshUI();
 
-      // Schedule system state refresh
-      setTimeout(() => {
-        this.refreshSystemState();
-      }, 500);
+      // Schedule system state refresh using the new timer management
+      this.scheduleDelayedRefresh(500, 'reorderFolder');
 
       return {
         success: true,
@@ -1103,7 +1233,7 @@ export class EnhancedDragDropManager {
           index: bookmarkIndex
         };
 
-        console.log(`🦁 BOOKMARK DRAG START: "${bookmarkTitle}" (id: ${bookmarkId})`);
+        this.debugLog(`🦁 BOOKMARK DRAG START: "${bookmarkTitle}" (id: ${bookmarkId})`);
 
         // Set drag data with both formats for compatibility
         const dragDataStr = JSON.stringify(this.currentDragData);
@@ -1147,6 +1277,7 @@ export class EnhancedDragDropManager {
 
   /**
    * Initialize DOM observer to detect when folder containers are added
+   * Enhanced with proper debouncing and infinite loop prevention
    */
   private static initializeDOMObserver(): void {
     if (this.domObserver) {
@@ -1154,11 +1285,25 @@ export class EnhancedDragDropManager {
     }
 
     this.domObserver = new MutationObserver((mutations) => {
+      // Prevent excessive triggering
+      const now = Date.now();
+      if (now - this.lastDomObserverTrigger < 100) { // Minimum 100ms between triggers
+        this.domObserverTriggerCount++;
+        if (this.domObserverTriggerCount > this.MAX_OBSERVER_TRIGGERS_PER_SECOND) {
+          this.debugLog('🚫 DOM Observer: Too many rapid triggers, throttling...');
+          return;
+        }
+      } else {
+        this.domObserverTriggerCount = 0;
+      }
+      this.lastDomObserverTrigger = now;
+
       let folderContainersAdded = false;
-      let attributeChanges = false;
+      let relevantChanges = false;
 
       mutations.forEach((mutation) => {
         if (mutation.type === 'childList') {
+          // Only check added nodes, not removed ones
           mutation.addedNodes.forEach((node) => {
             if (node.nodeType === Node.ELEMENT_NODE) {
               const element = node as Element;
@@ -1166,68 +1311,108 @@ export class EnhancedDragDropManager {
               if (element.classList?.contains('folder-container') ||
                   element.querySelector?.('.folder-container')) {
                 folderContainersAdded = true;
-                console.log('🦁 DOM Observer: Folder container added to DOM:', element.className);
+                this.debugLog('🦁 DOM Observer: New folder container added to DOM');
               }
             }
           });
         } else if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-          // Also watch for class changes that might indicate folder containers becoming available
+          // Only watch for class changes on elements that are becoming folder containers
           const element = mutation.target as Element;
-          if (element.classList?.contains('folder-container')) {
-            attributeChanges = true;
-            console.log('🦁 DOM Observer: Folder container class changed:', element.className);
+          const oldValue = mutation.oldValue || '';
+          const newValue = element.className || '';
+
+          // Only trigger if element is gaining the folder-container class (not losing it or changing other classes)
+          if (!oldValue.includes('folder-container') && newValue.includes('folder-container')) {
+            relevantChanges = true;
+            this.debugLog('🦁 DOM Observer: Element became folder container');
           }
         }
       });
 
-      if ((folderContainersAdded || attributeChanges) && this.editModeEnabled) {
-        console.log('🦁 DOM Observer: Folder containers detected, setting up drag-drop...');
+      // Only proceed if we have meaningful changes and edit mode is enabled
+      if ((folderContainersAdded || relevantChanges) && this.editModeEnabled) {
+        this.debugLog('🦁 DOM Observer: Relevant folder container changes detected');
+
+        // Clear any existing debounce timer
+        if (this.domObserverDebounceTimer) {
+          clearTimeout(this.domObserverDebounceTimer);
+        }
+
         // Debounce the setup to avoid multiple rapid calls
-        setTimeout(() => {
-          const result = this.setupFolderDragDrop();
-          console.log(`🦁 DOM Observer setup result: ${result.draggable} draggable, ${result.protected} protected`);
-        }, 150);
+        this.domObserverDebounceTimer = window.setTimeout(() => {
+          this.domObserverDebounceTimer = null;
+
+          // Double-check that we still need to run setup
+          if (this.editModeEnabled) {
+            this.debugLog('🦁 DOM Observer: Executing debounced folder setup...');
+            const result = this.setupFolderDragDrop();
+            this.debugLog(`🦁 DOM Observer setup result: ${result.draggable} draggable, ${result.protected} protected`);
+          }
+        }, this.DOM_OBSERVER_DEBOUNCE_MS);
       }
     });
 
-    // Observe the entire document for changes
-    this.domObserver.observe(document.body, {
+    // Observe with more targeted configuration to reduce noise
+    // Try to observe more specific containers first, fall back to document.body if needed
+    const targetContainers = [
+      document.querySelector('.app'),
+      document.querySelector('#app'),
+      document.querySelector('.bookmark-container'),
+      document.querySelector('.folders-container')
+    ].filter(Boolean);
+
+    const observeTarget = targetContainers.length > 0 ? targetContainers[0] : document.body;
+
+    this.domObserver.observe(observeTarget as Element, {
       childList: true,
       subtree: true,
       attributes: true,
-      attributeFilter: ['class', 'draggable']
+      attributeFilter: ['class'], // Only watch class changes, not draggable attribute changes
+      attributeOldValue: true // Track old values to detect meaningful changes
     });
 
-    console.log('✅ DOM Observer initialized for folder container detection (watching childList, attributes)');
+    this.debugLog(`✅ DOM Observer initialized with enhanced debouncing and loop prevention (observing: ${(observeTarget as Element).tagName || 'body'})`);
   }
 
   /**
    * Setup folder drag-drop functionality with protection and retry logic
+   * Enhanced with recursive call prevention and debug logging
    */
   static setupFolderDragDrop(): { draggable: number; protected: number } {
-    const folders = document.querySelectorAll('.folder-container');
-    console.log(`🦁 Setting up enhanced drag-drop for ${folders.length} folders...`);
-
-    // If no folders found and we haven't exceeded retry attempts, schedule a retry
-    if (folders.length === 0 && this.folderSetupRetryCount < this.maxRetryAttempts) {
-      this.folderSetupRetryCount++;
-      const retryDelay = Math.min(500 * this.folderSetupRetryCount, 2000); // Exponential backoff, max 2s
-
-      console.log(`🦁 No folder containers found (attempt ${this.folderSetupRetryCount}/${this.maxRetryAttempts}), retrying in ${retryDelay}ms...`);
-
-      const timeoutId = window.setTimeout(() => {
-        this.retryTimeouts.delete(timeoutId);
-        this.setupFolderDragDrop();
-      }, retryDelay);
-
-      this.retryTimeouts.add(timeoutId);
+    // Prevent recursive calls during setup
+    if (this.activeOperations.has('setupFolderDragDrop')) {
+      this.debugLog('🚫 setupFolderDragDrop already in progress, skipping recursive call');
       return { draggable: 0, protected: 0 };
     }
 
-    // Reset retry count on successful folder detection
-    if (folders.length > 0) {
-      this.folderSetupRetryCount = 0;
-    }
+    this.activeOperations.add('setupFolderDragDrop');
+
+    try {
+      const folders = document.querySelectorAll('.folder-container');
+      this.debugLog(`🦁 Setting up enhanced drag-drop for ${folders.length} folders...`);
+
+      // If no folders found and we haven't exceeded retry attempts, schedule a retry
+      if (folders.length === 0 && this.folderSetupRetryCount < this.maxRetryAttempts) {
+        this.folderSetupRetryCount++;
+        const retryDelay = Math.min(500 * this.folderSetupRetryCount, 2000); // Exponential backoff, max 2s
+
+        this.debugLog(`🦁 No folder containers found (attempt ${this.folderSetupRetryCount}/${this.maxRetryAttempts}), retrying in ${retryDelay}ms...`);
+
+        const timeoutId = window.setTimeout(() => {
+          this.retryTimeouts.delete(timeoutId);
+          this.activeOperations.delete('setupFolderDragDrop'); // Clear operation flag before retry
+          this.setupFolderDragDrop();
+        }, retryDelay);
+
+        this.retryTimeouts.add(timeoutId);
+        this.activeOperations.delete('setupFolderDragDrop'); // Clear operation flag
+        return { draggable: 0, protected: 0 };
+      }
+
+      // Reset retry count on successful folder detection
+      if (folders.length > 0) {
+        this.folderSetupRetryCount = 0;
+      }
 
     let draggableCount = 0;
     let protectedCount = 0;
@@ -1403,7 +1588,7 @@ export class EnhancedDragDropManager {
           // Only handle bookmark drops into folders
           if (this.currentDragData?.type === 'bookmark' &&
               !this.protectedFolderIds.has(bookmarkId)) {
-            console.log(`🦁 BOOKMARK DROP TARGET: "${folderTitle}"`);
+            this.debugLog(`🦁 BOOKMARK DROP TARGET: "${folderTitle}"`);
             folder.classList.add('drop-zone-bookmark-target', 'drop-zone', 'drop-target');
             folder.setAttribute('data-drop-zone', 'true');
           }
@@ -1497,8 +1682,12 @@ export class EnhancedDragDropManager {
       draggableCount++;
     });
 
-    console.log(`✅ Enhanced drag-drop setup complete: ${draggableCount} draggable, ${protectedCount} protected`);
-    return { draggable: draggableCount, protected: protectedCount };
+      this.debugLog(`✅ Enhanced drag-drop setup complete: ${draggableCount} draggable, ${protectedCount} protected`);
+      return { draggable: draggableCount, protected: protectedCount };
+    } finally {
+      // Always clear the operation flag, even if an error occurs
+      this.activeOperations.delete('setupFolderDragDrop');
+    }
   }
 
   /**
@@ -1785,6 +1974,12 @@ export class EnhancedDragDropManager {
     this.retryTimeouts.forEach(timeoutId => clearTimeout(timeoutId));
     this.retryTimeouts.clear();
     this.folderSetupRetryCount = 0;
+
+    // Clear pending refresh timers
+    this.clearPendingRefreshTimers();
+
+    // Clear active operations
+    this.clearActiveOperations();
 
     // Clear global flags
     (window as any).enhancedDragDropReady = false;

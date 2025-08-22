@@ -6,10 +6,13 @@
   import SettingsPanel from './lib/SettingsPanel.svelte';
   import EditModeToggle from './lib/EditModeToggle.svelte';
   import KeyboardShortcuts from './lib/KeyboardShortcuts.svelte';
+  import ErrorReportButton from './lib/ErrorReportButton.svelte';
   import { BraveDebugger } from './lib/brave-debug';
   import { BookmarkManager } from './lib/bookmarks';
   import { EnhancedDragDropManager } from './lib/dragdrop-enhanced';
   import { EnhancedDragDropTester } from './lib/test-enhanced-dragdrop';
+  import { errorReporter, reportLoadingError, reportInitializationError } from './lib/error-reporter';
+  import { ExtensionLoadingDiagnostics } from './lib/extension-loading-diagnostics';
   import { bookmarkFolders, filteredBookmarks, isLoading, error, settingsManager, editMode } from './lib/stores';
   import { ExtensionAPI, BookmarkEditAPI } from './lib/api';
 
@@ -342,6 +345,12 @@
     } catch (err) {
       console.error('Failed to load bookmarks:', err);
       error.set('Failed to load bookmarks. Please check extension permissions.');
+
+      // Report the error to our error tracking system
+      reportLoadingError('Failed to load bookmarks', {
+        error: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined
+      });
     } finally {
       isLoading.set(false);
     }
@@ -455,6 +464,46 @@
         }
       };
 
+      // Expose error reporting and diagnostics functions
+      (window as any).errorReporter = errorReporter;
+      (window as any).runLoadingDiagnostics = async () => {
+        try {
+          console.log('🔍 Running extension loading diagnostics...');
+          const report = await ExtensionLoadingDiagnostics.runLoadingDiagnostics();
+          console.log('📊 Diagnostics report:', report);
+          return report;
+        } catch (error) {
+          console.error('❌ Diagnostics failed:', error);
+          return { error: error instanceof Error ? error.message : String(error) };
+        }
+      };
+
+      (window as any).exportDiagnosticsReport = async () => {
+        try {
+          console.log('📄 Exporting diagnostics report...');
+          const report = await ExtensionLoadingDiagnostics.exportDiagnosticsReport();
+          console.log('📄 Diagnostics report exported to console');
+          console.log(report);
+          return report;
+        } catch (error) {
+          console.error('❌ Export failed:', error);
+          return `Export failed: ${error instanceof Error ? error.message : String(error)}`;
+        }
+      };
+
+      (window as any).getErrorReport = () => {
+        try {
+          console.log('📊 Getting error report...');
+          const report = errorReporter.exportAsText();
+          console.log('📊 Error report exported to console');
+          console.log(report);
+          return report;
+        } catch (error) {
+          console.error('❌ Error report failed:', error);
+          return `Error report failed: ${error instanceof Error ? error.message : String(error)}`;
+        }
+      };
+
       (window as any).enableEnhancedEditMode = async () => {
         try {
           console.log('🧪 Enabling enhanced edit mode...');
@@ -506,9 +555,16 @@
         console.log('✅ Enhanced drag-drop system initialized successfully');
       } else {
         console.error('❌ Failed to initialize enhanced drag-drop:', result.error);
+        reportInitializationError('Enhanced drag-drop initialization failed', {
+          error: result.error
+        });
       }
     } catch (error) {
       console.error('❌ Error initializing enhanced drag-drop:', error);
+      reportInitializationError('Enhanced drag-drop initialization error', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
     }
   }
   
@@ -697,6 +753,11 @@
   <!-- Keyboard Shortcuts Help -->
   <KeyboardShortcuts />
 
+  <!-- Error Report Button (only show in development or when errors exist) -->
+  <div class="error-report-container">
+    <ErrorReportButton />
+  </div>
+
   <div class="container">
     <header class="header">
       <h1 class="title">FaVault</h1>
@@ -846,6 +907,13 @@
   @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+  }
+
+  .error-report-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
   }
   
   .error {

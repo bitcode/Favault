@@ -5,6 +5,59 @@ import { Page, Locator } from '@playwright/test';
  */
 export class ExtensionTestUtils {
   /**
+   * Navigate to the extension page
+   */
+  static async navigateToExtension(page: Page): Promise<void> {
+    console.log('🔗 Navigating to extension...');
+
+    try {
+      // Try chrome://newtab/ first (most common case)
+      await page.goto('chrome://newtab/');
+      await page.waitForLoadState('networkidle');
+
+      // Wait for extension to load
+      await page.waitForTimeout(3000);
+
+      const currentUrl = page.url();
+      console.log(`🔗 Current URL: ${currentUrl}`);
+
+      // Check if we're on the extension page
+      if (currentUrl.startsWith('chrome-extension://')) {
+        console.log('✅ Extension loaded via chrome://newtab/');
+        return;
+      }
+
+      // If not, try to get extension ID and navigate directly
+      const extensionId = await page.evaluate(() => {
+        // Try to get extension ID from any existing chrome-extension URLs
+        const scripts = Array.from(document.querySelectorAll('script[src*="chrome-extension://"]'));
+        if (scripts.length > 0) {
+          const src = scripts[0].getAttribute('src') || '';
+          const match = src.match(/chrome-extension:\/\/([a-z]+)/);
+          return match ? match[1] : null;
+        }
+        return null;
+      });
+
+      if (extensionId) {
+        const extensionUrl = `chrome-extension://${extensionId}/newtab.html`;
+        console.log(`🔗 Navigating directly to: ${extensionUrl}`);
+        await page.goto(extensionUrl);
+        await page.waitForLoadState('networkidle');
+      } else {
+        console.log('⚠️ Could not determine extension ID, staying on current page');
+      }
+
+    } catch (error) {
+      console.log('⚠️ Navigation error:', error);
+      // Continue with current page
+    }
+
+    // Wait for extension to be ready
+    await this.waitForExtensionReady(page);
+  }
+
+  /**
    * Enable edit mode in the extension
    */
   static async enableEditMode(page: Page): Promise<void> {

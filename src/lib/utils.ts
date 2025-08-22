@@ -100,3 +100,70 @@ export function deepClone<T>(obj: T): T {
   }
   return obj;
 }
+
+/**
+ * Get browser information for error reporting
+ */
+export function getBrowserInfo(): {
+  userAgent: string;
+  vendor: string;
+  platform: string;
+  language: string;
+  cookieEnabled: boolean;
+  onLine: boolean;
+  chrome?: any;
+  brave?: any;
+} {
+  return {
+    userAgent: navigator.userAgent,
+    vendor: navigator.vendor,
+    platform: navigator.platform,
+    language: navigator.language,
+    cookieEnabled: navigator.cookieEnabled,
+    onLine: navigator.onLine,
+    chrome: typeof chrome !== 'undefined' ? {
+      runtime: !!chrome.runtime,
+      bookmarks: !!chrome.bookmarks,
+      storage: !!chrome.storage,
+      version: chrome.runtime?.getManifest?.()?.version
+    } : undefined,
+    brave: typeof (navigator as any).brave !== 'undefined' ? {
+      isBrave: typeof (navigator as any).brave.isBrave === 'function'
+    } : undefined
+  };
+}
+
+/**
+ * Get extension context information
+ */
+export function getExtensionContext(): {
+  url: string;
+  protocol: string;
+  isExtensionContext: boolean;
+  extensionId?: string;
+  manifestVersion?: number;
+} {
+  const url = window.location.href;
+  const protocol = window.location.protocol;
+  const isExtensionContext = protocol === 'chrome-extension:' || protocol === 'moz-extension:';
+
+  let extensionId: string | undefined;
+  let manifestVersion: number | undefined;
+
+  if (isExtensionContext && typeof chrome !== 'undefined' && chrome.runtime) {
+    try {
+      extensionId = chrome.runtime.id;
+      manifestVersion = chrome.runtime.getManifest?.()?.manifest_version;
+    } catch (e) {
+      // Ignore errors when getting extension info
+    }
+  }
+
+  return {
+    url,
+    protocol,
+    isExtensionContext,
+    extensionId,
+    manifestVersion
+  };
+}

@@ -145,13 +145,11 @@
 
       // Use the enhanced drag-drop manager to handle the insertion
       const result = await EnhancedDragDropManager.moveFolderToPosition(dragData.index, insertionIndex);
-      
+
       if (result.success) {
         console.log('✅ Folder reordered successfully');
-        // Trigger a refresh of the bookmark display
-        setTimeout(() => {
-          EnhancedDragDropManager.refreshSystemState();
-        }, 500);
+        // Note: moveFolderToPosition already handles UI refresh and system state refresh
+        // No additional refresh calls needed here to prevent conflicts
       } else {
         console.error('❌ Failed to reorder folder:', result.error);
       }

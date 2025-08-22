@@ -71,6 +71,23 @@ if (typeof window !== 'undefined') {
       console.error('❌ Failed to disable enhanced edit mode:', error);
     }
   };
+
+  (window as any).setDragDropDebugLogging = (enabled: boolean) => {
+    try {
+      EnhancedDragDropManager.setDebugLogging(enabled);
+    } catch (error) {
+      console.error('❌ Failed to set debug logging:', error);
+    }
+  };
+
+  (window as any).getDragDropDebugLogging = () => {
+    try {
+      return EnhancedDragDropManager.isDebugLoggingEnabled();
+    } catch (error) {
+      console.error('❌ Failed to get debug logging state:', error);
+      return false;
+    }
+  };
   
   console.log('🧪 Enhanced Drag-Drop Testing Functions Available:');
   console.log('  - testEnhancedDragDrop() - Full system test');
@@ -79,6 +96,8 @@ if (typeof window !== 'undefined') {
   console.log('  - initEnhancedDragDrop() - Manual initialization');
   console.log('  - enableEnhancedEditMode() - Enable edit mode');
   console.log('  - disableEnhancedEditMode() - Disable edit mode');
+  console.log('  - setDragDropDebugLogging(enabled) - Control debug logging');
+  console.log('  - getDragDropDebugLogging() - Get debug logging state');
   console.log('');
   console.log('🦁 Enhanced Drag-Drop Classes Available:');
   console.log('  - EnhancedDragDropManager - Main manager class');
