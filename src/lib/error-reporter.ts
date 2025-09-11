@@ -128,25 +128,44 @@ class ErrorReporter {
    */
   private setupConsoleErrorCapture(): void {
     const originalConsoleError = console.error;
+    let isCapturingError = false; // Prevent recursive error capture
+
     console.error = (...args: any[]) => {
       // Call original console.error first
       originalConsoleError.apply(console, args);
-      
-      // Capture the error for reporting
-      const message = args.map(arg => 
-        typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
-      ).join(' ');
-      
-      this.captureError({
-        type: 'runtime',
-        severity: 'medium',
-        message: `Console Error: ${message}`,
-        category: 'Console Error',
-        source: {
-          arguments: args,
-          stack: new Error().stack
+
+      // Prevent recursive error capture
+      if (isCapturingError) {
+        return;
+      }
+
+      try {
+        isCapturingError = true;
+
+        // Skip if this is already an error report to prevent infinite loops
+        const message = args.map(arg =>
+          typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+        ).join(' ');
+
+        // Don't capture our own error reports
+        if (message.includes('🚨 FaVault Error Report') ||
+            message.includes('Console Error: Console Error:')) {
+          return;
         }
-      });
+
+        this.captureError({
+          type: 'runtime',
+          severity: 'medium',
+          message: message,
+          category: 'Console Error',
+          source: {
+            arguments: args,
+            stack: new Error().stack
+          }
+        });
+      } finally {
+        isCapturingError = false;
+      }
     };
   }
 

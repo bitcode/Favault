@@ -188,31 +188,89 @@ export class BookmarkEditAPI extends ExtensionAPI {
   // Event listeners for bookmark changes
   private static eventListeners: Map<string, Function[]> = new Map();
 
+  // Serialization queue for move operations to prevent race conditions
+  private static moveQueue: Promise<any> = Promise.resolve();
+
   /**
    * Move a bookmark or folder to a new location
+   * Serialized to prevent race conditions as recommended by Chrome API docs
    */
   static async moveBookmark(id: string, destination: BookmarkMoveDestination): Promise<BookmarkOperationResult> {
-    try {
-      // Validate the move operation
-      const validation = await this.validateMove(id, destination);
-      if (!validation.success) {
-        return { success: false, error: validation.error };
+    // Serialize move operations to prevent race conditions
+    return this.moveQueue = this.moveQueue.then(async () => {
+      try {
+        console.log('Moving bookmark:', id, 'to destination:', destination);
+
+        // Get current bookmark data before move
+        const [currentBookmark] = await browserAPI.bookmarks.get(id);
+        if (!currentBookmark) {
+          return { success: false, error: 'Bookmark not found' };
+        }
+
+        // Validate the move operation
+        const validation = await this.validateMove(id, destination);
+        if (!validation.success) {
+          return { success: false, error: validation.error };
+        }
+
+        // Preserve bookmark metadata during move
+        const preservedData = {
+          title: currentBookmark.title,
+          url: currentBookmark.url,
+          dateAdded: currentBookmark.dateAdded,
+          dateGroupModified: currentBookmark.dateGroupModified
+        };
+
+        // Perform the move operation (serialized)
+        const result = await browserAPI.bookmarks.move(id, destination);
+
+      // Verify the move was successful and data is preserved
+      const [movedBookmark] = await browserAPI.bookmarks.get(id);
+      if (!movedBookmark) {
+        return { success: false, error: 'Bookmark lost during move operation' };
       }
 
-      // Perform the move operation
-      const result = await browserAPI.bookmarks.move(id, destination);
+      // Check if metadata was preserved
+      const metadataPreserved =
+        movedBookmark.title === preservedData.title &&
+        movedBookmark.url === preservedData.url &&
+        movedBookmark.dateAdded === preservedData.dateAdded;
 
-      return {
-        success: true,
-        bookmark: result
-      };
-    } catch (error) {
-      console.error('Failed to move bookmark:', error);
-      return {
-        success: false,
-        error: this.parseBookmarkError(error)
-      };
-    }
+      if (!metadataPreserved) {
+        console.warn('Bookmark metadata may have been altered during move:', {
+          original: preservedData,
+          moved: {
+            title: movedBookmark.title,
+            url: movedBookmark.url,
+            dateAdded: movedBookmark.dateAdded
+          }
+        });
+      }
+
+      console.log('Successfully moved bookmark:', {
+        id,
+        from: { parentId: currentBookmark.parentId, index: currentBookmark.index },
+        to: { parentId: result.parentId, index: result.index },
+        metadataPreserved
+      });
+
+        return {
+          success: true,
+          bookmark: result,
+          metadata: {
+            preserved: metadataPreserved,
+            original: preservedData,
+            moved: movedBookmark
+          }
+        };
+      } catch (error) {
+        console.error('Failed to move bookmark:', error);
+        return {
+          success: false,
+          error: this.parseBookmarkError(error)
+        };
+      }
+    });
   }
 
   /**

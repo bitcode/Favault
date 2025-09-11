@@ -1,11 +1,14 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import BookmarkItem from './BookmarkItem.svelte';
+  import BookmarkInsertionPoint from './BookmarkInsertionPoint.svelte';
   import type { BookmarkFolder } from './api';
   import { DragDropManager, type DragData, type DropZoneData } from './dragdrop';
   import { BraveDragDropManager } from './dragdrop-brave';
   import { editMode, bookmarkFolders } from './stores';
   import { BookmarkManager } from './bookmarks';
+  import { BookmarkEditAPI } from './api';
+  import { initFolderExpansionState, getFolderExpanded, setFolderExpanded } from './folder-state';
 
   export let folder: BookmarkFolder;
   export let isVisible = true;
@@ -35,10 +38,17 @@
       updateDragDropState();
     }, 50);
   }
-  
+
+  // Initialize expansion state from storage
+  onMount(async () => {
+    await initFolderExpansionState();
+    isExpanded = getFolderExpanded(folder.id, true);
+  });
+
   // Toggle folder expansion
   function toggleExpanded() {
     isExpanded = !isExpanded;
+    setFolderExpanded(folder.id, isExpanded);
   }
 
   // Start inline renaming
@@ -128,21 +138,11 @@
           }
         });
 
-        // Initialize drop zone for accepting bookmarks
-        const dropZoneData: DropZoneData = {
-          type: 'folder',
-          targetId: folder.id
-        };
+        // Initialize comprehensive drop zone for accepting bookmarks
+        initializeFolderDropZones();
 
-        DragManager.initializeDropZone(folderElement, dropZoneData, {
-          acceptTypes: ['bookmark'],
-          onDrop: async (dragData, dropZone) => {
-            console.log('Dropped bookmark into folder:', dragData.title, 'into', folder.title);
-            // Refresh bookmarks after successful drop
-            await refreshBookmarks();
-            return true; // Indicate we handled the drop
-          }
-        });
+        // Initialize folder header drop zone for inter-section moves
+        initializeFolderHeaderDropZone();
 
         console.log('Drag-drop initialized for folder:', folder.title);
       }, 0);
@@ -156,16 +156,362 @@
     }
   }
 
+  // Initialize comprehensive folder drop zones
+  function initializeFolderDropZones() {
+    console.log('🎯 Initializing folder drop zones for:', folder.title, {
+      folderElement: !!folderElement,
+      isEditMode,
+      folderId: folder.id
+    });
+
+    if (!folderElement || !isEditMode) {
+      console.log('❌ Cannot initialize folder drop zones:', {
+        folderElement: !!folderElement,
+        isEditMode
+      });
+      return;
+    }
+
+    const DragManager = BraveDragDropManager.isBraveBrowser() ? BraveDragDropManager : DragDropManager;
+
+    // Main folder drop zone for bookmarks
+    const folderDropZone: DropZoneData = {
+      type: 'folder',
+      targetId: folder.id,
+      parentId: folder.id
+    };
+
+    console.log('🎯 Setting up folder drop zone with data:', folderDropZone);
+
+    DragManager.initializeDropZone(folderElement, folderDropZone, {
+      acceptTypes: ['bookmark'],
+      onDragEnter: (dragData, dropZone) => {
+        console.log('🎯 Bookmark entering folder:', dragData.title, 'into', folder.title);
+        folderElement.classList.add('folder-drop-zone-active');
+
+        // Auto-expand folder if collapsed
+        if (!isExpanded) {
+          console.log('📂 Auto-expanding folder:', folder.title);
+          isExpanded = true;
+          setFolderExpanded(folder.id, true);
+        }
+
+        showFolderDropIndicator(dragData);
+      },
+      onDragLeave: (dragData, dropZone) => {
+        console.log('🚪 Bookmark leaving folder:', dragData.title, 'from', folder.title);
+        folderElement.classList.remove('folder-drop-zone-active');
+        hideFolderDropIndicator();
+      },
+      onDrop: async (dragData, dropZone) => {
+        console.log('Dropping bookmark into folder:', dragData.title, 'into', folder.title);
+
+        try {
+          // Ensure we have a valid index for appending to end
+          const targetIndex = Array.isArray(folder.bookmarks) ? folder.bookmarks.length : 0;
+
+          console.log('🎯 Moving bookmark to folder:', {
+            bookmarkId: dragData.id,
+            bookmarkTitle: dragData.title,
+            targetFolderId: folder.id,
+            targetFolderTitle: folder.title,
+            targetIndex,
+            currentBookmarkCount: folder.bookmarks?.length || 0
+          });
+
+          // Move bookmark to this folder (append to end)
+          const result = await BookmarkEditAPI.moveBookmark(dragData.id, {
+            parentId: folder.id,
+            index: targetIndex
+          });
+
+          if (result.success) {
+            console.log('Successfully moved bookmark to folder:', dragData.title);
+
+            // Clear cache immediately and force refresh for inter-folder moves
+            BookmarkManager.clearCache();
+
+            // Add delay to allow Chrome API to propagate changes
+            await new Promise(resolve => setTimeout(resolve, 200));
+
+            // Force refresh bookmarks
+            await refreshBookmarks(true);
+
+            // Show success message
+            showInterSectionMoveSuccess(dragData.title, folder.title);
+
+            // Dispatch custom event for additional refresh if needed
+            document.dispatchEvent(new CustomEvent('favault-bookmark-moved', {
+              detail: {
+                bookmarkId: dragData.id,
+                fromFolder: dragData.parentId,
+                toFolder: folder.id,
+                type: 'inter-folder'
+              }
+            }));
+          } else {
+            console.error('Failed to move bookmark to folder:', result.error);
+            showInterSectionMoveError(result.error || 'Failed to move bookmark');
+          }
+        } catch (error) {
+          console.error('Error during inter-section bookmark move:', error);
+          showInterSectionMoveError('An error occurred while moving the bookmark');
+        }
+
+        // Clean up visual indicators
+        folderElement.classList.remove('folder-drop-zone-active');
+        hideFolderDropIndicator();
+
+        return true; // Indicate we handled the drop
+      }
+    });
+  }
+
+  // Initialize folder header drop zone for precise positioning
+  function initializeFolderHeaderDropZone() {
+    console.log('🎯 Initializing folder header drop zone for:', folder.title, {
+      folderHeader: !!folderHeader,
+      isEditMode
+    });
+
+    if (!folderHeader || !isEditMode) {
+      console.log('❌ Cannot initialize folder header drop zone:', {
+        folderHeader: !!folderHeader,
+        isEditMode
+      });
+      return;
+    }
+
+    const DragManager = BraveDragDropManager.isBraveBrowser() ? BraveDragDropManager : DragDropManager;
+
+    const headerDropZone: DropZoneData = {
+      type: 'folder',
+      targetId: folder.id,
+      parentId: folder.id,
+      targetIndex: 0 // Insert at beginning
+    };
+
+    console.log('🎯 Setting up folder header drop zone with data:', headerDropZone);
+
+    DragManager.initializeDropZone(folderHeader, headerDropZone, {
+      acceptTypes: ['bookmark'],
+      onDragEnter: (dragData, dropZone) => {
+        console.log('🎯 Bookmark entering folder header:', dragData.title, 'into', folder.title);
+        folderHeader.classList.add('folder-header-drop-zone-active');
+        showFolderHeaderDropIndicator(dragData);
+      },
+      onDragLeave: (dragData, dropZone) => {
+        console.log('🚪 Bookmark leaving folder header:', dragData.title, 'from', folder.title);
+        folderHeader.classList.remove('folder-header-drop-zone-active');
+        hideFolderHeaderDropIndicator();
+      },
+      onDrop: async (dragData, dropZone) => {
+        console.log('Dropping bookmark at beginning of folder:', dragData.title, 'into', folder.title);
+
+        try {
+          console.log('🎯 Moving bookmark to beginning of folder:', {
+            bookmarkId: dragData.id,
+            bookmarkTitle: dragData.title,
+            targetFolderId: folder.id,
+            targetFolderTitle: folder.title,
+            targetIndex: 0,
+            currentBookmarkCount: folder.bookmarks?.length || 0
+          });
+
+          // Move bookmark to beginning of this folder
+          const result = await BookmarkEditAPI.moveBookmark(dragData.id, {
+            parentId: folder.id,
+            index: 0 // Insert at beginning
+          });
+
+          if (result.success) {
+            console.log('Successfully moved bookmark to beginning of folder:', dragData.title);
+
+            // Clear cache immediately and force refresh for inter-folder moves
+            BookmarkManager.clearCache();
+
+            // Add delay to allow Chrome API to propagate changes
+            await new Promise(resolve => setTimeout(resolve, 200));
+
+            // Force refresh bookmarks
+            await refreshBookmarks(true);
+
+            // Show success message
+            showInterSectionMoveSuccess(dragData.title, folder.title, 'beginning');
+
+            // Dispatch custom event for additional refresh if needed
+            document.dispatchEvent(new CustomEvent('favault-bookmark-moved', {
+              detail: {
+                bookmarkId: dragData.id,
+                fromFolder: dragData.parentId,
+                toFolder: folder.id,
+                type: 'inter-folder',
+                position: 'beginning'
+              }
+            }));
+          } else {
+            console.error('Failed to move bookmark to folder beginning:', result.error);
+            showInterSectionMoveError(result.error || 'Failed to move bookmark');
+          }
+        } catch (error) {
+          console.error('Error during header drop:', error);
+          showInterSectionMoveError('An error occurred while moving the bookmark');
+        }
+
+        // Clean up visual indicators
+        folderHeader.classList.remove('folder-header-drop-zone-active');
+        hideFolderHeaderDropIndicator();
+
+        return true;
+      }
+    });
+  }
+
+  // Visual feedback functions for folder drop zones
+  function showFolderDropIndicator(dragData: DragData) {
+    // Create or update folder drop indicator
+    let indicator = document.querySelector('.folder-drop-indicator') as HTMLElement;
+
+    if (!indicator) {
+      indicator = document.createElement('div');
+      indicator.className = 'folder-drop-indicator';
+      indicator.innerHTML = `
+        <div class="drop-icon">📁</div>
+        <div class="drop-text">Drop "${dragData.title}" into ${folder.title}</div>
+      `;
+      folderElement.appendChild(indicator);
+    }
+
+    indicator.style.cssText = `
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(34, 197, 94, 0.9);
+      color: white;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      z-index: 1001;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+      pointer-events: none;
+    `;
+
+    indicator.classList.add('active');
+  }
+
+  function hideFolderDropIndicator() {
+    const indicator = folderElement?.querySelector('.folder-drop-indicator');
+    if (indicator) {
+      indicator.classList.remove('active');
+      setTimeout(() => {
+        if (indicator.parentNode) {
+          indicator.parentNode.removeChild(indicator);
+        }
+      }, 200);
+    }
+  }
+
+  function showFolderHeaderDropIndicator(dragData: DragData) {
+    // Create header-specific drop indicator
+    let indicator = document.querySelector('.folder-header-drop-indicator') as HTMLElement;
+
+    if (!indicator) {
+      indicator = document.createElement('div');
+      indicator.className = 'folder-header-drop-indicator';
+      indicator.innerHTML = `
+        <div class="drop-text">Drop at beginning of ${folder.title}</div>
+      `;
+      folderHeader.appendChild(indicator);
+    }
+
+    indicator.style.cssText = `
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: rgba(59, 130, 246, 0.9);
+      color: white;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 500;
+      z-index: 1001;
+      text-align: center;
+      pointer-events: none;
+    `;
+
+    indicator.classList.add('active');
+  }
+
+  function hideFolderHeaderDropIndicator() {
+    const indicator = folderHeader?.querySelector('.folder-header-drop-indicator');
+    if (indicator) {
+      indicator.classList.remove('active');
+      setTimeout(() => {
+        if (indicator.parentNode) {
+          indicator.parentNode.removeChild(indicator);
+        }
+      }, 200);
+    }
+  }
+
+  function showInterSectionMoveSuccess(bookmarkTitle: string, folderTitle: string, position?: string) {
+    const positionText = position ? ` at ${position}` : '';
+    const message = `Moved "${bookmarkTitle}" to "${folderTitle}"${positionText}`;
+
+    const toast = document.createElement('div');
+    toast.className = 'drag-drop-toast success';
+    toast.innerHTML = `
+      <div class="toast-icon">✅</div>
+      <div class="toast-message">${message}</div>
+    `;
+
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+      toast.classList.add('slide-out');
+      setTimeout(() => {
+        if (toast.parentNode) {
+          toast.parentNode.removeChild(toast);
+        }
+      }, 300);
+    }, 3000);
+  }
+
+  function showInterSectionMoveError(errorMessage: string) {
+    const toast = document.createElement('div');
+    toast.className = 'drag-drop-toast error';
+    toast.innerHTML = `
+      <div class="toast-icon">❌</div>
+      <div class="toast-message">${errorMessage}</div>
+    `;
+
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+      toast.classList.add('slide-out');
+      setTimeout(() => {
+        if (toast.parentNode) {
+          toast.parentNode.removeChild(toast);
+        }
+      }, 300);
+    }, 5000);
+  }
+
   // Refresh bookmarks after changes
-  async function refreshBookmarks() {
+  async function refreshBookmarks(forceRefresh = false) {
     try {
-      const folders = await BookmarkManager.getOrganizedBookmarks();
+      const folders = await BookmarkManager.getOrganizedBookmarks(forceRefresh);
       bookmarkFolders.set(folders);
     } catch (error) {
       console.error('Failed to refresh bookmarks:', error);
     }
   }
-  
+
   // Handle save-all-edits event
   function handleSaveAllEdits() {
     if (isRenaming) {
@@ -269,11 +615,34 @@
       </svg>
     </div>
   </div>
-  
+
   {#if isExpanded && isVisible}
     <div class="bookmarks-grid" class:expanded={isExpanded}>
-      {#each folder.bookmarks as bookmark (bookmark.id)}
+      {#if $editMode}
+        <!-- Debug: Simple test element -->
+        <div class="debug-insertion-test" style="background: red; height: 20px; width: 100%; margin: 5px 0;">
+          DEBUG: Edit mode active - insertion point should be here
+        </div>
+
+        <!-- Insertion point at the beginning -->
+        <BookmarkInsertionPoint
+          parentId={folder.id}
+          insertIndex={0}
+          folderTitle={folder.title}
+        />
+      {/if}
+
+      {#each folder.bookmarks as bookmark, index (bookmark.id)}
         <BookmarkItem {bookmark} />
+
+        {#if $editMode}
+          <!-- Insertion point after each bookmark -->
+          <BookmarkInsertionPoint
+            parentId={folder.id}
+            insertIndex={index + 1}
+            folderTitle={folder.title}
+          />
+        {/if}
       {/each}
     </div>
   {/if}
@@ -288,7 +657,7 @@
     border: 1px solid rgba(255, 255, 255, 0.2);
     overflow: hidden;
   }
-  
+
   .folder-header {
     display: flex;
     align-items: center;
@@ -321,16 +690,16 @@
     width: 100%;
     height: 100%;
   }
-  
+
   .folder-header:hover {
     background: rgba(255, 255, 255, 0.1);
   }
-  
+
   .folder-header:focus {
     outline: 2px solid rgba(59, 130, 246, 0.5);
     outline-offset: -2px;
   }
-  
+
   .folder-color {
     width: 12px;
     height: 12px;
@@ -339,7 +708,7 @@
     flex-shrink: 0;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   }
-  
+
   .folder-title {
     flex: 1;
     margin: 0;
@@ -399,29 +768,29 @@
     width: 14px;
     height: 14px;
   }
-  
+
   .bookmark-count {
     color: rgba(255, 255, 255, 0.6);
     font-size: 0.9rem;
     margin-right: 0.5rem;
   }
-  
+
   .expand-icon {
     width: 20px;
     height: 20px;
     color: rgba(255, 255, 255, 0.7);
     transition: transform 0.2s ease;
   }
-  
+
   .expand-icon.expanded {
     transform: rotate(180deg);
   }
-  
+
   .expand-icon svg {
     width: 100%;
     height: 100%;
   }
-  
+
   .bookmarks-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -429,7 +798,7 @@
     padding: 1.25rem;
     animation: slideDown 0.3s ease-out;
   }
-  
+
   @keyframes slideDown {
     from {
       opacity: 0;
@@ -440,23 +809,23 @@
       transform: translateY(0);
     }
   }
-  
+
   @media (max-width: 768px) {
     .bookmarks-grid {
       grid-template-columns: 1fr;
       gap: 0.5rem;
       padding: 1rem;
     }
-    
+
     .folder-header {
       padding: 0.75rem 1rem;
     }
-    
+
     .folder-title {
       font-size: 1rem;
     }
   }
-  
+
   /* Drag and drop styles */
   .draggable-item {
     transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -468,6 +837,26 @@
     z-index: 1000;
   }
 
+  /* Enhanced folder drop zone styles */
+  .folder-container.folder-drop-zone-active {
+    background: rgba(34, 197, 94, 0.1) !important;
+    border: 2px dashed #22c55e !important;
+    transform: scale(1.02);
+    transition: all 0.2s ease;
+    position: relative;
+  }
+
+  .folder-container.folder-drop-zone-active .folder-header {
+    background: rgba(34, 197, 94, 0.1);
+  }
+
+  .folder-header.folder-header-drop-zone-active {
+    background: rgba(59, 130, 246, 0.15) !important;
+    border-bottom: 3px solid #3b82f6 !important;
+    position: relative;
+  }
+
+  /* Legacy drag-over styles for compatibility */
   .folder-container.drag-over {
     background: rgba(59, 130, 246, 0.1) !important;
     border: 2px dashed #3b82f6 !important;

@@ -25,6 +25,8 @@
     "test:debug": "playwright test --debug",
     "test:bookmarks": "playwright test tests/playwright/specs/bookmark-management.test.ts",
     "test:dragdrop": "playwright test tests/playwright/specs/dragdrop-functionality.test.ts",
+    "test:dragdrop-comprehensive": "playwright test tests/playwright/bookmark-drag-drop.spec.ts",
+    "test:dragdrop-runner": "node scripts/run-dragdrop-tests.js",
     "test:ui-visual": "playwright test tests/playwright/specs/ui-components-visual.test.ts",
     "test:console": "playwright test tests/playwright/specs/console-network-testing.test.ts",
     "test:cross-browser": "playwright test tests/playwright/specs/cross-browser-compatibility.test.ts",

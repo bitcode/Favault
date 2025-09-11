@@ -7,14 +7,21 @@
   import EditModeToggle from './lib/EditModeToggle.svelte';
   import KeyboardShortcuts from './lib/KeyboardShortcuts.svelte';
   import ErrorReportButton from './lib/ErrorReportButton.svelte';
+  import ServiceWorkerDiagnostics from './lib/ServiceWorkerDiagnostics.svelte';
   import { BraveDebugger } from './lib/brave-debug';
   import { BookmarkManager } from './lib/bookmarks';
   import { EnhancedDragDropManager } from './lib/dragdrop-enhanced';
   import { EnhancedDragDropTester } from './lib/test-enhanced-dragdrop';
+  import { DragDropTestSuite } from './lib/drag-drop-test-suite';
+  import { ServiceWorkerDragDropTester } from './lib/drag-drop-service-worker-test';
+  import { serviceWorkerManager } from './lib/service-worker-manager';
   import { errorReporter, reportLoadingError, reportInitializationError } from './lib/error-reporter';
   import { ExtensionLoadingDiagnostics } from './lib/extension-loading-diagnostics';
   import { bookmarkFolders, filteredBookmarks, isLoading, error, settingsManager, editMode } from './lib/stores';
   import { ExtensionAPI, BookmarkEditAPI } from './lib/api';
+
+  // Import drag-and-drop animations CSS
+  import './lib/drag-drop-animations.css';
 
   let searchBarComponent: SearchBar;
 
@@ -218,12 +225,312 @@
     // Expose refreshBookmarks function globally
     (window as any).refreshBookmarks = refreshBookmarks;
 
+    // Comprehensive drag-drop test suite
+    (window as any).testDragDropSuite = async () => {
+      console.log('🧪 Running comprehensive drag-drop test suite...');
+      try {
+        const suite = await DragDropTestSuite.runAllTests();
+        console.log('🧪 Test suite results:', suite);
+
+        // Generate and log report
+        const report = DragDropTestSuite.generateReport(suite);
+        console.log('📊 Test Report:\n' + report);
+
+        return suite;
+      } catch (error) {
+        console.error('🧪 Test suite failed:', error);
+        return { success: false, error: error instanceof Error ? error.message : String(error) };
+      }
+    };
+
+    // Service worker management functions
+    (window as any).getServiceWorkerStatus = () => {
+      const status = serviceWorkerManager.getStatus();
+      console.log('🔍 Service Worker Status:', status);
+      return status;
+    };
+
+    (window as any).checkServiceWorker = async () => {
+      console.log('🔍 Checking service worker status...');
+      const status = await serviceWorkerManager.forceStatusCheck();
+      console.log('📊 Service Worker Status:', status);
+      return status;
+    };
+
+    (window as any).ensureServiceWorkerActive = async () => {
+      console.log('🔄 Ensuring service worker is active...');
+      const isActive = await serviceWorkerManager.ensureActive();
+      console.log(`📊 Service Worker Active: ${isActive}`);
+      return isActive;
+    };
+
+    // Debug drag-and-drop state
+    (window as any).debugDragDrop = () => {
+      console.log('🔍 Drag-and-Drop Debug Info:');
+      console.log('Edit Mode Checks:');
+      console.log('  - body.edit-mode:', document.body.classList.contains('edit-mode'));
+      console.log('  - .app.edit-mode:', !!document.querySelector('.app.edit-mode'));
+      console.log('  - body.drag-enabled:', document.body.classList.contains('drag-enabled'));
+
+      console.log('Elements:');
+      console.log('  - Bookmark items:', document.querySelectorAll('.bookmark-item').length);
+      console.log('  - Draggable items:', document.querySelectorAll('.draggable-item').length);
+      console.log('  - Insertion points:', document.querySelectorAll('.bookmark-insertion-point').length);
+      console.log('  - Folder containers:', document.querySelectorAll('.folder-container').length);
+
+      console.log('CSS Classes:');
+      const bookmarkItems = document.querySelectorAll('.bookmark-item');
+      bookmarkItems.forEach((item, index) => {
+        if (index < 3) { // Only log first 3 to avoid spam
+          console.log(`  - Bookmark ${index}:`, item.className);
+        }
+      });
+
+      return {
+        editMode: {
+          bodyEditMode: document.body.classList.contains('edit-mode'),
+          appEditMode: !!document.querySelector('.app.edit-mode'),
+          bodyDragEnabled: document.body.classList.contains('drag-enabled')
+        },
+        elements: {
+          bookmarkItems: document.querySelectorAll('.bookmark-item').length,
+          draggableItems: document.querySelectorAll('.draggable-item').length,
+          insertionPoints: document.querySelectorAll('.bookmark-insertion-point').length,
+          folderContainers: document.querySelectorAll('.folder-container').length
+        }
+      };
+    };
+
+    // Test drag-and-drop functionality
+    (window as any).testDragDropFunctionality = () => {
+      console.log('🧪 Testing drag-and-drop functionality...');
+
+      // Check edit mode
+      const editModeActive = document.body.classList.contains('edit-mode') ||
+                           document.querySelector('.app.edit-mode') !== null;
+
+      if (!editModeActive) {
+        console.warn('⚠️ Edit mode is not active. Please enable edit mode first.');
+        return { success: false, error: 'Edit mode not active' };
+      }
+
+      // Check for draggable elements
+      const draggableItems = document.querySelectorAll('.draggable-item');
+      const bookmarkItems = document.querySelectorAll('.bookmark-item');
+      const insertionPoints = document.querySelectorAll('.bookmark-insertion-point');
+
+      console.log('📊 Element counts:');
+      console.log(`  - Bookmark items: ${bookmarkItems.length}`);
+      console.log(`  - Draggable items: ${draggableItems.length}`);
+      console.log(`  - Insertion points: ${insertionPoints.length}`);
+
+      // Test draggable attributes
+      let draggableCount = 0;
+      bookmarkItems.forEach((item, index) => {
+        const isDraggable = item.getAttribute('draggable') === 'true';
+        if (isDraggable) draggableCount++;
+
+        if (index < 3) { // Log first 3 for debugging
+          console.log(`  - Bookmark ${index} draggable: ${isDraggable}`);
+        }
+      });
+
+      // Test insertion points visibility
+      let visibleInsertionPoints = 0;
+      insertionPoints.forEach(point => {
+        const style = window.getComputedStyle(point);
+        if (style.display !== 'none' && style.visibility !== 'hidden') {
+          visibleInsertionPoints++;
+        }
+      });
+
+      console.log(`📊 Draggable bookmarks: ${draggableCount}/${bookmarkItems.length}`);
+      console.log(`📊 Visible insertion points: ${visibleInsertionPoints}/${insertionPoints.length}`);
+
+      // Test results
+      const results = {
+        editModeActive,
+        bookmarkCount: bookmarkItems.length,
+        draggableCount,
+        insertionPointCount: insertionPoints.length,
+        visibleInsertionPoints,
+        success: draggableCount > 0 && insertionPoints.length > 0
+      };
+
+      if (results.success) {
+        console.log('✅ Drag-and-drop functionality appears to be working');
+      } else {
+        console.warn('❌ Drag-and-drop functionality may have issues');
+      }
+
+      return results;
+    };
+
+    // Debug insertion points specifically
+    (window as any).debugInsertionPoints = () => {
+      console.log('🔍 Debugging Insertion Points...');
+
+      const insertionPoints = document.querySelectorAll('.bookmark-insertion-point');
+      const editModeActive = document.body.classList.contains('edit-mode') ||
+                           document.querySelector('.app.edit-mode') !== null;
+
+      console.log(`📊 Found ${insertionPoints.length} insertion points`);
+      console.log(`📊 Edit mode active: ${editModeActive}`);
+
+      insertionPoints.forEach((point, index) => {
+        const style = window.getComputedStyle(point);
+        const rect = point.getBoundingClientRect();
+
+        console.log(`Insertion Point ${index}:`, {
+          element: point,
+          parentId: point.getAttribute('data-parent-id'),
+          insertIndex: point.getAttribute('data-insert-index'),
+          classes: point.className,
+          display: style.display,
+          visibility: style.visibility,
+          opacity: style.opacity,
+          height: style.height,
+          width: style.width,
+          position: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+          isVisible: rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden'
+        });
+      });
+
+      // Check if they're being created in the right places
+      const bookmarkItems = document.querySelectorAll('.bookmark-item');
+      console.log(`📊 Found ${bookmarkItems.length} bookmark items`);
+
+      // Check folder structure
+      const folders = document.querySelectorAll('.folder-container');
+      folders.forEach((folder, folderIndex) => {
+        const folderBookmarks = folder.querySelectorAll('.bookmark-item');
+        const folderInsertionPoints = folder.querySelectorAll('.bookmark-insertion-point');
+
+        console.log(`Folder ${folderIndex}:`, {
+          bookmarks: folderBookmarks.length,
+          insertionPoints: folderInsertionPoints.length,
+          expectedInsertionPoints: folderBookmarks.length + 1 // Should be bookmarks + 1
+        });
+      });
+
+      return {
+        insertionPointCount: insertionPoints.length,
+        editModeActive,
+        bookmarkCount: bookmarkItems.length,
+        folderCount: folders.length
+      };
+    };
+
+    // Test insertion point functionality
+    (window as any).testInsertionPoints = () => {
+      console.log('🧪 Testing insertion point functionality...');
+
+      const insertionPoints = document.querySelectorAll('.bookmark-insertion-point');
+      console.log(`Found ${insertionPoints.length} insertion points`);
+
+      if (insertionPoints.length === 0) {
+        console.warn('❌ No insertion points found! Check if edit mode is active.');
+        return { success: false, error: 'No insertion points found' };
+      }
+
+      // Test each insertion point
+      let workingPoints = 0;
+      insertionPoints.forEach((point, index) => {
+        const rect = point.getBoundingClientRect();
+        const isVisible = rect.width > 0 && rect.height > 0;
+
+        console.log(`Insertion Point ${index}:`, {
+          parentId: point.getAttribute('data-parent-id'),
+          insertIndex: point.getAttribute('data-insert-index'),
+          visible: isVisible,
+          dimensions: { width: rect.width, height: rect.height },
+          position: { x: rect.x, y: rect.y }
+        });
+
+        if (isVisible) workingPoints++;
+      });
+
+      console.log(`📊 ${workingPoints}/${insertionPoints.length} insertion points are visible`);
+
+      // Try to trigger a drag enter event on the first insertion point
+      if (insertionPoints.length > 0) {
+        const firstPoint = insertionPoints[0];
+        console.log('🎯 Testing drag enter on first insertion point...');
+
+        // Create a mock drag event
+        const dragEvent = new DragEvent('dragenter', {
+          bubbles: true,
+          cancelable: true,
+          dataTransfer: new DataTransfer()
+        });
+
+        // Set some mock drag data
+        dragEvent.dataTransfer?.setData('application/x-favault-bookmark', JSON.stringify({
+          type: 'bookmark',
+          id: 'test-bookmark',
+          title: 'Test Bookmark',
+          parentId: 'test-parent',
+          index: 0
+        }));
+
+        firstPoint.dispatchEvent(dragEvent);
+        console.log('✅ Drag enter event dispatched');
+      }
+
+      return {
+        success: workingPoints > 0,
+        totalPoints: insertionPoints.length,
+        visiblePoints: workingPoints
+      };
+    };
+
+    // Service worker drag-drop test suite
+    (window as any).testServiceWorkerDragDrop = async () => {
+      console.log('🧪 Running service worker drag-drop test suite...');
+      try {
+        const suite = await ServiceWorkerDragDropTester.runServiceWorkerDragDropTests();
+        console.log('🧪 Service worker drag-drop test results:', suite);
+
+        // Generate and log report
+        const report = ServiceWorkerDragDropTester.generateReport(suite);
+        console.log('📊 Service Worker Drag-Drop Test Report:\n' + report);
+
+        return suite;
+      } catch (error) {
+        console.error('🧪 Service worker drag-drop tests failed:', error);
+        return { success: false, error: error instanceof Error ? error.message : String(error) };
+      }
+    };
+
+    // Setup service worker status monitoring
+    serviceWorkerManager.addStatusListener((status) => {
+      if (!status.isActive && status.consecutiveFailures > 2) {
+        console.warn('⚠️ Service worker appears to be having issues:', status);
+
+        // Show user notification if service worker is consistently failing
+        if (status.consecutiveFailures > 5) {
+          console.error('❌ Service worker is consistently failing. Some features may not work properly.');
+        }
+      } else if (status.isActive && status.consecutiveFailures === 0) {
+        console.log('✅ Service worker is healthy and active');
+      }
+    });
+
     console.log('✅ DIRECT automated testing system ready!');
     console.log('📋 Available commands (exposed directly):');
     console.log('  - runAllTests() - Run comprehensive test suite');
     console.log('  - testMove(from, to) - Test individual move');
     console.log('  - showState() - Show current bookmark state');
     console.log('  - refreshBookmarks() - Force refresh UI and clear cache');
+    console.log('  - testDragDropSuite() - Run comprehensive drag-drop tests');
+    console.log('  - testServiceWorkerDragDrop() - Test drag-drop with SW cycling');
+    console.log('  - testDragDropFunctionality() - Test current drag-drop setup');
+    console.log('  - debugDragDrop() - Debug drag-and-drop state and elements');
+    console.log('  - debugInsertionPoints() - Debug insertion point rendering and visibility');
+    console.log('  - testInsertionPoints() - Test insertion point functionality');
+    console.log('  - getServiceWorkerStatus() - Check service worker status');
+    console.log('  - checkServiceWorker() - Force service worker status check');
+    console.log('  - ensureServiceWorkerActive() - Ensure service worker is active');
     console.log('  - getTestResults() - Info about test results');
 
     // Verify functions are exposed
@@ -232,9 +539,10 @@
       console.log('runAllTests available:', typeof (window as any).runAllTests === 'function');
       console.log('testMove available:', typeof (window as any).testMove === 'function');
       console.log('showState available:', typeof (window as any).showState === 'function');
+      console.log('testDragDropSuite available:', typeof (window as any).testDragDropSuite === 'function');
 
-      if (typeof (window as any).runAllTests === 'function') {
-        console.log('🎉 SUCCESS: All functions are available! Try: runAllTests()');
+      if (typeof (window as any).runAllTests === 'function' && typeof (window as any).testDragDropSuite === 'function') {
+        console.log('🎉 SUCCESS: All functions are available! Try: runAllTests() or testDragDropSuite()');
       } else {
         console.error('❌ FAILED: Functions not available after exposure');
       }
@@ -405,13 +713,29 @@
       }, 100);
     };
 
+    // Listen for inter-folder bookmark move events
+    const handleBookmarkMoveEvent = (event: CustomEvent) => {
+      console.log('📍 Inter-folder bookmark move detected:', event.detail);
+
+      // For inter-folder moves, do an additional delayed refresh to ensure UI consistency
+      if (event.detail?.type === 'inter-folder') {
+        setTimeout(() => {
+          console.log('📍 Additional refresh for inter-folder move...');
+          BookmarkManager.clearCache();
+          refreshBookmarks();
+        }, 500);
+      }
+    };
+
     document.addEventListener('favault-refresh-bookmarks', handleRefreshEvent as EventListener);
     document.addEventListener('favault-chrome-refresh-verify', handleChromeVerifyEvent as EventListener);
-    console.log('👂 Bookmark refresh event listeners set up (including Chrome-specific)');
+    document.addEventListener('favault-bookmark-moved', handleBookmarkMoveEvent as EventListener);
+    console.log('👂 Bookmark refresh event listeners set up (including Chrome-specific and inter-folder moves)');
 
     return () => {
       document.removeEventListener('favault-refresh-bookmarks', handleRefreshEvent as EventListener);
       document.removeEventListener('favault-chrome-refresh-verify', handleChromeVerifyEvent as EventListener);
+      document.removeEventListener('favault-bookmark-moved', handleBookmarkMoveEvent as EventListener);
     };
   }
 
@@ -744,19 +1068,23 @@
 </script>
 
 <main class="app" class:edit-mode={$editMode}>
-  <!-- Edit Mode Controls -->
-  <EditModeToggle />
+  <!-- Top Right Control Panel -->
+  <div class="top-controls-panel">
+    <!-- Service Worker Diagnostics -->
+    <ServiceWorkerDiagnostics />
+
+    <!-- Error Report Button -->
+    <ErrorReportButton />
+
+    <!-- Edit Mode Controls -->
+    <EditModeToggle />
+  </div>
 
   <!-- Settings Panel -->
   <SettingsPanel />
 
   <!-- Keyboard Shortcuts Help -->
   <KeyboardShortcuts />
-
-  <!-- Error Report Button (only show in development or when errors exist) -->
-  <div class="error-report-container">
-    <ErrorReportButton />
-  </div>
 
   <div class="container">
     <header class="header">
@@ -909,11 +1237,15 @@
     100% { transform: rotate(360deg); }
   }
 
-  .error-report-container {
+  .top-controls-panel {
     position: fixed;
-    top: 20px;
-    right: 20px;
+    top: 1rem;
+    right: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
     z-index: 1000;
+    align-items: flex-end;
   }
   
   .error {
@@ -986,17 +1318,23 @@
     .app {
       padding: 1rem 0.5rem;
     }
-    
+
     .title {
       font-size: 2.5rem;
     }
-    
+
     .subtitle {
       font-size: 1rem;
     }
-    
+
     .header {
       margin-bottom: 2rem;
+    }
+
+    .top-controls-panel {
+      top: 0.5rem;
+      right: 0.5rem;
+      gap: 0.5rem;
     }
   }
   

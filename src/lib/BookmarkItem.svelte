@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import type { BookmarkItem } from './api';
-  import { DragDropManager, type DragData } from './dragdrop';
+  import { DragDropManager, type DragData, type DropZoneData } from './dragdrop';
   import { BraveDragDropManager } from './dragdrop-brave';
   import { editMode, bookmarkFolders } from './stores';
   import { BookmarkEditAPI } from './api';
@@ -10,6 +10,7 @@
   import AutoSaveStatus from './AutoSaveStatus.svelte';
   import { BookmarkValidator, createRealTimeValidator, type ValidationResult } from './validation';
   import ValidationStatus from './ValidationStatus.svelte';
+  import { DragDropValidator } from './drag-drop-validation';
 
   export let bookmark: BookmarkItem;
 
@@ -217,7 +218,7 @@
     DragDropManager.cleanup(bookmarkElement);
 
     if (isEditMode) {
-      console.log('Initializing drag-drop for bookmark:', bookmark.title);
+      console.log('Initializing enhanced drag-drop for bookmark:', bookmark.title);
 
       const dragData: DragData = {
         type: 'bookmark',
@@ -233,17 +234,149 @@
 
       DragManager.initializeDraggable(bookmarkElement, dragData, {
         onDragStart: (data) => {
-          console.log('Started dragging bookmark:', data.title);
+          console.log('🚀 Started dragging bookmark:', data.title, {
+            id: data.id,
+            parentId: data.parentId,
+            index: data.index,
+            type: data.type
+          });
+
+          // Add visual feedback for drag start
+          bookmarkElement.classList.add('dragging-bookmark');
+          document.body.classList.add('bookmark-drag-active');
+
+          // Store original position for potential revert
+          bookmarkElement.dataset.originalParent = data.parentId || '';
+          bookmarkElement.dataset.originalIndex = String(data.index || 0);
         },
         onDragEnd: (data) => {
           console.log('Finished dragging bookmark:', data.title);
+          // Clean up visual feedback
+          bookmarkElement.classList.remove('dragging-bookmark');
+          document.body.classList.remove('bookmark-drag-active');
+
+          // Clean up temporary data
+          delete bookmarkElement.dataset.originalParent;
+          delete bookmarkElement.dataset.originalIndex;
+
+          // Remove any lingering drop zone indicators
+          document.querySelectorAll('.bookmark-drop-zone-active, .insertion-point-active').forEach(el => {
+            el.classList.remove('bookmark-drop-zone-active', 'insertion-point-active');
+          });
         }
       });
 
-      console.log('Drag-drop initialized for bookmark:', bookmark.title);
+      // Also initialize as a drop zone for bookmark-to-bookmark positioning
+      setTimeout(() => {
+        initializeBookmarkDropZone();
+      }, 100); // Small delay to ensure DOM is ready
+
+      console.log('Enhanced drag-drop initialized for bookmark:', bookmark.title);
     } else {
       console.log('Disabling drag-drop for bookmark:', bookmark.title);
     }
+  }
+
+  // Initialize bookmark as a drop zone for precise positioning
+  function initializeBookmarkDropZone() {
+    console.log('🎯 Initializing bookmark drop zone for:', bookmark.title, {
+      bookmarkElement: !!bookmarkElement,
+      isEditMode,
+      bookmarkId: bookmark.id,
+      parentId: bookmark.parentId,
+      index: bookmark.index
+    });
+
+    if (!bookmarkElement || !isEditMode) {
+      console.log('❌ Cannot initialize bookmark drop zone:', {
+        bookmarkElement: !!bookmarkElement,
+        isEditMode
+      });
+      return;
+    }
+
+    const DragManager = BraveDragDropManager.isBraveBrowser() ? BraveDragDropManager : DragDropManager;
+
+    // Create drop zone for this bookmark (will handle positioning logic in the drop handler)
+    const bookmarkDropZone: DropZoneData = {
+      type: 'within-folder',
+      targetId: bookmark.id,
+      parentId: bookmark.parentId,
+      targetIndex: bookmark.index
+    };
+
+    console.log('🎯 Setting up bookmark drop zone with data:', bookmarkDropZone);
+
+    // Initialize drop zone functionality
+    DragManager.initializeDropZone(bookmarkElement, bookmarkDropZone, {
+      acceptTypes: ['bookmark'],
+      onDragEnter: (dragData, dropZone) => {
+        if (dragData.id !== bookmark.id) { // Don't highlight self
+          bookmarkElement.classList.add('bookmark-drop-zone-active');
+          showInsertionIndicator(dragData, dropZone);
+        }
+      },
+      onDragLeave: (_dragData, _dropZone) => {
+        console.log('🚪 Drag leaving bookmark:', bookmark.title);
+        bookmarkElement.classList.remove('bookmark-drop-zone-active');
+        hideInsertionIndicator();
+      },
+      onDrop: async (dragData, dropZone) => {
+        console.log('Dropping bookmark near:', bookmark.title, 'at index:', dropZone.targetIndex);
+
+        try {
+          // Validate the drop operation
+          const validation = await DragDropValidator.validateDragDrop({ dragData, dropZone });
+
+          if (!validation.canProceed) {
+            console.warn('Drop operation blocked by validation:', validation.error);
+            showMoveErrorIndicator(validation.error || 'Invalid drop operation');
+            bookmarkElement.classList.remove('bookmark-drop-zone-active');
+            hideInsertionIndicator();
+            return false;
+          }
+
+          // Show warning if present
+          if (validation.warning) {
+            console.warn('Drop operation warning:', validation.warning);
+          }
+
+          // Perform the bookmark move operation
+          const result = await BookmarkEditAPI.moveBookmark(dragData.id, {
+            parentId: dropZone.parentId,
+            index: dropZone.targetIndex
+          });
+
+          if (result.success) {
+            console.log('Successfully moved bookmark:', dragData.title);
+
+            // Clear cache immediately to ensure fresh data
+            BookmarkManager.clearCache();
+
+            // Refresh bookmarks to reflect changes
+            await refreshBookmarks();
+
+            // Show success message with warning if applicable
+            const successMessage = validation.warning
+              ? `${dragData.title} moved (${validation.warning})`
+              : dragData.title;
+            showMoveSuccessIndicator(successMessage);
+          } else {
+            console.error('Failed to move bookmark:', result.error);
+            showMoveErrorIndicator(result.error || 'Failed to move bookmark');
+          }
+        } catch (error) {
+          console.error('Error during bookmark move:', error);
+          showMoveErrorIndicator('An error occurred while moving the bookmark');
+        }
+
+        // Clean up visual indicators
+        bookmarkElement.classList.remove('bookmark-drop-zone-active');
+        hideInsertionIndicator();
+
+        return true; // Indicate we handled the drop
+      }
+    });
   }
 
   // Refresh bookmarks after changes
@@ -294,6 +427,127 @@
       return url;
     }
   }
+
+  // Visual feedback functions for drag-and-drop
+  function showInsertionIndicator(dragData: DragData, dropZone: DropZoneData) {
+    // Create or update insertion point indicator
+    let indicator = document.querySelector('.bookmark-insertion-indicator') as HTMLElement;
+
+    if (!indicator) {
+      indicator = document.createElement('div');
+      indicator.className = 'bookmark-insertion-indicator';
+      indicator.innerHTML = `
+        <div class="insertion-line"></div>
+        <div class="insertion-text">Drop here to insert ${dragData.title}</div>
+      `;
+      document.body.appendChild(indicator);
+    }
+
+    // Position the indicator near the target bookmark
+    const rect = bookmarkElement.getBoundingClientRect();
+    const insertBefore = (dropZone.targetIndex || 0) <= (bookmark.index || 0);
+
+    indicator.style.position = 'fixed';
+    indicator.style.left = `${rect.left}px`;
+    indicator.style.width = `${rect.width}px`;
+    indicator.style.zIndex = '10001';
+
+    if (insertBefore) {
+      indicator.style.top = `${rect.top - 2}px`;
+    } else {
+      indicator.style.top = `${rect.bottom - 2}px`;
+    }
+
+    indicator.classList.add('active');
+  }
+
+  function hideInsertionIndicator() {
+    const indicator = document.querySelector('.bookmark-insertion-indicator');
+    if (indicator) {
+      indicator.classList.remove('active');
+      setTimeout(() => {
+        if (indicator.parentNode) {
+          indicator.parentNode.removeChild(indicator);
+        }
+      }, 200);
+    }
+  }
+
+  function showMoveSuccessIndicator(bookmarkTitle: string) {
+    const toast = document.createElement('div');
+    toast.className = 'bookmark-move-success-toast';
+    toast.innerHTML = `
+      <div class="toast-icon">✅</div>
+      <div class="toast-message">Moved "${bookmarkTitle}" successfully</div>
+    `;
+
+    toast.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #10b981;
+      color: white;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      z-index: 10002;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+      animation: slideInRight 0.3s ease;
+    `;
+
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+      toast.style.animation = 'slideOutRight 0.3s ease';
+      setTimeout(() => {
+        if (toast.parentNode) {
+          toast.parentNode.removeChild(toast);
+        }
+      }, 300);
+    }, 3000);
+  }
+
+  function showMoveErrorIndicator(errorMessage: string) {
+    const toast = document.createElement('div');
+    toast.className = 'bookmark-move-error-toast';
+    toast.innerHTML = `
+      <div class="toast-icon">❌</div>
+      <div class="toast-message">${errorMessage}</div>
+    `;
+
+    toast.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #ef4444;
+      color: white;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      z-index: 10002;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+      animation: slideInRight 0.3s ease;
+    `;
+
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+      toast.style.animation = 'slideOutRight 0.3s ease';
+      setTimeout(() => {
+        if (toast.parentNode) {
+          toast.parentNode.removeChild(toast);
+        }
+      }, 300);
+    }, 5000);
+  }
 </script>
 
 <div
@@ -305,6 +559,12 @@
   on:keydown={(e) => e.key === 'Enter' && handleClick()}
   tabindex="0"
   role="button"
+  data-bookmark-id={bookmark.id}
+  data-id={bookmark.id}
+  data-url={bookmark.url || ''}
+  data-title={bookmark.title}
+  data-parent-id={bookmark.parentId || ''}
+  data-index={bookmark.index || 0}
 >
   <div class="favicon-container">
     {#if bookmark.url}
@@ -606,11 +866,82 @@
     white-space: nowrap;
   }
   
-  /* Drag and drop styles */
-  .bookmark-item.dragging {
-    opacity: 0.5;
+  /* Enhanced drag and drop styles */
+  .bookmark-item.dragging,
+  .bookmark-item.dragging-bookmark {
+    opacity: 0.6;
     transform: rotate(2deg) scale(0.95);
     z-index: 1000;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s ease;
+  }
+
+  .bookmark-item.draggable-item {
+    cursor: grab;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    position: relative;
+  }
+
+  .bookmark-item.draggable-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  .bookmark-item.draggable-item:active {
+    cursor: grabbing;
+  }
+
+  /* Drop zone highlighting */
+  .bookmark-item.bookmark-drop-zone-active {
+    background: rgba(59, 130, 246, 0.1) !important;
+    border: 2px dashed #3b82f6 !important;
+    transform: scale(1.02);
+    transition: all 0.2s ease;
+  }
+
+  /* Global styles for drag-and-drop indicators */
+  :global(.bookmark-insertion-indicator) {
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+
+  :global(.bookmark-insertion-indicator.active) {
+    opacity: 1;
+  }
+
+  :global(.bookmark-insertion-indicator .insertion-line) {
+    height: 3px;
+    background: #3b82f6;
+    border-radius: 2px;
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.5);
+  }
+
+  :global(.bookmark-insertion-indicator .insertion-text) {
+    position: absolute;
+    top: -25px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #3b82f6;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+  }
+
+  /* Toast animations - defined globally */
+
+  /* Body state classes for drag feedback */
+  :global(body.bookmark-drag-active) .bookmark-item:not(.dragging-bookmark) {
+    transition: all 0.2s ease;
+  }
+
+  :global(body.bookmark-drag-active) .bookmark-item:not(.dragging-bookmark):hover {
+    background: rgba(59, 130, 246, 0.05);
+    border-color: rgba(59, 130, 246, 0.2);
   }
 
   /* Edit mode styles */

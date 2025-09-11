@@ -1,0 +1,272 @@
+/* Global CSS animations and styles for drag-and-drop functionality */
+
+/* Toast slide animations */
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutRight {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+/* Drag preview animations */
+@keyframes dragStart {
+  from {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+  to {
+    transform: scale(0.95) rotate(2deg);
+    opacity: 0.6;
+  }
+}
+
+@keyframes dropSuccess {
+  0% {
+    transform: scale(1);
+    background: rgba(16, 185, 129, 0.1);
+  }
+  50% {
+    transform: scale(1.05);
+    background: rgba(16, 185, 129, 0.2);
+  }
+  100% {
+    transform: scale(1);
+    background: rgba(16, 185, 129, 0.1);
+  }
+}
+
+/* Insertion point pulse animation */
+@keyframes insertionPulse {
+  0%, 100% {
+    opacity: 0.8;
+    transform: scaleY(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleY(1.2);
+  }
+}
+
+/* Drop zone highlight animation */
+@keyframes dropZoneHighlight {
+  0% {
+    border-color: rgba(59, 130, 246, 0.3);
+    background: rgba(59, 130, 246, 0.05);
+  }
+  50% {
+    border-color: rgba(59, 130, 246, 0.6);
+    background: rgba(59, 130, 246, 0.1);
+  }
+  100% {
+    border-color: rgba(59, 130, 246, 0.3);
+    background: rgba(59, 130, 246, 0.05);
+  }
+}
+
+/* Folder expansion animation for drag operations */
+@keyframes folderExpand {
+  from {
+    max-height: 0;
+    opacity: 0;
+  }
+  to {
+    max-height: 500px;
+    opacity: 1;
+  }
+}
+
+/* Bookmark reorder animation */
+@keyframes bookmarkReorder {
+  0% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(10px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+/* Global drag state styles */
+body.drag-active {
+  user-select: none;
+  cursor: grabbing !important;
+}
+
+body.drag-active * {
+  cursor: grabbing !important;
+}
+
+/* Prevent text selection during drag */
+body.bookmark-drag-active,
+body.folder-drag-active {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+/* Enhanced drop zone styles */
+.enhanced-drop-zone {
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.enhanced-drop-zone.drag-over {
+  animation: dropZoneHighlight 1s ease-in-out infinite;
+}
+
+.enhanced-drop-zone::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border: 2px dashed transparent;
+  border-radius: inherit;
+  pointer-events: none;
+  transition: border-color 0.2s ease;
+}
+
+.enhanced-drop-zone.drag-over::after {
+  border-color: #3b82f6;
+}
+
+/* Insertion indicator styles */
+.bookmark-insertion-indicator {
+  position: fixed;
+  pointer-events: none;
+  z-index: 10001;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.bookmark-insertion-indicator.active {
+  opacity: 1;
+}
+
+.bookmark-insertion-indicator .insertion-line {
+  height: 3px;
+  background: #3b82f6;
+  border-radius: 2px;
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.5);
+  animation: insertionPulse 1s ease-in-out infinite;
+}
+
+.bookmark-insertion-indicator .insertion-text {
+  position: absolute;
+  top: -30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #3b82f6;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+/* Folder insertion indicator */
+.folder-insertion-indicator {
+  position: fixed;
+  width: 100%;
+  height: 4px;
+  background: #10b981;
+  border-radius: 2px;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.5);
+  pointer-events: none;
+  z-index: 10001;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  animation: insertionPulse 1s ease-in-out infinite;
+}
+
+.folder-insertion-indicator.active {
+  opacity: 1;
+}
+
+/* Success/error toast base styles */
+.drag-drop-toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 10002;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  animation: slideInRight 0.3s ease;
+}
+
+.drag-drop-toast.success {
+  background: #10b981;
+  color: white;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.drag-drop-toast.error {
+  background: #ef4444;
+  color: white;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.drag-drop-toast.slide-out {
+  animation: slideOutRight 0.3s ease;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .bookmark-insertion-indicator .insertion-text {
+    font-size: 11px;
+    padding: 4px 8px;
+    top: -25px;
+  }
+  
+  .drag-drop-toast {
+    top: 10px;
+    right: 10px;
+    font-size: 13px;
+    padding: 10px 14px;
+  }
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  .bookmark-insertion-indicator .insertion-line {
+    background: #60a5fa;
+    box-shadow: 0 0 8px rgba(96, 165, 250, 0.5);
+  }
+  
+  .bookmark-insertion-indicator .insertion-text {
+    background: #60a5fa;
+    box-shadow: 0 4px 12px rgba(96, 165, 250, 0.3);
+  }
+  
+  .folder-insertion-indicator {
+    background: #34d399;
+    box-shadow: 0 0 12px rgba(52, 211, 153, 0.5);
+  }
+}

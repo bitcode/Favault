@@ -1,9 +1,11 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import BookmarkItem from './BookmarkItem.svelte';
+  import BookmarkInsertionPoint from './BookmarkInsertionPoint.svelte';
   import type { BookmarkFolder } from './api';
   import { EnhancedDragDropManager } from './dragdrop-enhanced';
   import { editMode } from './stores';
+  import { initFolderExpansionState, getFolderExpanded, setFolderExpanded } from './folder-state';
   // import { BookmarkManager, bookmarkFolders } from './bookmarks'; // Commented out - may be needed for future features
 
   export let folder: BookmarkFolder;
@@ -20,7 +22,7 @@
   const unsubscribeEditMode = editMode.subscribe(value => {
     isEditMode = value;
     console.log('Enhanced edit mode changed to:', value, 'for folder:', folder.title);
-    
+
     // Update drag-drop state when edit mode changes
     setTimeout(() => {
       updateEnhancedDragDropState();
@@ -33,10 +35,17 @@
       updateEnhancedDragDropState();
     }, 50);
   }
-  
+
+  // Initialize expansion state from storage
+  onMount(async () => {
+    await initFolderExpansionState();
+    isExpanded = getFolderExpanded(folder.id, true);
+  });
+
   // Toggle folder expansion
   function toggleExpanded() {
     isExpanded = !isExpanded;
+    setFolderExpanded(folder.id, isExpanded);
   }
 
   // Start inline renaming
@@ -128,7 +137,7 @@
   //     console.error('Failed to refresh bookmarks:', error);
   //   }
   // }
-  
+
   // Handle save-all-edits event
   function handleSaveAllEdits() {
     if (isRenaming) {
@@ -210,11 +219,29 @@
       </svg>
     </div>
   </div>
-  
+
   {#if isExpanded && isVisible}
     <div class="bookmarks-grid" class:expanded={isExpanded}>
-      {#each folder.bookmarks as bookmark (bookmark.id)}
+      {#if $editMode}
+        <!-- Insertion point at the beginning -->
+        <BookmarkInsertionPoint
+          parentId={folder.id}
+          insertIndex={0}
+          folderTitle={folder.title}
+        />
+      {/if}
+
+      {#each folder.bookmarks as bookmark, index (bookmark.id)}
         <BookmarkItem {bookmark} />
+
+        {#if $editMode}
+          <!-- Insertion point after each bookmark -->
+          <BookmarkInsertionPoint
+            parentId={folder.id}
+            insertIndex={index + 1}
+            folderTitle={folder.title}
+          />
+        {/if}
       {/each}
     </div>
   {/if}
@@ -230,7 +257,7 @@
     overflow: hidden;
     position: relative;
   }
-  
+
   .folder-header {
     display: flex;
     align-items: center;
@@ -240,16 +267,16 @@
     background: rgba(255, 255, 255, 0.05);
     gap: 0.5rem;
   }
-  
+
   .folder-header:hover {
     background: rgba(255, 255, 255, 0.1);
   }
-  
+
   .folder-header:focus {
     outline: 2px solid rgba(59, 130, 246, 0.5);
     outline-offset: -2px;
   }
-  
+
   .folder-color {
     width: 12px;
     height: 12px;
@@ -258,7 +285,7 @@
     flex-shrink: 0;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   }
-  
+
   .folder-title {
     flex: 1;
     margin: 0;
@@ -318,29 +345,29 @@
     width: 14px;
     height: 14px;
   }
-  
+
   .bookmark-count {
     color: rgba(255, 255, 255, 0.6);
     font-size: 0.9rem;
     margin-right: 0.5rem;
   }
-  
+
   .expand-icon {
     width: 20px;
     height: 20px;
     color: rgba(255, 255, 255, 0.7);
     transition: transform 0.2s ease;
   }
-  
+
   .expand-icon.expanded {
     transform: rotate(180deg);
   }
-  
+
   .expand-icon svg {
     width: 100%;
     height: 100%;
   }
-  
+
   .bookmarks-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -348,7 +375,7 @@
     padding: 1.25rem;
     animation: slideDown 0.3s ease-out;
   }
-  
+
   @keyframes slideDown {
     from {
       opacity: 0;
@@ -359,18 +386,18 @@
       transform: translateY(0);
     }
   }
-  
+
   @media (max-width: 768px) {
     .bookmarks-grid {
       grid-template-columns: 1fr;
       gap: 0.5rem;
       padding: 1rem;
     }
-    
+
     .folder-header {
       padding: 0.75rem 1rem;
     }
-    
+
     .folder-title {
       font-size: 1rem;
     }

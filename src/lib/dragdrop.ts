@@ -321,21 +321,81 @@ export class DragDropManager {
   }
 
   /**
-   * Create drag ghost element
+   * Create enhanced drag ghost element with better visual feedback
    */
   private static createDragGhost(element: HTMLElement, dragData: DragData): void {
     const ghost = element.cloneNode(true) as HTMLElement;
-    ghost.classList.add('drag-ghost');
-    ghost.style.position = 'fixed';
-    ghost.style.top = '-1000px';
-    ghost.style.left = '-1000px';
-    ghost.style.pointerEvents = 'none';
-    ghost.style.opacity = '0.8';
-    ghost.style.transform = 'rotate(5deg)';
-    ghost.style.zIndex = '10000';
+    ghost.classList.add('drag-ghost', 'enhanced-drag-preview');
+
+    // Enhanced styling for better visual feedback
+    ghost.style.cssText = `
+      position: fixed;
+      top: -1000px;
+      left: -1000px;
+      pointer-events: none;
+      opacity: 0.9;
+      transform: rotate(3deg) scale(1.05);
+      z-index: 10000;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+      border: 2px solid #3b82f6;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      transition: all 0.2s ease;
+    `;
+
+    // Add drag type indicator
+    const typeIndicator = document.createElement('div');
+    typeIndicator.className = 'drag-type-indicator';
+    typeIndicator.innerHTML = dragData.type === 'bookmark' ? '🔖' : '📁';
+    typeIndicator.style.cssText = `
+      position: absolute;
+      top: -10px;
+      right: -10px;
+      width: 24px;
+      height: 24px;
+      background: #3b82f6;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+    `;
+    ghost.appendChild(typeIndicator);
+
+    // Add title overlay for better identification
+    const titleOverlay = document.createElement('div');
+    titleOverlay.className = 'drag-title-overlay';
+    titleOverlay.textContent = dragData.title;
+    titleOverlay.style.cssText = `
+      position: absolute;
+      bottom: -30px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+      white-space: nowrap;
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    `;
+    ghost.appendChild(titleOverlay);
 
     document.body.appendChild(ghost);
     dragState.ghostElement = ghost;
+
+    // Animate ghost appearance
+    setTimeout(() => {
+      if (ghost.parentNode) {
+        ghost.style.opacity = '0.8';
+        ghost.style.transform = 'rotate(2deg) scale(0.95)';
+      }
+    }, 50);
   }
 
   /**
@@ -477,33 +537,81 @@ export class DragDropManager {
     console.log('Enabling edit mode drag functionality');
     document.body.classList.add('drag-enabled');
 
-    // Add CSS for drag states
+    // Add enhanced CSS for drag states
     if (!document.getElementById('drag-drop-styles')) {
       const styles = document.createElement('style');
       styles.id = 'drag-drop-styles';
       styles.textContent = `
+        /* Enhanced draggable item styles */
         .drag-enabled .draggable-item {
           cursor: grab;
+          transition: all 0.2s ease;
+          position: relative;
+        }
+
+        .drag-enabled .draggable-item:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
         .drag-enabled .draggable-item:active {
           cursor: grabbing;
         }
 
+        /* Enhanced dragging state */
         .dragging {
-          opacity: 0.5;
-          transform: rotate(2deg);
+          opacity: 0.6;
+          transform: rotate(2deg) scale(0.95);
+          z-index: 1000;
+          box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+          transition: all 0.2s ease;
         }
 
+        /* Enhanced drop zone highlighting */
         .drag-over {
           background: rgba(59, 130, 246, 0.1) !important;
           border: 2px dashed #3b82f6 !important;
+          transform: scale(1.02);
+          transition: all 0.2s ease;
+          animation: dropZoneHighlight 1s ease-in-out infinite;
         }
 
+        /* Enhanced drag ghost */
         .drag-ghost {
-          box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+          box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+          border-radius: 8px;
+          overflow: hidden;
         }
 
+        .enhanced-drag-preview {
+          animation: dragStart 0.2s ease-out;
+        }
+
+        /* Drop zone pulse animation */
+        @keyframes dropZoneHighlight {
+          0%, 100% {
+            border-color: rgba(59, 130, 246, 0.4);
+            background: rgba(59, 130, 246, 0.05);
+          }
+          50% {
+            border-color: rgba(59, 130, 246, 0.8);
+            background: rgba(59, 130, 246, 0.15);
+          }
+        }
+
+        /* Drag start animation */
+        @keyframes dragStart {
+          from {
+            transform: scale(1) rotate(0deg);
+            opacity: 1;
+          }
+          to {
+            transform: scale(0.95) rotate(2deg);
+            opacity: 0.8;
+          }
+        }
+
+        /* Toast animations */
         @keyframes slideIn {
           from { transform: translateX(100%); opacity: 0; }
           to { transform: translateX(0); opacity: 1; }
@@ -512,6 +620,24 @@ export class DragDropManager {
         @keyframes slideOut {
           from { transform: translateX(0); opacity: 1; }
           to { transform: translateX(100%); opacity: 0; }
+        }
+
+        /* Global drag state styles */
+        body.drag-active {
+          user-select: none;
+        }
+
+        body.drag-active * {
+          cursor: grabbing !important;
+        }
+
+        /* Prevent text selection during drag */
+        body.bookmark-drag-active,
+        body.folder-drag-active {
+          user-select: none;
+          -webkit-user-select: none;
+          -moz-user-select: none;
+          -ms-user-select: none;
         }
       `;
       document.head.appendChild(styles);

@@ -16,7 +16,34 @@ interface ServiceWorkerError {
 
 class ServiceWorkerErrorTracker {
   private errors: ServiceWorkerError[] = [];
-  private maxErrors = 50;
+  private maxErrors = 25; // Reduced from 50 to save memory
+  private cleanupInterval: number | null = null;
+
+  constructor() {
+    // Start periodic cleanup to prevent memory leaks
+    this.startCleanup();
+  }
+
+  private startCleanup(): void {
+    // Clean up old errors every 5 minutes
+    this.cleanupInterval = setInterval(() => {
+      this.cleanupOldErrors();
+    }, 5 * 60 * 1000) as unknown as number;
+  }
+
+  private cleanupOldErrors(): void {
+    const oneHourAgo = Date.now() - (60 * 60 * 1000);
+    const initialCount = this.errors.length;
+
+    this.errors = this.errors.filter(error =>
+      new Date(error.timestamp).getTime() > oneHourAgo
+    );
+
+    const removedCount = initialCount - this.errors.length;
+    if (removedCount > 0) {
+      console.log(`🧹 Cleaned up ${removedCount} old service worker errors`);
+    }
+  }
 
   logError(type: ServiceWorkerError['type'], message: string, error?: Error, context?: any): string {
     const errorId = `SW_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
@@ -27,7 +54,7 @@ class ServiceWorkerErrorTracker {
       type,
       message,
       stack: error?.stack,
-      context
+      context: this.sanitizeContext(context) // Sanitize context to prevent memory leaks
     };
 
     this.errors.unshift(errorEntry);
@@ -37,19 +64,40 @@ class ServiceWorkerErrorTracker {
       this.errors = this.errors.slice(0, this.maxErrors);
     }
 
-    // Log to console with structured format
-    console.group(`🚨 Service Worker Error [${errorId}]`);
-    console.error('Type:', type);
-    console.error('Message:', message);
-    if (error) {
-      console.error('Error:', error);
+    // Log to console with structured format (only in development)
+    if (process.env.NODE_ENV === 'development') {
+      console.group(`🚨 Service Worker Error [${errorId}]`);
+      console.error('Type:', type);
+      console.error('Message:', message);
+      if (error) {
+        console.error('Error:', error);
+      }
+      if (context) {
+        console.error('Context:', context);
+      }
+      console.groupEnd();
+    } else {
+      // In production, just log the essential info
+      console.error(`🚨 SW Error [${errorId}]: ${message}`);
     }
-    if (context) {
-      console.error('Context:', context);
-    }
-    console.groupEnd();
 
     return errorId;
+  }
+
+  private sanitizeContext(context: any): any {
+    if (!context) return context;
+
+    // Limit context size to prevent memory issues
+    const contextStr = JSON.stringify(context);
+    if (contextStr.length > 1000) {
+      return {
+        ...context,
+        _truncated: true,
+        _originalSize: contextStr.length
+      };
+    }
+
+    return context;
   }
 
   getErrors(): ServiceWorkerError[] {
@@ -100,9 +148,179 @@ ${index + 1}. ERROR ID: ${error.id}
       new Date(error.timestamp).getTime() > fiveMinutesAgo
     );
   }
+
+  public cleanup(): void {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+    }
+    this.errors = [];
+    console.log('🧹 Service worker error tracker cleanup completed');
+  }
 }
 
 const errorTracker = new ServiceWorkerErrorTracker();
+
+// Service Worker Lifecycle Manager
+class ServiceWorkerLifecycleManager {
+  private keepAliveInterval: number | null = null;
+  private lastActivity: number = Date.now();
+  private isActive: boolean = true;
+  private activeOperations: Set<string> = new Set();
+  private keepAlivePort: chrome.runtime.Port | null = null;
+
+  constructor() {
+    this.setupLifecycleHandlers();
+    this.startKeepAlive();
+  }
+
+  private setupLifecycleHandlers(): void {
+    // Listen for service worker activation
+    self.addEventListener('activate', (event) => {
+      console.log('🔄 Service worker activated');
+      this.isActive = true;
+      this.lastActivity = Date.now();
+      event.waitUntil(this.handleActivation());
+    });
+
+    // Listen for service worker install
+    self.addEventListener('install', (event) => {
+      console.log('📦 Service worker installing');
+      event.waitUntil(this.handleInstall());
+    });
+
+    // Monitor for potential termination
+    self.addEventListener('beforeunload', () => {
+      console.log('⚠️ Service worker about to terminate');
+      this.cleanup();
+    });
+  }
+
+  private async handleActivation(): Promise<void> {
+    // Take control of all clients immediately
+    await self.clients.claim();
+    console.log('✅ Service worker claimed all clients');
+  }
+
+  private async handleInstall(): Promise<void> {
+    // Skip waiting to activate immediately
+    await self.skipWaiting();
+    console.log('✅ Service worker skipped waiting');
+  }
+
+  private startKeepAlive(): void {
+    // Clear any existing interval
+    if (this.keepAliveInterval) {
+      clearInterval(this.keepAliveInterval);
+    }
+
+    // Set up keep-alive ping every 25 seconds (before 30-second timeout)
+    this.keepAliveInterval = setInterval(() => {
+      this.performKeepAlivePing();
+    }, 25000) as unknown as number;
+
+    console.log('💓 Keep-alive mechanism started');
+  }
+
+  private stopKeepAlive(): void {
+    if (this.keepAliveInterval) {
+      clearInterval(this.keepAliveInterval);
+      this.keepAliveInterval = null;
+      console.log('💤 Keep-alive mechanism stopped');
+    }
+  }
+
+  private restartKeepAliveIfNeeded(): void {
+    if (!this.keepAliveInterval && (this.activeOperations.size > 0 || Date.now() - this.lastActivity < 30000)) {
+      this.startKeepAlive();
+    }
+  }
+
+  private performKeepAlivePing(): void {
+    const now = Date.now();
+    const timeSinceActivity = now - this.lastActivity;
+    const hasActiveOperations = this.activeOperations.size > 0;
+
+    // Only ping if we have active operations or recent activity (reduced from 60s to 30s)
+    if (hasActiveOperations || timeSinceActivity < 30000) {
+      console.log('💓 Keep-alive ping', {
+        activeOperations: this.activeOperations.size,
+        timeSinceActivity
+      });
+
+      // Update activity timestamp
+      this.lastActivity = now;
+
+      // Perform a lightweight operation to keep the service worker alive
+      this.pingClients();
+    } else {
+      // If no recent activity, reduce ping frequency by stopping keep-alive
+      console.log('💤 No recent activity, allowing service worker to sleep');
+      this.stopKeepAlive();
+    }
+  }
+
+  private async pingClients(): Promise<void> {
+    try {
+      const clients = await self.clients.matchAll({ type: 'window' });
+      if (clients.length > 0) {
+        // Send a lightweight ping to the first client
+        clients[0].postMessage({
+          type: 'SERVICE_WORKER_PING',
+          timestamp: Date.now()
+        });
+      }
+    } catch (error) {
+      console.warn('Keep-alive ping failed:', error);
+    }
+  }
+
+  public registerOperation(operationId: string): void {
+    this.activeOperations.add(operationId);
+    this.lastActivity = Date.now();
+
+    // Restart keep-alive if needed
+    this.restartKeepAliveIfNeeded();
+
+    console.log(`🔄 Registered operation: ${operationId} (${this.activeOperations.size} active)`);
+  }
+
+  public unregisterOperation(operationId: string): void {
+    this.activeOperations.delete(operationId);
+    this.lastActivity = Date.now();
+    console.log(`✅ Unregistered operation: ${operationId} (${this.activeOperations.size} active)`);
+  }
+
+  public recordActivity(): void {
+    this.lastActivity = Date.now();
+  }
+
+  public getStatus(): any {
+    return {
+      isActive: this.isActive,
+      lastActivity: this.lastActivity,
+      activeOperations: Array.from(this.activeOperations),
+      timeSinceActivity: Date.now() - this.lastActivity
+    };
+  }
+
+  private cleanup(): void {
+    if (this.keepAliveInterval) {
+      clearInterval(this.keepAliveInterval);
+      this.keepAliveInterval = null;
+    }
+
+    if (this.keepAlivePort) {
+      this.keepAlivePort.disconnect();
+      this.keepAlivePort = null;
+    }
+
+    this.isActive = false;
+    console.log('🧹 Service worker lifecycle cleanup completed');
+  }
+}
+
+const lifecycleManager = new ServiceWorkerLifecycleManager();
 
 class ServiceWorker {
   private isInitialized = false;
@@ -239,23 +457,31 @@ class ServiceWorker {
   }
 
   private async handleCommand(command: string): Promise<void> {
-    if (!this.isInitialized) {
-      throw new Error('Service worker not properly initialized');
-    }
+    const operationId = `command_${command}_${Date.now()}`;
 
-    console.log(`🎯 Handling command: ${command}`);
+    try {
+      lifecycleManager.registerOperation(operationId);
 
-    switch (command) {
-      case 'toggle-search':
-        await this.focusSearchInput();
-        break;
-      case 'toggle-edit-mode':
-        await this.toggleEditMode();
-        break;
-      default:
-        const error = new Error(`Unknown command: ${command}`);
-        errorTracker.logError('command', error.message, error, { command });
-        throw error;
+      if (!this.isInitialized) {
+        throw new Error('Service worker not properly initialized');
+      }
+
+      console.log(`🎯 Handling command: ${command}`);
+
+      switch (command) {
+        case 'toggle-search':
+          await this.focusSearchInput();
+          break;
+        case 'toggle-edit-mode':
+          await this.toggleEditMode();
+          break;
+        default:
+          const error = new Error(`Unknown command: ${command}`);
+          errorTracker.logError('command', error.message, error, { command });
+          throw error;
+      }
+    } finally {
+      lifecycleManager.unregisterOperation(operationId);
     }
   }
 
@@ -296,14 +522,19 @@ class ServiceWorker {
   }
 
   private async handleMessage(message: any, sender: any, sendResponse: any): Promise<void> {
-    if (!this.isInitialized) {
-      sendResponse({ success: false, error: 'Service worker not properly initialized' });
-      return;
-    }
-
-    console.log(`📨 Handling message: ${message.type}`);
+    const operationId = `message_${message.type}_${Date.now()}`;
 
     try {
+      lifecycleManager.registerOperation(operationId);
+      lifecycleManager.recordActivity();
+
+      if (!this.isInitialized) {
+        sendResponse({ success: false, error: 'Service worker not properly initialized' });
+        return;
+      }
+
+      console.log(`📨 Handling message: ${message.type}`);
+
       switch (message.type) {
         case 'GET_BOOKMARKS':
           await this.handleGetBookmarks(sendResponse);
@@ -314,7 +545,8 @@ class ServiceWorker {
             status: 'pong',
             timestamp: Date.now(),
             initialized: this.isInitialized,
-            errors: errorTracker.getErrors().length
+            errors: errorTracker.getErrors().length,
+            lifecycle: lifecycleManager.getStatus()
           });
           break;
 
@@ -322,13 +554,22 @@ class ServiceWorker {
           sendResponse({
             success: true,
             report: errorTracker.getErrorReport(),
-            errors: errorTracker.getErrors()
+            errors: errorTracker.getErrors(),
+            lifecycle: lifecycleManager.getStatus()
           });
           break;
 
         case 'CLEAR_ERRORS':
           errorTracker.getErrors().length = 0;
           sendResponse({ success: true, message: 'Errors cleared' });
+          break;
+
+        case 'GET_LIFECYCLE_STATUS':
+          sendResponse({
+            success: true,
+            status: lifecycleManager.getStatus(),
+            health: this.getHealthStatus()
+          });
           break;
 
         default:
@@ -339,11 +580,16 @@ class ServiceWorker {
     } catch (error) {
       errorTracker.logError('message', 'Message handler error', error as Error, { message, sender });
       sendResponse({ success: false, error: (error as Error).message });
+    } finally {
+      lifecycleManager.unregisterOperation(operationId);
     }
   }
 
   private async handleGetBookmarks(sendResponse: any): Promise<void> {
+    const operationId = `get_bookmarks_${Date.now()}`;
+
     try {
+      lifecycleManager.registerOperation(operationId);
       console.log('📚 Getting bookmarks...');
 
       if (!browserAPI.bookmarks) {
@@ -360,7 +606,8 @@ class ServiceWorker {
         success: true,
         data: bookmarks,
         timing: duration,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        lifecycle: lifecycleManager.getStatus()
       });
 
     } catch (error) {
@@ -370,8 +617,11 @@ class ServiceWorker {
       sendResponse({
         success: false,
         error: (error as Error).message,
-        errorId
+        errorId,
+        lifecycle: lifecycleManager.getStatus()
       });
+    } finally {
+      lifecycleManager.unregisterOperation(operationId);
     }
   }
 

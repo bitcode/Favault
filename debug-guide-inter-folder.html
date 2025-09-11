@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inter-Folder Drag-Drop Debug Guide</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .debug-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .debug-header {
+            color: #333;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .step {
+            background: #f8f9fa;
+            border-left: 4px solid #007bff;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .step h4 {
+            margin-top: 0;
+            color: #007bff;
+        }
+        .code-block {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+        .expected-output {
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        .expected-output::before {
+            content: "Expected Output: ";
+            font-weight: bold;
+            color: #0066cc;
+        }
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        .warning::before {
+            content: "⚠️ Important: ";
+            font-weight: bold;
+            color: #856404;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        .success::before {
+            content: "✅ Success: ";
+            font-weight: bold;
+            color: #155724;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Inter-Folder Drag-Drop Debug Guide</h1>
+    <p>Follow these steps to debug the inter-folder drag-and-drop issue systematically.</p>
+
+    <div class="debug-container">
+        <h2 class="debug-header">Step 1: Load Debug Scripts</h2>
+        
+        <div class="step">
+            <h4>1.1 Load the main debug script</h4>
+            <p>Copy and paste this script into the browser console:</p>
+            <div class="code-block">
+// Copy the contents of debug-inter-folder-dragdrop.js and paste here
+// Or load it directly:
+fetch('/debug-inter-folder-dragdrop.js')
+  .then(response => response.text())
+  .then(script => eval(script))
+  .catch(() => console.log('Debug script not found - paste manually'));
+            </div>
+        </div>
+
+        <div class="step">
+            <h4>1.2 Load the console test script</h4>
+            <div class="code-block">
+fetch('/console-debug-test.js')
+  .then(response => response.text())
+  .then(script => eval(script))
+  .catch(() => console.log('Console test script not found - paste manually'));
+            </div>
+        </div>
+    </div>
+
+    <div class="debug-container">
+        <h2 class="debug-header">Step 2: Run Initial Tests</h2>
+        
+        <div class="step">
+            <h4>2.1 Run comprehensive tests</h4>
+            <div class="code-block">debugTests.runAllTests()</div>
+            <div class="expected-output">
+                Should show test results for edit mode, bookmark data attributes, folder handlers, API availability, and direct API calls.
+            </div>
+        </div>
+
+        <div class="step">
+            <h4>2.2 Check drop handler attachments</h4>
+            <div class="code-block">debugInterFolderDragDrop.checkDropHandlers()</div>
+            <div class="expected-output">
+                Should show that folder containers and headers have drop handlers attached (hasDropHandler: true).
+            </div>
+        </div>
+    </div>
+
+    <div class="debug-container">
+        <h2 class="debug-header">Step 3: Perform Drag-Drop Test</h2>
+        
+        <div class="step">
+            <h4>3.1 Reset debug data</h4>
+            <div class="code-block">debugInterFolderDragDrop.reset()</div>
+        </div>
+
+        <div class="step">
+            <h4>3.2 Perform the drag-drop operation</h4>
+            <p>Now drag a bookmark from one folder to another folder. Watch the console for log messages.</p>
+            <div class="warning">
+                Make sure to drop on the folder itself (blue highlight), not on insertion points within the folder.
+            </div>
+        </div>
+
+        <div class="step">
+            <h4>3.3 Generate debug report</h4>
+            <div class="code-block">debugInterFolderDragDrop.generateReport()</div>
+            <div class="expected-output">
+                Should show a complete timeline of the drag-drop operation with all events and API calls.
+            </div>
+        </div>
+    </div>
+
+    <div class="debug-container">
+        <h2 class="debug-header">Step 4: Analyze Results</h2>
+        
+        <div class="step">
+            <h4>4.1 Check for expected log messages</h4>
+            <p>Look for these key messages in the console during the drag-drop:</p>
+            <div class="code-block">
+🎯 Bookmark entering folder: [bookmark] into [folder]
+🎯 Moving bookmark to folder: {bookmarkId, targetFolderId, etc.}
+✅ Successfully moved bookmark to folder: [bookmark]
+🔄 Fetching fresh bookmark data from Chrome API...
+✅ Organized [X] bookmark folders
+📍 Inter-folder bookmark move detected
+            </div>
+        </div>
+
+        <div class="step">
+            <h4>4.2 Check bookmark location after move</h4>
+            <div class="code-block">
+// Replace 'BOOKMARK_ID' with the actual bookmark ID from the logs
+debugInterFolderDragDrop.checkBookmarkLocation('BOOKMARK_ID')
+            </div>
+            <div class="expected-output">
+                Should show the bookmark's current location according to Chrome's API.
+            </div>
+        </div>
+
+        <div class="step">
+            <h4>4.3 Test direct API call</h4>
+            <div class="code-block">
+// Replace with actual IDs from your test
+debugInterFolderDragDrop.testApiCall('BOOKMARK_ID', 'TARGET_FOLDER_ID')
+            </div>
+            <div class="expected-output">
+                Should succeed and show {success: true} if the API is working correctly.
+            </div>
+        </div>
+    </div>
+
+    <div class="debug-container">
+        <h2 class="debug-header">Step 5: Common Issues and Solutions</h2>
+        
+        <div class="step">
+            <h4>5.1 Drop handler not called</h4>
+            <p><strong>Symptoms:</strong> No "Moving bookmark to folder" messages in console</p>
+            <p><strong>Solutions:</strong></p>
+            <ul>
+                <li>Check if edit mode is enabled</li>
+                <li>Verify drop handlers are attached with checkDropHandlers()</li>
+                <li>Ensure you're dropping on the folder, not insertion points</li>
+            </ul>
+        </div>
+
+        <div class="step">
+            <h4>5.2 API call fails</h4>
+            <p><strong>Symptoms:</strong> "Failed to move bookmark" error messages</p>
+            <p><strong>Solutions:</strong></p>
+            <ul>
+                <li>Check if bookmark ID is valid (not synthetic like "bookmark-0")</li>
+                <li>Verify target folder ID exists</li>
+                <li>Test direct API call to isolate the issue</li>
+            </ul>
+        </div>
+
+        <div class="step">
+            <h4>5.3 API succeeds but UI doesn't update</h4>
+            <p><strong>Symptoms:</strong> "Successfully moved" message but bookmark reverts</p>
+            <p><strong>Solutions:</strong></p>
+            <ul>
+                <li>Check if cache clearing is working</li>
+                <li>Verify refresh is called with forceRefresh=true</li>
+                <li>Look for custom event dispatch and handling</li>
+            </ul>
+        </div>
+
+        <div class="step">
+            <h4>5.4 Validation errors</h4>
+            <p><strong>Symptoms:</strong> "Drop operation blocked by validation" messages</p>
+            <p><strong>Solutions:</strong></p>
+            <ul>
+                <li>Check if drag data has valid bookmark ID</li>
+                <li>Verify drop zone has valid target folder ID</li>
+                <li>Ensure not trying to drop bookmark on itself</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="debug-container">
+        <h2 class="debug-header">Step 6: Enhanced Logging</h2>
+        
+        <p>With the latest fixes, you should now see enhanced logging that includes:</p>
+        <ul>
+            <li><strong>Detailed move parameters:</strong> bookmarkId, targetFolderId, targetIndex, etc.</li>
+            <li><strong>Bookmark count validation:</strong> Ensures valid index calculation</li>
+            <li><strong>Force refresh confirmation:</strong> Shows when cache is cleared and fresh data is fetched</li>
+            <li><strong>Custom event tracking:</strong> Shows when inter-folder move events are dispatched</li>
+        </ul>
+
+        <div class="success">
+            If all tests pass and you see the expected log messages, but the bookmark still reverts, the issue may be in the UI refresh timing or cache management. The enhanced logging will help identify exactly where the process is failing.
+        </div>
+    </div>
+
+    <div class="debug-container">
+        <h2 class="debug-header">Quick Reference Commands</h2>
+        
+        <div class="code-block">
+// Reset and start fresh
+debugInterFolderDragDrop.reset()
+
+// Check system status
+debugTests.runAllTests()
+debugInterFolderDragDrop.checkDropHandlers()
+
+// After drag-drop operation
+debugInterFolderDragDrop.generateReport()
+
+// Check specific bookmark location
+debugInterFolderDragDrop.checkBookmarkLocation('BOOKMARK_ID')
+
+// Test API directly
+debugInterFolderDragDrop.testApiCall('BOOKMARK_ID', 'FOLDER_ID')
+
+// Test refresh mechanism
+debugInterFolderDragDrop.testRefresh()
+        </div>
+    </div>
+</body>
+</html>

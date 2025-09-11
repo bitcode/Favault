@@ -6,21 +6,23 @@ export class BookmarkManager {
   private static lastFetch: number = 0;
   private static readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
-  static async getOrganizedBookmarks(): Promise<BookmarkFolder[]> {
+  static async getOrganizedBookmarks(forceRefresh = false): Promise<BookmarkFolder[]> {
     const now = Date.now();
-    
-    // Return cached data if still valid
-    if (this.bookmarkCache.length > 0 && (now - this.lastFetch) < this.CACHE_DURATION) {
+
+    // Return cached data if still valid and not forcing refresh
+    if (!forceRefresh && this.bookmarkCache.length > 0 && (now - this.lastFetch) < this.CACHE_DURATION) {
       return this.bookmarkCache;
     }
 
     try {
+      console.log('🔄 Fetching fresh bookmark data from Chrome API...');
       const bookmarkTree = await ExtensionAPI.getBookmarkTree();
       const organized = this.organizeBookmarks(bookmarkTree);
-      
+
       this.bookmarkCache = organized;
       this.lastFetch = now;
-      
+
+      console.log(`✅ Organized ${organized.length} bookmark folders`);
       return organized;
     } catch (error) {
       console.error('Failed to get organized bookmarks:', error);

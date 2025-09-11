@@ -42,12 +42,9 @@
 
 <style>
   .edit-mode-controls {
-    position: fixed;
-    top: 2rem;
-    right: 2rem;
     display: flex;
     gap: 0.5rem;
-    z-index: 100;
+    align-items: center;
   }
   
   .edit-toggle {
@@ -115,24 +112,19 @@
   }
   
   @media (max-width: 768px) {
-    .edit-mode-controls {
-      top: 1rem;
-      right: 1rem;
-    }
-    
     .edit-toggle {
       padding: 0.5rem 0.75rem;
       font-size: 0.8rem;
     }
-    
+
     .edit-toggle span {
       display: none;
     }
-    
+
     .settings-button {
       padding: 0.5rem;
     }
-    
+
     .edit-toggle svg,
     .settings-button svg {
       width: 16px;

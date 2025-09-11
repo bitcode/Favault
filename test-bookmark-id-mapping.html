@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bookmark ID Mapping Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-header {
+            color: #333;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .fix-applied {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .fix-applied h4 {
+            color: #155724;
+            margin-top: 0;
+        }
+        .test-steps {
+            background: #f8f9fa;
+            border-left: 4px solid #007bff;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .test-steps ol {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .test-steps li {
+            margin: 8px 0;
+        }
+        .expected-result {
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        .expected-result::before {
+            content: "✅ Expected Result: ";
+            font-weight: bold;
+            color: #0066cc;
+        }
+        .code-block {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+        .before-after {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .before, .after {
+            padding: 15px;
+            border-radius: 4px;
+        }
+        .before {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+        }
+        .after {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+        }
+        .before h4, .after h4 {
+            margin-top: 0;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Bookmark ID Mapping Fix Verification</h1>
+    <p>This test verifies that the bookmark ID mapping issue has been resolved for inter-folder drag-and-drop operations.</p>
+
+    <div class="fix-applied">
+        <h4>🎯 Fix Applied: Added Data Attributes to BookmarkItem.svelte</h4>
+        <p>The root cause was that BookmarkItem components weren't setting the necessary data attributes that the enhanced drag-drop system needs to identify bookmarks.</p>
+        
+        <div class="before-after">
+            <div class="before">
+                <h4>❌ Before (Broken)</h4>
+                <div class="code-block">
+&lt;div class="bookmark-item"&gt;
+  &lt;!-- No data attributes --&gt;
+  &lt;div class="bookmark-title"&gt;Copilot&lt;/div&gt;
+&lt;/div&gt;
+
+// dragdrop-enhanced.ts fallback:
+const bookmarkId = bookmark.getAttribute('data-bookmark-id') ||
+                  bookmark.getAttribute('data-id') ||
+                  `bookmark-${bookmarkIndex}`; // ❌ "bookmark-0"
+                </div>
+            </div>
+            
+            <div class="after">
+                <h4>✅ After (Fixed)</h4>
+                <div class="code-block">
+&lt;div class="bookmark-item"
+     data-bookmark-id="5"
+     data-id="5"
+     data-url="https://copilot.microsoft.com"
+     data-title="Copilot | Microsoft 365 Copilot"
+     data-parent-id="1"
+     data-index="0"&gt;
+  &lt;div class="bookmark-title"&gt;Copilot&lt;/div&gt;
+&lt;/div&gt;
+
+// dragdrop-enhanced.ts now gets:
+const bookmarkId = "5"; // ✅ Actual Chrome bookmark ID
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="test-container">
+        <h2 class="test-header">Test 1: Verify Data Attributes Are Set</h2>
+        
+        <div class="test-steps">
+            <ol>
+                <li>Load the FaVault extension in Chrome</li>
+                <li>Open Chrome DevTools (F12)</li>
+                <li>Go to the Elements tab</li>
+                <li>Find a bookmark element with class "bookmark-item"</li>
+                <li>Check that it has the following data attributes:
+                    <ul>
+                        <li><code>data-bookmark-id</code> (should be a number like "5")</li>
+                        <li><code>data-id</code> (same as bookmark-id)</li>
+                        <li><code>data-url</code> (the bookmark URL)</li>
+                        <li><code>data-title</code> (the bookmark title)</li>
+                        <li><code>data-parent-id</code> (parent folder ID)</li>
+                        <li><code>data-index</code> (position in folder)</li>
+                    </ul>
+                </li>
+            </ol>
+        </div>
+
+        <div class="expected-result">
+            All bookmark elements should have the correct data attributes with actual Chrome bookmark IDs, not synthetic IDs like "bookmark-0".
+        </div>
+    </div>
+
+    <div class="test-container">
+        <h2 class="test-header">Test 2: Inter-Folder Drag-Drop Operation</h2>
+        
+        <div class="test-steps">
+            <ol>
+                <li>Enable edit mode in FaVault</li>
+                <li>Find the bookmark "Copilot | Microsoft 365 Copilot" in folder "1"</li>
+                <li>Drag it to a different folder (e.g., folder "23")</li>
+                <li>Drop it on the folder</li>
+                <li>Check the console for any errors</li>
+                <li>Verify the bookmark appears in the target folder</li>
+            </ol>
+        </div>
+
+        <div class="expected-result">
+            The bookmark should move successfully without "Bookmark id is invalid" errors. Console should show successful move operation with the correct bookmark ID.
+        </div>
+    </div>
+
+    <div class="test-container">
+        <h2 class="test-header">Test 3: Console Log Verification</h2>
+        
+        <div class="test-steps">
+            <ol>
+                <li>Open Chrome DevTools Console</li>
+                <li>Clear the console</li>
+                <li>Perform an inter-folder drag-drop operation</li>
+                <li>Look for the drag start log message</li>
+            </ol>
+        </div>
+
+        <div class="expected-result">
+            You should see a log like: <code>🦁 BOOKMARK DRAG START: "Copilot | Microsoft 365 Copilot" (id: 5)</code> instead of <code>(id: bookmark-0)</code>
+        </div>
+    </div>
+
+    <div class="test-container">
+        <h2 class="test-header">🚨 Troubleshooting</h2>
+        
+        <h4>If you still see "bookmark-0" style IDs:</h4>
+        <ul>
+            <li>Refresh the page to ensure the updated code is loaded</li>
+            <li>Check that the build completed successfully</li>
+            <li>Verify the extension was reloaded in Chrome</li>
+        </ul>
+
+        <h4>If inter-folder moves still fail:</h4>
+        <ul>
+            <li>Check the console for the exact error message</li>
+            <li>Verify the target folder ID is correct</li>
+            <li>Ensure you're dropping on the folder, not on bookmarks within it</li>
+        </ul>
+    </div>
+
+    <div class="test-container">
+        <h2 class="test-header">📊 Success Criteria</h2>
+        
+        <p><strong>The fix is successful if:</strong></p>
+        <ul>
+            <li>✅ Bookmark elements have <code>data-bookmark-id</code> attributes with actual Chrome IDs</li>
+            <li>✅ Console shows correct bookmark IDs in drag start messages</li>
+            <li>✅ Inter-folder moves complete without "Bookmark id is invalid" errors</li>
+            <li>✅ Bookmarks appear in target folders after successful moves</li>
+            <li>✅ Both intra-folder and inter-folder operations work correctly</li>
+        </ul>
+    </div>
+</body>
+</html>
