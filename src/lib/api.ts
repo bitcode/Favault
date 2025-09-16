@@ -185,6 +185,9 @@ export class BookmarkEditAPI extends ExtensionAPI {
   // Special folder IDs that cannot be modified
   private static readonly PROTECTED_FOLDERS = ['0', '1', '2']; // Root, Bookmarks Bar, Other Bookmarks
 
+  // Ensure we only register native listeners once
+  private static listenersInstalled = false;
+
   // Event listeners for bookmark changes
   private static eventListeners: Map<string, Function[]> = new Map();
 
@@ -611,6 +614,11 @@ export class BookmarkEditAPI extends ExtensionAPI {
    * Set up bookmark event listeners
    */
   static setupEventListeners(): void {
+    if (this.listenersInstalled) {
+      return;
+    }
+    this.listenersInstalled = true;
+
     // Listen for bookmark creation
     if (browserAPI.bookmarks.onCreated) {
       browserAPI.bookmarks.onCreated.addListener((id: string, bookmark: BookmarkItem) => {

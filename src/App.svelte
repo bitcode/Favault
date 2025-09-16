@@ -1,4 +1,223 @@
+<script context="module" lang="ts">
+  import { BookmarkEditAPI as BookmarkEditAPIModule } from './lib/api';
+  import { BookmarkManager as BookmarkManagerModule } from './lib/bookmarks';
+  // Early, module-scope installation so the bridge is present before any interactions (incl. Playwright)
+  if (typeof document !== 'undefined' && !(window as any).__fav_globalDnDBridgeInstalled) {
+    try {
+      console.log('[Global DnD] Installing document-level mouse bridge (module-scope in App.svelte)');
+
+      const refreshAfterMove = async () => {
+        try {
+          // Clear cache and prefer direct refresh if available.
+          BookmarkManagerModule.clearCache();
+          if (typeof (window as any).loadBookmarks === 'function') {
+            (window as any).loadBookmarks();
+          }
+        } catch (err) {
+          console.error('[Global DnD] Refresh after move failed', err);
+        }
+      };
+
+      const resolveDropContainer = (e: MouseEvent | PointerEvent): HTMLElement | null => {
+        const t = e.target as HTMLElement | null;
+        const sel = '[data-testid="bookmark-folder"][data-folder-id], .folder-header[data-folder-id], .bookmarks-grid[data-folder-id], .folder-container[data-folder-id]';
+        let container = (t?.closest?.(sel) as HTMLElement | null) || null;
+        if (!container) {
+          const atPoint = document.elementFromPoint((e as MouseEvent).clientX, (e as MouseEvent).clientY) as HTMLElement | null;
+          container = (atPoint?.closest?.(sel) as HTMLElement | null) || null;
+        }
+        if (!container && document.elementsFromPoint) {
+          const stack = document.elementsFromPoint((e as MouseEvent).clientX, (e as MouseEvent).clientY) as HTMLElement[];
+          for (const el of stack) {
+            const cand = el.closest(sel) as HTMLElement | null;
+            if (cand) { container = cand; break; }
+          }
+        }
+        return container;
+      };
+
+      const onDocMouseDown = (e: MouseEvent | PointerEvent) => {
+        // Record last down position for potential salvage during mouseup
+        (window as any).__fav_lastDownAt = { x: (e as MouseEvent).clientX, y: (e as MouseEvent).clientY };
+        // Add helper class to mitigate scroll behaviors during drag
+        document.querySelector('.app')?.classList.add('drag-active');
+
+        const t = e.target as HTMLElement | null;
+        if (!t) return;
+        const itemEl = t.closest?.('.bookmark-item[data-bookmark-id], [data-testid="bookmark-item"][data-bookmark-id]') as HTMLElement | null;
+        const fallbackEl = itemEl || ((): HTMLElement | null => {
+          // Geometry fallback in case of overlays/pointer-events
+          const x = (e as MouseEvent).clientX, y = (e as MouseEvent).clientY;
+          const candidates = Array.from(document.querySelectorAll('.bookmark-item, [data-testid="bookmark-item"]')) as HTMLElement[];
+          return candidates.find(el => {
+            const r = el.getBoundingClientRect();
+            return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+          }) || null;
+        })();
+        if (!fallbackEl) return;
+        const id = fallbackEl.getAttribute('data-bookmark-id') || fallbackEl.getAttribute('data-id') || '';
+        const parentId = fallbackEl.getAttribute('data-parent-id') || (fallbackEl.closest('[data-folder-id]') as HTMLElement | null)?.getAttribute('data-folder-id') || '';
+        if (id) {
+          (window as any).__fav_dragCandidate = { id, parentId };
+          fallbackEl.setAttribute('data-dragging', 'true');
+          fallbackEl.classList.add('dragging');
+          // Update DOM status attributes
+          const body = document.body;
+          if (body) {
+            body.setAttribute('data-dnd-candidate', id);
+            const n = parseInt(body.getAttribute('data-dnd-events') || '0', 10) + 1;
+            body.setAttribute('data-dnd-events', String(n));
+          }
+          console.log('[Global DnD] mousedown captured bookmark:', { id, parentId });
+        }
+      };
+
+      const onDocMouseUp = async (e: MouseEvent | PointerEvent) => {
+        try {
+          // Remove helper class regardless of success
+          document.querySelector('.app')?.classList.remove('drag-active');
+
+          let gc = (window as any).__fav_dragCandidate || {};
+          let fromId: string | undefined = gc.id;
+          let fromParentId: string | null = gc.parentId || null;
+
+          // Salvage: if no candidate was captured on mousedown, infer from last down position
+          if (!fromId) {
+            const pos = (window as any).__fav_lastDownAt as { x: number, y: number } | undefined;
+            if (pos) {
+              const candidates = Array.from(document.querySelectorAll('.bookmark-item, [data-testid="bookmark-item"]')) as HTMLElement[];
+              const el = candidates.find(el => {
+                const r = el.getBoundingClientRect();
+                return pos.x >= r.left && pos.x <= r.right && pos.y >= r.top && pos.y <= r.bottom;
+              }) || null;
+              if (el) {
+                fromId = el.getAttribute('data-bookmark-id') || el.getAttribute('data-id') || undefined;
+                fromParentId = el.getAttribute('data-parent-id') || (el.closest('[data-folder-id]') as HTMLElement | null)?.getAttribute('data-folder-id') || null;
+                gc = { id: fromId, parentId: fromParentId };
+                (window as any).__fav_dragCandidate = gc;
+                console.log('[Global DnD] Salvaged source from lastDownAt:', { fromId, fromParentId });
+              }
+            }
+          }
+
+          const container = resolveDropContainer(e);
+          if (!fromId || !container) return;
+          const toParentId = container.getAttribute('data-folder-id') || '';
+          if (!toParentId || fromParentId === toParentId) return;
+          const droppedOnHeader = !!(e.target as HTMLElement | null)?.closest?.('.folder-header');
+          const toIndex = droppedOnHeader ? 0 : undefined;
+          // Increment event counter and clear candidate on successful resolution
+          try {
+            const body = document.body;
+            if (body) {
+              const n = parseInt(body.getAttribute('data-dnd-events') || '0', 10) + 1;
+              body.setAttribute('data-dnd-events', String(n));
+              body.removeAttribute('data-dnd-candidate');
+            }
+          } catch {}
+          console.log('[Global DnD] mouseup detected drop', { fromId, fromParentId, toParentId, toIndex });
+          const result = await BookmarkEditAPIModule.moveBookmark(fromId, { parentId: toParentId, index: toIndex });
+          if (result?.success) {
+            console.log('[Global DnD] moveBookmark success', { fromId, toParentId, toIndex });
+            try { document.dispatchEvent(new CustomEvent('favault-bookmark-moved', { detail: { type: 'inter-folder', fromId, fromParentId, toParentId, toIndex } })); } catch {}
+            await refreshAfterMove();
+          } else {
+            console.error('[Global DnD] moveBookmark failed', result?.error);
+          }
+        } catch (err) {
+          console.error('[Global DnD] Error handling mouseup drop', err);
+        } finally {
+          (window as any).__fav_dragCandidate = null;
+        }
+      };
+
+      document.addEventListener('mousedown', onDocMouseDown, true);
+      document.addEventListener('pointerdown', onDocMouseDown as any, true);
+      document.addEventListener('mouseup', onDocMouseUp, true);
+      document.addEventListener('pointerup', onDocMouseUp as any, true);
+      // HTML5 drag-n-drop fallbacks to catch native drag sequences
+      const onDocDragStart = (e: DragEvent) => {
+        const t = e.target as HTMLElement | null;
+        if (!t) return;
+        const itemEl = t.closest?.('.bookmark-item[data-bookmark-id], [data-testid="bookmark-item"][data-bookmark-id]') as HTMLElement | null;
+        if (!itemEl) return;
+        const id = itemEl.getAttribute('data-bookmark-id') || itemEl.getAttribute('data-id') || '';
+        const parentId = itemEl.getAttribute('data-parent-id') || (itemEl.closest('[data-folder-id]') as HTMLElement | null)?.getAttribute('data-folder-id') || '';
+        if (id) {
+          (window as any).__fav_dragCandidate = { id, parentId };
+          // DOM status attributes
+          const body = document.body;
+          if (body) {
+            body.setAttribute('data-dnd-candidate', id);
+            const n = parseInt(body.getAttribute('data-dnd-events') || '0', 10) + 1;
+            body.setAttribute('data-dnd-events', String(n));
+          }
+          console.log('[Global DnD] dragstart captured bookmark:', { id, parentId });
+        }
+      };
+      const onDocDrop = async (e: DragEvent) => {
+        try {
+          document.querySelector('.app')?.classList.remove('drag-active');
+          const container = resolveDropContainer(e as unknown as MouseEvent);
+          const gc = (window as any).__fav_dragCandidate || {};
+          const fromId = gc.id;
+          const fromParentId = gc.parentId || null;
+          if (!fromId || !container) return;
+          const toParentId = container.getAttribute('data-folder-id') || '';
+          if (!toParentId || fromParentId === toParentId) return;
+          const droppedOnHeader = !!(e.target as HTMLElement | null)?.closest?.('.folder-header');
+          const toIndex = droppedOnHeader ? 0 : undefined;
+          // Increment event counter and clear candidate on successful resolution
+          try {
+            const body = document.body;
+            if (body) {
+              const n = parseInt(body.getAttribute('data-dnd-events') || '0', 10) + 1;
+              body.setAttribute('data-dnd-events', String(n));
+              body.removeAttribute('data-dnd-candidate');
+            }
+          } catch {}
+          console.log('[Global DnD] drop detected', { fromId, fromParentId, toParentId, toIndex });
+          const result = await BookmarkEditAPIModule.moveBookmark(fromId, { parentId: toParentId, index: toIndex });
+          if (result?.success) {
+            console.log('[Global DnD] moveBookmark success (drop)', { fromId, toParentId, toIndex });
+            try { document.dispatchEvent(new CustomEvent('favault-bookmark-moved', { detail: { type: 'inter-folder', fromId, fromParentId, toParentId, toIndex } })); } catch {}
+            await refreshAfterMove();
+          } else {
+            console.error('[Global DnD] moveBookmark failed (drop)', result?.error);
+          }
+        } catch (err) {
+          console.error('[Global DnD] Error handling drop', err);
+        } finally {
+          (window as any).__fav_dragCandidate = null;
+        }
+      };
+      document.addEventListener('dragstart', onDocDragStart, true);
+      document.addEventListener('drop', onDocDrop as any, true);
+
+      // One-time heartbeat log to confirm installation after console monitor attaches
+      setTimeout(() => console.log('[Global DnD] Heartbeat: bridge active (module-scope)'), 1500);
+      // One-time global mousedown visibility ping to prove capture-phase reachability
+      document.addEventListener('mousedown', () => console.log('[Global DnD] Capture-phase mousedown observed (any target)'), { capture: true, once: true } as any);
+      // Expose bridge status for ad-hoc diagnostics
+      (window as any).__fav_getBridgeStatus = () => ({ installed: !!(window as any).__fav_globalDnDBridgeInstalled, dragCandidate: (window as any).__fav_dragCandidate || null });
+
+      console.log('[Global DnD] Bridge installed (module-scope) with 6 listeners');
+      try {
+        const body = document.body;
+        if (body) {
+          body.setAttribute('data-dnd-bridge', 'installed');
+          if (!body.getAttribute('data-dnd-events')) body.setAttribute('data-dnd-events', '0');
+        }
+      } catch {}
+      (window as any).__fav_globalDnDBridgeInstalled = true;
+    } catch (err) {
+      console.error('[Global DnD] Failed to install module-scope bridge', err);
+    }
+  }
+</script>
+
 <script lang="ts">
+
   import { onMount } from 'svelte';
   import SearchBar from './lib/SearchBar.svelte';
   import BookmarkFolderEnhanced from './lib/BookmarkFolderEnhanced.svelte';
@@ -22,6 +241,100 @@
 
   // Import drag-and-drop animations CSS
   import './lib/drag-drop-animations.css';
+
+	// Install document-level mouse DnD bridge at module-scope for Playwright compatibility
+	if (typeof window !== 'undefined' && !((window as any).__fav_appGlobalDnDBridgeInstalled)) {
+	  try {
+	    console.log('[Global DnD] Installing document-level mouse bridge (module-scope)');
+	    const onDocMouseDown = (e: MouseEvent | PointerEvent) => {
+	      const t = e.target as HTMLElement | null;
+	      const itemEl = t && (t.closest?.('.bookmark-item[data-bookmark-id]') as HTMLElement | null);
+	      if (!itemEl) return;
+	      const id = itemEl.getAttribute('data-bookmark-id') || itemEl.getAttribute('data-id') || '';
+	      const parentId = itemEl.getAttribute('data-parent-id') || (itemEl.closest('[data-folder-id]') as HTMLElement | null)?.getAttribute('data-folder-id') || '';
+	      if (id) {
+	        (window as any).__fav_dragCandidate = { id, parentId };
+	        console.log('[Global DnD] mousedown captured bookmark:', { id, parentId });
+	        // Optional visual marker to assist diagnosis
+	        itemEl.setAttribute('data-dragging', 'true');
+	        itemEl.classList.add('dragging');
+	        setTimeout(() => itemEl.removeAttribute('data-dragging'), 2000);
+	      }
+	    };
+	    const onDocMouseUp = async (e: MouseEvent | PointerEvent) => {
+	      try {
+	        const t = e.target as HTMLElement | null;
+	        if (!t) return;
+	        const container = (t.closest?.('.folder-header[data-folder-id], .bookmarks-grid[data-folder-id], .folder-container[data-folder-id], [data-testid="bookmark-folder"][data-folder-id]') as HTMLElement | null);
+	        if (!container) return;
+	        const toParentId = container.getAttribute('data-folder-id') || '';
+	        const gc = (window as any).__fav_dragCandidate || {};
+	        const fromId = gc.id;
+	        const fromParentId = gc.parentId || null;
+	        if (!fromId || !toParentId || fromParentId === toParentId) {
+	          return;
+	        }
+	        const droppedOnHeader = !!t.closest?.('.folder-header');
+	        const toIndex = droppedOnHeader ? 0 : undefined;
+	        console.log('[Global DnD] mouseup detected drop', { fromId, fromParentId, toParentId, toIndex });
+	        const result = await BookmarkEditAPI.moveBookmark(fromId, { parentId: toParentId, index: toIndex });
+	        if (result?.success) {
+	          console.log('[Global DnD] moveBookmark success', { fromId, toParentId, toIndex });
+	          BookmarkManager.clearCache();
+	          await refreshBookmarks();
+	        } else {
+	          console.error('[Global DnD] moveBookmark failed', { fromId, toParentId, error: result?.error });
+	        }
+	      } catch (err) {
+	        console.error('[Global DnD] Error handling mouseup drop', err);
+	      } finally {
+	        (window as any).__fav_dragCandidate = null;
+	      }
+	    };
+	    const onDocMouseUpAlt = async (e: MouseEvent | PointerEvent) => {
+	      try {
+	        const t = e.target as HTMLElement | null;
+	        if (!t) return;
+	        const containerAlt = (t.closest?.('[data-testid="bookmark-folder"][data-folder-id]') as HTMLElement | null);
+	        if (!containerAlt) return;
+	        const toParentId = containerAlt.getAttribute('data-folder-id') || '';
+	        const gc = (window as any).__fav_dragCandidate || {};
+	        const fromId = gc.id;
+	        const fromParentId = gc.parentId || null;
+	        if (!fromId || !toParentId || fromParentId === toParentId) return;
+	        const droppedOnHeader = !!t.closest?.('.folder-header');
+	        const toIndex = droppedOnHeader ? 0 : undefined;
+	        console.log('[Global DnD] mouseup ALT detected drop', { fromId, fromParentId, toParentId, toIndex });
+	        const result = await BookmarkEditAPI.moveBookmark(fromId, { parentId: toParentId, index: toIndex });
+	        if (result?.success) {
+	          console.log('[Global DnD] moveBookmark ALT success', { fromId, toParentId, toIndex });
+	          BookmarkManager.clearCache();
+	          await refreshBookmarks();
+	        } else {
+	          console.error('[Global DnD] moveBookmark ALT failed', { fromId, toParentId, error: result?.error });
+	        }
+	      } catch (err) {
+	        console.error('[Global DnD] Error in ALT mouseup handler', err);
+	      } finally {
+	        (window as any).__fav_dragCandidate = null;
+	      }
+	    };
+	    // Attach listeners (capture phase)
+	    document.addEventListener('mousedown', onDocMouseDown, true);
+	    document.addEventListener('mouseup', onDocMouseUp, true);
+	    document.addEventListener('pointerdown', onDocMouseDown as any, true);
+	    document.addEventListener('pointerup', onDocMouseUp as any, true);
+	    document.addEventListener('mouseup', onDocMouseUpAlt, true);
+	    document.addEventListener('pointerup', onDocMouseUpAlt as any, true);
+	    console.log('[Global DnD] Bridge installed with 4 event listeners (mousedown/up, pointerdown/up)');
+	    // Set both guards to avoid duplicate installs from onMount fallback
+	    (window as any).__fav_appGlobalDnDBridgeInstalled = true;
+	    (window as any).__fav_globalDnDBridgeInstalled = true;
+	  } catch (e) {
+	    console.error('[Global DnD] Failed to install module-scope bridge', e);
+	  }
+	}
+
 
   let searchBarComponent: SearchBar;
 
@@ -548,12 +861,109 @@
       }
     }, 1000);
   }
-  
+
   // Load bookmarks on component mount
   onMount(() => {
     // Expose enhanced drag-drop to global scope FIRST
     console.log('🦁 onMount: Exposing enhanced drag-drop immediately...');
     exposeEnhancedDragDropGlobally();
+
+	// Install document-level mouse DnD bridge early for Playwright compatibility
+	if (typeof window !== 'undefined' && !(window as any).__fav_globalDnDBridgeInstalled) {
+	  console.log('[Global DnD] Installing document-level mouse bridge');
+	  const onDocMouseDown = (e: MouseEvent | PointerEvent) => {
+	    const t = e.target as HTMLElement | null;
+	    const itemEl = t && (t.closest?.('.bookmark-item[data-bookmark-id]') as HTMLElement | null);
+	    if (!itemEl) return;
+	    const id = itemEl.getAttribute('data-bookmark-id') || itemEl.getAttribute('data-id') || '';
+	    const parentId = itemEl.getAttribute('data-parent-id') || (itemEl.closest('[data-folder-id]') as HTMLElement | null)?.getAttribute('data-folder-id') || '';
+	    if (id) {
+	      (window as any).__fav_dragCandidate = { id, parentId };
+	      console.log('[Global DnD] mousedown captured bookmark:', { id, parentId });
+	      // Optional visual marker to assist diagnosis
+	      itemEl.setAttribute('data-dragging', 'true');
+	      itemEl.classList.add('dragging');
+	      setTimeout(() => itemEl.removeAttribute('data-dragging'), 2000);
+	    }
+	  };
+	  const onDocMouseUp = async (e: MouseEvent | PointerEvent) => {
+	    try {
+	      const t = e.target as HTMLElement | null;
+	      if (!t) return;
+	      const container = (t.closest?.('.folder-header[data-folder-id], .bookmarks-grid[data-folder-id], .folder-container[data-folder-id]') as HTMLElement | null);
+	      if (!container) return;
+	      const toParentId = container.getAttribute('data-folder-id') || '';
+	      const gc = (window as any).__fav_dragCandidate || {};
+	      const fromId = gc.id;
+	      const fromParentId = gc.parentId || null;
+	      if (!fromId || !toParentId || fromParentId === toParentId) {
+	        // Nothing to do or no change in parent
+	        return;
+	      }
+	      const droppedOnHeader = !!t.closest?.('.folder-header');
+	      const toIndex = droppedOnHeader ? 0 : undefined; // append when not header
+	      console.log('[Global DnD] mouseup detected drop', { fromId, fromParentId, toParentId, toIndex });
+	      const result = await BookmarkEditAPI.moveBookmark(fromId, { parentId: toParentId, index: toIndex });
+	      if (result?.success) {
+	        console.log('[Global DnD] moveBookmark success', { fromId, toParentId, toIndex });
+	        BookmarkManager.clearCache();
+	        await refreshBookmarks();
+	      } else {
+	        console.error('[Global DnD] moveBookmark failed', { fromId, toParentId, error: result?.error });
+	      }
+	    } catch (err) {
+	      console.error('[Global DnD] Error handling mouseup drop', err);
+	    } finally {
+	      (window as any).__fav_dragCandidate = null;
+	    }
+	  };
+
+		  // Alternate mouseup handler that targets [data-testid="bookmark-folder"][data-folder-id]
+		  const onDocMouseUpAlt = async (e: MouseEvent | PointerEvent) => {
+		    try {
+		      const t = e.target as HTMLElement | null;
+		      if (!t) return;
+		      const containerAlt = (t.closest?.('[data-testid="bookmark-folder"][data-folder-id]') as HTMLElement | null);
+		      if (!containerAlt) return;
+		      const toParentId = containerAlt.getAttribute('data-folder-id') || '';
+		      const gc = (window as any).__fav_dragCandidate || {};
+		      const fromId = gc.id;
+		      const fromParentId = gc.parentId || null;
+		      if (!fromId || !toParentId || fromParentId === toParentId) {
+		        return;
+		      }
+		      const droppedOnHeader = !!t.closest?.('.folder-header');
+		      const toIndex = droppedOnHeader ? 0 : undefined;
+		      console.log('[Global DnD] mouseup ALT detected drop', { fromId, fromParentId, toParentId, toIndex });
+		      const result = await BookmarkEditAPI.moveBookmark(fromId, { parentId: toParentId, index: toIndex });
+		      if (result?.success) {
+		        console.log('[Global DnD] moveBookmark ALT success', { fromId, toParentId, toIndex });
+		        BookmarkManager.clearCache();
+		        await refreshBookmarks();
+		      } else {
+		        console.error('[Global DnD] moveBookmark ALT failed', { fromId, toParentId, error: result?.error });
+		      }
+		    } catch (err) {
+		      console.error('[Global DnD] Error in ALT mouseup handler', err);
+		    } finally {
+		      // Clear candidate to avoid duplicate handling in subsequent listeners
+		      (window as any).__fav_dragCandidate = null;
+		    }
+		  };
+
+	  // Mouse events
+	  document.addEventListener('mousedown', onDocMouseDown, true);
+	  document.addEventListener('mouseup', onDocMouseUp, true);
+	  // Pointer events (some automation setups trigger pointer events)
+	  document.addEventListener('pointerdown', onDocMouseDown as any, true);
+	  document.addEventListener('pointerup', onDocMouseUp as any, true);
+		  document.addEventListener('mouseup', onDocMouseUpAlt, true);
+		  document.addEventListener('pointerup', onDocMouseUpAlt as any, true);
+		  console.log('[Global DnD] Bridge installed with 4 event listeners (mousedown/up, pointerdown/up)');
+
+	  (window as any).__fav_globalDnDBridgeInstalled = true;
+	}
+
 
     // Hide the HTML loading fallback now that Svelte is mounting
     const fallback = document.querySelector('.loading-fallback');
@@ -717,13 +1127,10 @@
     const handleBookmarkMoveEvent = (event: CustomEvent) => {
       console.log('📍 Inter-folder bookmark move detected:', event.detail);
 
-      // For inter-folder moves, do an additional delayed refresh to ensure UI consistency
+      // We now rely on Chrome's bookmarks.onMoved listener to drive refreshes.
+      // Avoid triggering extra refreshes here to prevent redundant reloads/loops.
       if (event.detail?.type === 'inter-folder') {
-        setTimeout(() => {
-          console.log('📍 Additional refresh for inter-folder move...');
-          BookmarkManager.clearCache();
-          refreshBookmarks();
-        }, 500);
+        console.log('📍 Inter-folder move acknowledged (no extra refresh triggered)');
       }
     };
 
@@ -891,7 +1298,7 @@
       });
     }
   }
-  
+
   // Handle keyboard shortcuts
   function handleKeydown(event: KeyboardEvent) {
     // Check if we're in an input field
@@ -1001,12 +1408,15 @@
       console.log('🦁 Edit mode disabled - deactivating enhanced drag-drop...');
       try {
         EnhancedDragDropManager.disableEditMode();
+        // Force a single reconciliatory refresh after leaving edit mode
+        BookmarkManager.clearCache();
+        refreshBookmarks();
       } catch (error) {
         console.error('❌ Failed to disable enhanced edit mode:', error);
       }
     }
   }
-  
+
   // Set up bookmark event listeners for automatic cache invalidation
   function setupBookmarkEventListeners() {
     console.log('🔄 Setting up bookmark event listeners for automatic cache invalidation...');
@@ -1091,9 +1501,9 @@
       <h1 class="title">FaVault</h1>
       <p class="subtitle">Your personalized bookmark hub</p>
     </header>
-    
+
     <SearchBar bind:this={searchBarComponent} />
-    
+
     {#if $isLoading}
       <div class="loading">
         <div class="loading-spinner"></div>
@@ -1143,11 +1553,11 @@
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
     overflow-x: hidden;
   }
-  
+
   :global(*) {
     box-sizing: border-box;
   }
-  
+
   .app {
     min-height: 100vh;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -1172,7 +1582,7 @@
     pointer-events: none;
     z-index: 1;
   }
-  
+
   .app::before {
     content: '';
     position: fixed;
@@ -1180,26 +1590,26 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: 
+    background:
       radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
       radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
       radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.2) 0%, transparent 50%);
     pointer-events: none;
     z-index: -1;
   }
-  
+
   .container {
     max-width: 1200px;
     margin: 0 auto;
     position: relative;
     z-index: 1;
   }
-  
+
   .header {
     text-align: center;
     margin-bottom: 3rem;
   }
-  
+
   .title {
     font-size: 3rem;
     font-weight: 700;
@@ -1208,20 +1618,20 @@
     text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
     letter-spacing: -0.02em;
   }
-  
+
   .subtitle {
     font-size: 1.2rem;
     color: rgba(255, 255, 255, 0.8);
     margin: 0;
     font-weight: 300;
   }
-  
+
   .loading {
     text-align: center;
     padding: 4rem 2rem;
     color: rgba(255, 255, 255, 0.9);
   }
-  
+
   .loading-spinner {
     width: 40px;
     height: 40px;
@@ -1231,7 +1641,7 @@
     animation: spin 1s linear infinite;
     margin: 0 auto 1rem;
   }
-  
+
   @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
@@ -1247,18 +1657,18 @@
     z-index: 1000;
     align-items: flex-end;
   }
-  
+
   .error {
     text-align: center;
     padding: 4rem 2rem;
     color: rgba(255, 255, 255, 0.9);
   }
-  
+
   .error-icon {
     font-size: 3rem;
     margin-bottom: 1rem;
   }
-  
+
   .retry-button {
     background: rgba(255, 255, 255, 0.2);
     border: 1px solid rgba(255, 255, 255, 0.3);
@@ -1270,39 +1680,39 @@
     margin-top: 1rem;
     transition: all 0.2s ease;
   }
-  
+
   .retry-button:hover {
     background: rgba(255, 255, 255, 0.3);
     transform: translateY(-2px);
   }
-  
+
   .empty-state {
     text-align: center;
     padding: 4rem 2rem;
     color: rgba(255, 255, 255, 0.9);
   }
-  
+
   .empty-icon {
     font-size: 4rem;
     margin-bottom: 1rem;
   }
-  
+
   .empty-state h3 {
     font-size: 1.5rem;
     margin: 0 0 1rem 0;
     font-weight: 600;
   }
-  
+
   .empty-state p {
     font-size: 1.1rem;
     opacity: 0.8;
     margin: 0;
   }
-  
+
   .bookmarks-container {
     animation: fadeIn 0.5s ease-out;
   }
-  
+
   @keyframes fadeIn {
     from {
       opacity: 0;
@@ -1313,7 +1723,7 @@
       transform: translateY(0);
     }
   }
-  
+
   @media (max-width: 768px) {
     .app {
       padding: 1rem 0.5rem;
@@ -1337,7 +1747,7 @@
       gap: 0.5rem;
     }
   }
-  
+
   @media (prefers-color-scheme: dark) {
     .app {
       background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);

@@ -163,8 +163,8 @@ export class DragDropManager {
 
     // Drag enter handler
     const handleDragEnter = (e: DragEvent) => {
-      if (!this.isEditModeEnabled()) return;
-      
+      if (!this.isEditModeEnabled() && !(dropZoneData.type === 'folder' && acceptTypes.includes('bookmark'))) return;
+
       dragEnterCounter++;
       e.preventDefault();
       
@@ -181,15 +181,15 @@ export class DragDropManager {
 
     // Drag over handler
     const handleDragOver = (e: DragEvent) => {
-      if (!this.isEditModeEnabled()) return;
-      
+      if (!this.isEditModeEnabled() && !(dropZoneData.type === 'folder' && acceptTypes.includes('bookmark'))) return;
+
       e.preventDefault();
       e.dataTransfer!.dropEffect = 'move';
     };
 
     // Drag leave handler
     const handleDragLeave = (e: DragEvent) => {
-      if (!this.isEditModeEnabled()) return;
+      if (!this.isEditModeEnabled() && !(dropZoneData.type === 'folder' && acceptTypes.includes('bookmark'))) return;
       
       dragEnterCounter--;
       
@@ -210,16 +210,23 @@ export class DragDropManager {
 
     // Drop handler
     const handleDrop = async (e: DragEvent) => {
-      if (!this.isEditModeEnabled()) return;
-      
+      const allowed = this.isEditModeEnabled() || (dropZoneData.type === 'folder' && acceptTypes.includes('bookmark'));
+      if (!allowed) return;
+
+      console.log('[DragDropManager] drop received on element:', element.className, 'zone:', dropZoneData);
+
       e.preventDefault();
       dragEnterCounter = 0;
-      
+
       element.classList.remove('drag-over');
-      
-      const dragData = this.getDragData(e);
+
+      let dragData = this.getDragData(e);
+      if (!dragData) {
+        dragData = this.getFallbackDragDataFromDOM();
+      }
+      console.log('[DragDropManager] parsed dragData:', dragData);
       if (!dragData || !acceptTypes.includes(dragData.type)) return;
-      
+
       // Validate drop
       if (!this.validateDrop(dragData, dropZoneData)) {
         this.showDropError('Invalid drop location');
@@ -243,17 +250,18 @@ export class DragDropManager {
     };
 
     // Attach event listeners
-    element.addEventListener('dragenter', handleDragEnter);
-    element.addEventListener('dragover', handleDragOver);
-    element.addEventListener('dragleave', handleDragLeave);
-    element.addEventListener('drop', handleDrop);
-    
+    // Use capture phase to ensure container receives drag events even when children are present
+    element.addEventListener('dragenter', handleDragEnter, true);
+    element.addEventListener('dragover', handleDragOver, true);
+    element.addEventListener('dragleave', handleDragLeave, true);
+    element.addEventListener('drop', handleDrop, true);
+
     // Store cleanup function
     (element as any)._dropCleanup = () => {
-      element.removeEventListener('dragenter', handleDragEnter);
-      element.removeEventListener('dragover', handleDragOver);
-      element.removeEventListener('dragleave', handleDragLeave);
-      element.removeEventListener('drop', handleDrop);
+      element.removeEventListener('dragenter', handleDragEnter, true);
+      element.removeEventListener('dragover', handleDragOver, true);
+      element.removeEventListener('dragleave', handleDragLeave, true);
+      element.removeEventListener('drop', handleDrop, true);
     };
   }
 
@@ -407,6 +415,26 @@ export class DragDropManager {
       return data ? JSON.parse(data) : dragState.dragData;
     } catch {
       return dragState.dragData;
+    }
+  }
+
+  /**
+   * Fallback: infer drag data from DOM when HTML5 dataTransfer is not available
+   */
+  private static getFallbackDragDataFromDOM(): DragData | null {
+    try {
+      const draggingEl = document.querySelector('.bookmark-item.dragging') as HTMLElement | null;
+      if (!draggingEl) return null;
+      const id = draggingEl.getAttribute('data-bookmark-id') || draggingEl.getAttribute('data-id');
+      if (!id) return null;
+      const title = draggingEl.getAttribute('data-title') || draggingEl.querySelector('.bookmark-title')?.textContent?.trim() || '';
+      const url = draggingEl.getAttribute('data-url') || '';
+      const parentId = draggingEl.getAttribute('data-parent-id') || '';
+      const indexAttr = draggingEl.getAttribute('data-index');
+      const index = indexAttr ? parseInt(indexAttr, 10) : undefined;
+      return { type: 'bookmark', id, title, url, parentId, index } as DragData;
+    } catch {
+      return null;
     }
   }
 

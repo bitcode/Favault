@@ -565,8 +565,8 @@
   });
 </script>
 
-<div class="folder-container" bind:this={folderElement} class:draggable-item={isEditMode}>
-  <div class="folder-header" bind:this={folderHeader} on:click={toggleExpanded} on:keydown={(e) => e.key === 'Enter' && toggleExpanded()} tabindex="0" role="button">
+<div class="folder-container" data-testid="bookmark-folder" data-folder-id={folder.id} bind:this={folderElement} class:draggable-item={isEditMode}>
+  <div class="folder-header" data-testid="folder-header" data-folder-id={folder.id} bind:this={folderHeader} on:click={toggleExpanded} on:keydown={(e) => e.key === 'Enter' && toggleExpanded()} tabindex="0" role="button">
     <!-- Drag handle (only visible in edit mode) -->
     {#if isEditMode}
       <div class="drag-handle" bind:this={dragHandle} title="Drag to reorder folder">
