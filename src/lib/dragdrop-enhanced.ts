@@ -71,6 +71,8 @@ export class EnhancedDragDropManager {
   private static lastManualScrollTime: number | null = null;
   private static scrollPreventionHandler: ((e: Event) => void) | null = null;
   private static manualScrollHandler: (() => void) | null = null;
+  private static mousedownScrollPreventionHandler: ((e: MouseEvent) => void) | null = null;
+  private static isScrollPreventionActive = false;
 
   // Refresh system management
   private static pendingRefreshTimers: Set<number> = new Set();
@@ -624,6 +626,64 @@ export class EnhancedDragDropManager {
         this.lastManualScrollTime = Date.now();
       }
     });
+
+    this.isScrollPreventionActive = true;
+  }
+
+  /**
+   * Prevent auto-scrolling on mousedown in edit mode (before drag starts)
+   */
+  static preventMousedownAutoScroll(): void {
+    if (this.isScrollPreventionActive) {
+      return; // Already active
+    }
+
+    this.debugLog('🦁 Preventing auto-scroll on mousedown in edit mode');
+
+    // Store current scroll position
+    this.originalScrollPosition = {
+      x: window.scrollX,
+      y: window.scrollY
+    };
+
+    // Prevent focus-related scrolling on mousedown
+    this.mousedownScrollPreventionHandler = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+
+      // Only prevent scrolling for draggable items in edit mode
+      if (!this.editModeEnabled || !target) {
+        return;
+      }
+
+      // Check if this is a draggable item
+      const isDraggableItem = target.classList.contains('bookmark-item') ||
+                             target.classList.contains('folder-container') ||
+                             target.closest('.bookmark-item') ||
+                             target.closest('.folder-container');
+
+      if (isDraggableItem) {
+        // Store the scroll position before the event
+        const scrollBeforeX = window.scrollX;
+        const scrollBeforeY = window.scrollY;
+
+        // Use requestAnimationFrame to check if scroll position changed after the event
+        requestAnimationFrame(() => {
+          const scrollAfterX = window.scrollX;
+          const scrollAfterY = window.scrollY;
+
+          // If scroll position changed, restore it
+          if (scrollAfterX !== scrollBeforeX || scrollAfterY !== scrollBeforeY) {
+            this.debugLog(`🦁 Detected unwanted scroll on mousedown, restoring position: (${scrollBeforeX}, ${scrollBeforeY})`);
+            window.scrollTo(scrollBeforeX, scrollBeforeY);
+          }
+        });
+      }
+    };
+
+    // Add mousedown listener to detect and correct unwanted scrolling
+    document.addEventListener('mousedown', this.mousedownScrollPreventionHandler, { capture: true });
+
+    this.isScrollPreventionActive = true;
   }
 
   /**
@@ -650,11 +710,17 @@ export class EnhancedDragDropManager {
       window.removeEventListener('touchmove', this.manualScrollHandler);
     }
 
+    if (this.mousedownScrollPreventionHandler) {
+      document.removeEventListener('mousedown', this.mousedownScrollPreventionHandler, { capture: true });
+    }
+
     // Clear stored data
     this.originalScrollPosition = null;
     this.lastManualScrollTime = null;
     this.scrollPreventionHandler = null;
     this.manualScrollHandler = null;
+    this.mousedownScrollPreventionHandler = null;
+    this.isScrollPreventionActive = false;
   }
 
   /**
@@ -914,6 +980,32 @@ export class EnhancedDragDropManager {
       } else {
         console.error('❌ UI refresh failed');
       }
+
+      // Clean up ALL drop zones and visual states after successful move
+      setTimeout(() => {
+        // Clear all drop zone visual states
+        document.querySelectorAll('.insertion-point').forEach(point => {
+          point.classList.remove('drag-over', 'drag-over-insertion');
+        });
+        
+        document.querySelectorAll('.folder-container').forEach(folder => {
+          folder.classList.remove(
+            'drop-zone-active',
+            'drop-zone-folder-reorder',
+            'drop-zone',
+            'drop-target',
+            'drop-success'
+          );
+          folder.removeAttribute('data-drop-zone');
+        });
+        
+        // Clear any stuck green highlighting
+        document.querySelectorAll('.drop-zone-active, .drop-zone, .drop-target').forEach(el => {
+          el.classList.remove('drop-zone-active', 'drop-zone', 'drop-target');
+        });
+        
+        console.log('✅ Cleaned up all drop zone visual states after successful move');
+      }, 150);
 
       // Add visual feedback for successful move (after UI refresh)
       setTimeout(() => {
@@ -1545,16 +1637,8 @@ export class EnhancedDragDropManager {
           appContainer.classList.remove('drag-active');
         }
 
-        // Clean up visual states - include test-compatible classes
-        document.querySelectorAll('.folder-container').forEach(f => {
-          f.classList.remove('drop-zone-active', 'drop-zone-folder-reorder', 'drop-success', 'drop-zone', 'drop-target');
-          f.removeAttribute('data-drop-zone');
-        });
-
-        // Clean up insertion point drag-over states
-        document.querySelectorAll('.insertion-point').forEach(point => {
-          point.classList.remove('drag-over');
-        });
+        // Comprehensive cleanup of ALL visual states
+        this.cleanupAllDropZones();
 
         // Restore normal scroll behavior
         this.restoreAutoScroll();
@@ -1862,6 +1946,9 @@ export class EnhancedDragDropManager {
     this.editModeEnabled = true;
     document.body.classList.add('edit-mode');
 
+    // Enable mousedown scroll prevention for edit mode
+    this.preventMousedownAutoScroll();
+
     // Re-initialize folder mappings in case they weren't found during initial setup
     console.log('🦁 Restoring bookmark folder mappings for edit mode...');
     const mappingResult = await this.restoreBookmarkFolderMappings();
@@ -1906,11 +1993,58 @@ export class EnhancedDragDropManager {
   }
 
   /**
+   * Global cleanup of all drop zone visual states
+   */
+  static cleanupAllDropZones(): void {
+    console.log('🧹 Cleaning up all drop zones globally');
+    
+    // Clean up insertion points
+    document.querySelectorAll('.insertion-point').forEach(point => {
+      point.classList.remove('drag-over', 'drag-over-insertion');
+    });
+    
+    // Clean up folder containers
+    document.querySelectorAll('.folder-container').forEach(folder => {
+      folder.classList.remove(
+        'drop-zone-active',
+        'drop-zone-folder-reorder',
+        'drop-zone-bookmark-target',
+        'drop-zone',
+        'drop-target',
+        'drop-success',
+        'dragging'
+      );
+      folder.removeAttribute('data-drop-zone');
+      folder.removeAttribute('data-dragging');
+    });
+    
+    // Clean up bookmark items
+    document.querySelectorAll('.bookmark-item').forEach(item => {
+      item.classList.remove('dragging');
+      item.removeAttribute('data-dragging');
+    });
+    
+    // Clean up body classes
+    document.body.classList.remove('dragging-folder-active', 'dragging-bookmark-active', 'drag-active');
+    
+    // Clean up app container
+    const appContainer = document.querySelector('.app');
+    if (appContainer) {
+      appContainer.classList.remove('drag-active');
+    }
+    
+    console.log('✅ All drop zones cleaned up');
+  }
+
+  /**
    * Disable edit mode
    */
   static disableEditMode(): void {
     this.editModeEnabled = false;
     document.body.classList.remove('edit-mode', 'dragging-folder-active', 'dragging-bookmark-active');
+
+    // Restore normal scroll behavior
+    this.restoreAutoScroll();
 
     // Clean up bookmark drag functionality
     document.querySelectorAll('.bookmark-item').forEach(bookmark => {

@@ -595,13 +595,11 @@ export class DragDropManager {
           transition: all 0.2s ease;
         }
 
-        /* Enhanced drop zone highlighting */
+        /* Enhanced drop zone highlighting - stable version without flickering */
         .drag-over {
           background: rgba(59, 130, 246, 0.1) !important;
           border: 2px dashed #3b82f6 !important;
-          transform: scale(1.02);
-          transition: all 0.2s ease;
-          animation: dropZoneHighlight 1s ease-in-out infinite;
+          transition: background-color 0.2s ease, border-color 0.2s ease;
         }
 
         /* Enhanced drag ghost */

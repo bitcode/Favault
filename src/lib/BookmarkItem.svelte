@@ -10,7 +10,7 @@
   import AutoSaveStatus from './AutoSaveStatus.svelte';
   import { BookmarkValidator, createRealTimeValidator, type ValidationResult } from './validation';
   import ValidationStatus from './ValidationStatus.svelte';
-  import { DragDropValidator } from './drag-drop-validation';
+  // import { DragDropValidator } from './drag-drop-validation'; // Disabled with on-bookmark drop zones
 
   export let bookmark: BookmarkItem;
 
@@ -381,17 +381,18 @@
           delete bookmarkElement.dataset.originalParent;
           delete bookmarkElement.dataset.originalIndex;
 
-          // Remove any lingering drop zone indicators
-          document.querySelectorAll('.bookmark-drop-zone-active, .insertion-point-active').forEach(el => {
-            el.classList.remove('bookmark-drop-zone-active', 'insertion-point-active');
+          // Remove any lingering insertion point indicators
+          document.querySelectorAll('.insertion-point-active').forEach(el => {
+            el.classList.remove('insertion-point-active');
           });
         }
       });
 
-      // Also initialize as a drop zone for bookmark-to-bookmark positioning
-      setTimeout(() => {
-        initializeBookmarkDropZone();
-      }, 100); // Small delay to ensure DOM is ready
+      // DISABLED: On-bookmark drop zones to prevent conflicts with insertion points
+      // The insertion points (BookmarkInsertionPoint.svelte) handle all bookmark reordering
+      // setTimeout(() => {
+      //   initializeBookmarkDropZone();
+      // }, 100); // Small delay to ensure DOM is ready
 
       console.log('Enhanced drag-drop initialized for bookmark:', bookmark.title);
     } else {
@@ -399,107 +400,16 @@
     }
   }
 
-  // Initialize bookmark as a drop zone for precise positioning
+  // DISABLED: On-bookmark drop zone functionality
+  // This was causing conflicts with insertion points. All bookmark reordering
+  // is now handled by BookmarkInsertionPoint.svelte components.
+  /*
   function initializeBookmarkDropZone() {
-    console.log('🎯 Initializing bookmark drop zone for:', bookmark.title, {
-      bookmarkElement: !!bookmarkElement,
-      isEditMode,
-      bookmarkId: bookmark.id,
-      parentId: bookmark.parentId,
-      index: bookmark.index
-    });
-
-    if (!bookmarkElement || !isEditMode) {
-      console.log('❌ Cannot initialize bookmark drop zone:', {
-        bookmarkElement: !!bookmarkElement,
-        isEditMode
-      });
-      return;
-    }
-
-    const DragManager = BraveDragDropManager.isBraveBrowser() ? BraveDragDropManager : DragDropManager;
-
-    // Create drop zone for this bookmark (will handle positioning logic in the drop handler)
-    const bookmarkDropZone: DropZoneData = {
-      type: 'within-folder',
-      targetId: bookmark.id,
-      parentId: bookmark.parentId,
-      targetIndex: bookmark.index
-    };
-
-    console.log('🎯 Setting up bookmark drop zone with data:', bookmarkDropZone);
-
-    // Initialize drop zone functionality
-    DragManager.initializeDropZone(bookmarkElement, bookmarkDropZone, {
-      acceptTypes: ['bookmark'],
-      onDragEnter: (dragData, dropZone) => {
-        if (dragData.id !== bookmark.id) { // Don't highlight self
-          bookmarkElement.classList.add('bookmark-drop-zone-active');
-          showInsertionIndicator(dragData, dropZone);
-        }
-      },
-      onDragLeave: (_dragData, _dropZone) => {
-        console.log('🚪 Drag leaving bookmark:', bookmark.title);
-        bookmarkElement.classList.remove('bookmark-drop-zone-active');
-        hideInsertionIndicator();
-      },
-      onDrop: async (dragData, dropZone) => {
-        console.log('Dropping bookmark near:', bookmark.title, 'at index:', dropZone.targetIndex);
-
-        try {
-          // Validate the drop operation
-          const validation = await DragDropValidator.validateDragDrop({ dragData, dropZone });
-
-          if (!validation.canProceed) {
-            console.warn('Drop operation blocked by validation:', validation.error);
-            showMoveErrorIndicator(validation.error || 'Invalid drop operation');
-            bookmarkElement.classList.remove('bookmark-drop-zone-active');
-            hideInsertionIndicator();
-            return false;
-          }
-
-          // Show warning if present
-          if (validation.warning) {
-            console.warn('Drop operation warning:', validation.warning);
-          }
-
-          // Perform the bookmark move operation
-          const result = await BookmarkEditAPI.moveBookmark(dragData.id, {
-            parentId: dropZone.parentId,
-            index: dropZone.targetIndex
-          });
-
-          if (result.success) {
-            console.log('Successfully moved bookmark:', dragData.title);
-
-            // Clear cache immediately to ensure fresh data
-            BookmarkManager.clearCache();
-
-            // Refresh bookmarks to reflect changes
-            await refreshBookmarks();
-
-            // Show success message with warning if applicable
-            const successMessage = validation.warning
-              ? `${dragData.title} moved (${validation.warning})`
-              : dragData.title;
-            showMoveSuccessIndicator(successMessage);
-          } else {
-            console.error('Failed to move bookmark:', result.error);
-            showMoveErrorIndicator(result.error || 'Failed to move bookmark');
-          }
-        } catch (error) {
-          console.error('Error during bookmark move:', error);
-          showMoveErrorIndicator('An error occurred while moving the bookmark');
-        }
-
-        // Clean up visual indicators
-        bookmarkElement.classList.remove('bookmark-drop-zone-active');
-        hideInsertionIndicator();
-
-        return true; // Indicate we handled the drop
-      }
-    });
+    // This function has been disabled to prevent conflicts with insertion points
+    // All bookmark reordering should use the insertion points between bookmarks
+    console.log('⚠️ On-bookmark drop zones are disabled to prevent conflicts with insertion points');
   }
+  */
 
   // Refresh bookmarks after changes
   async function refreshBookmarks() {
@@ -993,8 +903,7 @@
     white-space: nowrap;
   }
 
-  /* Enhanced drag and drop styles */
-  .bookmark-item.dragging,
+  /* Enhanced drag styles - for dragging state */
   .bookmark-item.dragging-bookmark {
     opacity: 0.6;
     transform: rotate(2deg) scale(0.95);
@@ -1018,13 +927,14 @@
     cursor: grabbing;
   }
 
-  /* Drop zone highlighting */
+  /* DISABLED: Drop zone highlighting - now handled by insertion points
   .bookmark-item.bookmark-drop-zone-active {
     background: rgba(59, 130, 246, 0.1) !important;
     border: 2px dashed #3b82f6 !important;
     transform: scale(1.02);
     transition: all 0.2s ease;
   }
+  */
 
   /* Global styles for drag-and-drop indicators */
   :global(.bookmark-insertion-indicator) {

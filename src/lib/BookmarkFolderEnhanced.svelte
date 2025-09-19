@@ -114,14 +114,35 @@
     return null;
   }
 
+  // Debounce drop zone state changes to prevent flickering
+  let dropZoneTimeout: number | null = null;
+  let currentDropState = false;
+
   function markDropActive(el: HTMLElement, active: boolean) {
     if (!el) return;
+
+    // Clear any pending timeout
+    if (dropZoneTimeout) {
+      clearTimeout(dropZoneTimeout);
+      dropZoneTimeout = null;
+    }
+
+    // If we're already in the desired state, don't change anything
+    if (currentDropState === active) return;
+
     if (active) {
+      // Immediately activate drop zone
+      currentDropState = true;
       el.classList.add('drop-zone-active', 'drop-target');
       el.setAttribute('data-drop-active', 'true');
     } else {
-      el.classList.remove('drop-zone-active', 'drop-target');
-      el.removeAttribute('data-drop-active');
+      // Debounce deactivation to prevent rapid flickering
+      dropZoneTimeout = setTimeout(() => {
+        currentDropState = false;
+        el.classList.remove('drop-zone-active', 'drop-target');
+        el.removeAttribute('data-drop-active');
+        dropZoneTimeout = null;
+      }, 50); // 50ms debounce delay
     }
   }
 
@@ -166,11 +187,19 @@
   }
 
 
+  // Header drag enter counter
+  let headerDragEnterCount = 0;
+
   function onHeaderDragEnter(e: DragEvent) {
     const payload = getBookmarkDragPayload(e);
     if (payload) {
       e.preventDefault();
-      markDropActive(folderHeader as HTMLElement, true);
+      headerDragEnterCount++;
+
+      // Only activate on first enter
+      if (headerDragEnterCount === 1) {
+        markDropActive(folderHeader as HTMLElement, true);
+      }
     }
   }
   function onHeaderDragOver(e: DragEvent) {
@@ -178,7 +207,7 @@
     if (payload) {
       e.preventDefault();
       (e.dataTransfer as DataTransfer).dropEffect = 'move';
-      markDropActive(folderHeader as HTMLElement, true);
+      // Don't call markDropActive here to avoid redundant calls
     }
   }
   async function onHeaderDrop(e: DragEvent) {
@@ -244,15 +273,33 @@
       markDropActive(folderHeader as HTMLElement, false);
     }
   }
-  function onHeaderDragLeave(_e: DragEvent) {
-    markDropActive(folderHeader as HTMLElement, false);
+  function onHeaderDragLeave(e: DragEvent) {
+    // Only decrement if we have a valid payload
+    const payload = getBookmarkDragPayload(e);
+    if (payload) {
+      headerDragEnterCount--;
+
+      // Only deactivate when all drag operations have left
+      if (headerDragEnterCount <= 0) {
+        headerDragEnterCount = 0; // Ensure it doesn't go negative
+        markDropActive(folderHeader as HTMLElement, false);
+      }
+    }
   }
+
+  // Drag enter counter to handle nested elements properly
+  let containerDragEnterCount = 0;
 
   function onContainerDragEnter(e: DragEvent) {
     const payload = getBookmarkDragPayload(e);
     if (payload) {
       e.preventDefault();
-      markDropActive(folderElement as HTMLElement, true);
+      containerDragEnterCount++;
+
+      // Only activate on first enter
+      if (containerDragEnterCount === 1) {
+        markDropActive(folderElement as HTMLElement, true);
+      }
     }
   }
   function onContainerDragOver(e: DragEvent) {
@@ -260,7 +307,7 @@
     if (payload) {
       e.preventDefault();
       (e.dataTransfer as DataTransfer).dropEffect = 'move';
-      markDropActive(folderElement as HTMLElement, true);
+      // Don't call markDropActive here to avoid redundant calls
     }
   }
   async function onContainerDrop(e: DragEvent) {
@@ -313,20 +360,51 @@
       markDropActive(folderElement as HTMLElement, false);
     }
   }
-  function onContainerDragLeave(_e: DragEvent) {
-    markDropActive(folderElement as HTMLElement, false);
+  function onContainerDragLeave(e: DragEvent) {
+    // Only decrement if we have a valid payload
+    const payload = getBookmarkDragPayload(e);
+    if (payload) {
+      containerDragEnterCount--;
+
+      // Only deactivate when all drag operations have left
+      if (containerDragEnterCount <= 0) {
+        containerDragEnterCount = 0; // Ensure it doesn't go negative
+        markDropActive(folderElement as HTMLElement, false);
+      }
+    }
   }
+
+  // Retry tracking for updateEnhancedDragDropState
+  let dragDropRetryCount = 0;
+  const MAX_DRAGDROP_RETRIES = 10; // Maximum 10 retries (1 second total)
+  let dragDropRetryTimeout: number | null = null;
 
   // Update enhanced drag and drop state with retry logic
   function updateEnhancedDragDropState() {
+    // Clear any existing retry timeout
+    if (dragDropRetryTimeout) {
+      clearTimeout(dragDropRetryTimeout);
+      dragDropRetryTimeout = null;
+    }
+
     if (!folderElement) {
-      console.log('Folder element not available yet for:', folder.title, '- scheduling retry...');
-      // Retry after a short delay to allow DOM to be ready
-      setTimeout(() => {
-        updateEnhancedDragDropState();
-      }, 100);
+      if (dragDropRetryCount < MAX_DRAGDROP_RETRIES) {
+        dragDropRetryCount++;
+        console.log('Folder element not available yet for:', folder.title, `- scheduling retry ${dragDropRetryCount}/${MAX_DRAGDROP_RETRIES}...`);
+
+        // Retry after a short delay to allow DOM to be ready
+        dragDropRetryTimeout = setTimeout(() => {
+          updateEnhancedDragDropState();
+        }, 100);
+      } else {
+        console.warn('Max retries reached for folder element:', folder.title, '- giving up on drag-drop setup');
+        dragDropRetryCount = 0; // Reset for potential future attempts
+      }
       return;
     }
+
+    // Reset retry count on successful element access
+    dragDropRetryCount = 0;
 
     if (isEditMode) {
       console.log('Enabling enhanced drag-drop for folder:', folder.title);
@@ -551,6 +629,18 @@
   // Cleanup on destroy
   onDestroy(() => {
     unsubscribeEditMode();
+
+    // Clear any pending drag-drop retry timeout
+    if (dragDropRetryTimeout) {
+      clearTimeout(dragDropRetryTimeout);
+      dragDropRetryTimeout = null;
+    }
+
+    // Clear any pending drop zone timeout
+    if (dropZoneTimeout) {
+      clearTimeout(dropZoneTimeout);
+      dropZoneTimeout = null;
+    }
   });
 </script>
 

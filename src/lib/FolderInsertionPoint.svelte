@@ -128,6 +128,8 @@
       if (!dragDataStr) {
         console.log('❌ No drag data found in any format');
         console.log('Available types:', e.dataTransfer?.types);
+        // Clean up all drop zones even on failed drop
+        EnhancedDragDropManager.cleanupAllDropZones();
         return;
       }
 
@@ -136,6 +138,8 @@
       const dragData = JSON.parse(dragDataStr);
       if (dragData.type !== 'folder') {
         console.log('❌ Not a folder drag operation, type:', dragData.type);
+        // Clean up all drop zones for non-folder drops
+        EnhancedDragDropManager.cleanupAllDropZones();
         return;
       }
 
@@ -148,13 +152,19 @@
 
       if (result.success) {
         console.log('✅ Folder reordered successfully');
-        // Note: moveFolderToPosition already handles UI refresh and system state refresh
-        // No additional refresh calls needed here to prevent conflicts
+        // Clean up ALL drop zones after successful operation
+        setTimeout(() => {
+          EnhancedDragDropManager.cleanupAllDropZones();
+        }, 200);
       } else {
         console.error('❌ Failed to reorder folder:', result.error);
+        // Clean up drop zones even on failure
+        EnhancedDragDropManager.cleanupAllDropZones();
       }
     } catch (error) {
       console.error('Error handling folder drop:', error);
+      // Always clean up drop zones on error
+      EnhancedDragDropManager.cleanupAllDropZones();
     }
   }
 </script>
@@ -286,7 +296,7 @@
     border-width: 3px;
     background: rgba(59, 130, 246, 0.2);
     box-shadow: 0 0 25px rgba(59, 130, 246, 0.3);
-    animation: pulse-insertion 1.5s ease-in-out infinite;
+    transition: all 0.2s ease;
   }
 
   .insertion-indicator {
@@ -344,7 +354,7 @@
     border-width: 3px;
     border-style: solid;
     background: rgba(59, 130, 246, 0.15);
-    animation: pulse-insertion 1s ease-in-out infinite;
+    transition: all 0.2s ease;
   }
 
   @keyframes pulse-insertion {

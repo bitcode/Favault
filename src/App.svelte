@@ -37,30 +37,27 @@
       };
 
       const onDocMouseDown = (e: MouseEvent | PointerEvent) => {
+        // Only process bookmark items for the global DnD bridge
+        const t = e.target as HTMLElement | null;
+        if (!t) return;
+        
+        // Check if this is actually a bookmark item (not a folder)
+        const itemEl = t.closest?.('.bookmark-item[data-bookmark-id], [data-testid="bookmark-item"][data-bookmark-id]') as HTMLElement | null;
+        if (!itemEl) return; // Exit early if not a bookmark item
+        
         // Record last down position for potential salvage during mouseup
         (window as any).__fav_lastDownAt = { x: (e as MouseEvent).clientX, y: (e as MouseEvent).clientY };
+        
         // Add helper class to mitigate scroll behaviors during drag
         document.querySelector('.app')?.classList.add('drag-active');
 
-        const t = e.target as HTMLElement | null;
-        if (!t) return;
-        const itemEl = t.closest?.('.bookmark-item[data-bookmark-id], [data-testid="bookmark-item"][data-bookmark-id]') as HTMLElement | null;
-        const fallbackEl = itemEl || ((): HTMLElement | null => {
-          // Geometry fallback in case of overlays/pointer-events
-          const x = (e as MouseEvent).clientX, y = (e as MouseEvent).clientY;
-          const candidates = Array.from(document.querySelectorAll('.bookmark-item, [data-testid="bookmark-item"]')) as HTMLElement[];
-          return candidates.find(el => {
-            const r = el.getBoundingClientRect();
-            return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
-          }) || null;
-        })();
-        if (!fallbackEl) return;
-        const id = fallbackEl.getAttribute('data-bookmark-id') || fallbackEl.getAttribute('data-id') || '';
-        const parentId = fallbackEl.getAttribute('data-parent-id') || (fallbackEl.closest('[data-folder-id]') as HTMLElement | null)?.getAttribute('data-folder-id') || '';
+        // Process the bookmark item
+        const id = itemEl.getAttribute('data-bookmark-id') || itemEl.getAttribute('data-id') || '';
+        const parentId = itemEl.getAttribute('data-parent-id') || (itemEl.closest('[data-folder-id]') as HTMLElement | null)?.getAttribute('data-folder-id') || '';
         if (id) {
           (window as any).__fav_dragCandidate = { id, parentId };
-          fallbackEl.setAttribute('data-dragging', 'true');
-          fallbackEl.classList.add('dragging');
+          itemEl.setAttribute('data-dragging', 'true');
+          itemEl.classList.add('dragging');
           // Update DOM status attributes
           const body = document.body;
           if (body) {
@@ -131,10 +128,11 @@
         }
       };
 
-      document.addEventListener('mousedown', onDocMouseDown, true);
-      document.addEventListener('pointerdown', onDocMouseDown as any, true);
-      document.addEventListener('mouseup', onDocMouseUp, true);
-      document.addEventListener('pointerup', onDocMouseUp as any, true);
+      // Use bubble phase (false) instead of capture phase to not interfere with drag operations
+      document.addEventListener('mousedown', onDocMouseDown, false);
+      document.addEventListener('pointerdown', onDocMouseDown as any, false);
+      document.addEventListener('mouseup', onDocMouseUp, false);
+      document.addEventListener('pointerup', onDocMouseUp as any, false);
       // HTML5 drag-n-drop fallbacks to catch native drag sequences
       const onDocDragStart = (e: DragEvent) => {
         const t = e.target as HTMLElement | null;
@@ -291,45 +289,21 @@
 	        (window as any).__fav_dragCandidate = null;
 	      }
 	    };
-	    const onDocMouseUpAlt = async (e: MouseEvent | PointerEvent) => {
-	      try {
-	        const t = e.target as HTMLElement | null;
-	        if (!t) return;
-	        const containerAlt = (t.closest?.('[data-testid="bookmark-folder"][data-folder-id]') as HTMLElement | null);
-	        if (!containerAlt) return;
-	        const toParentId = containerAlt.getAttribute('data-folder-id') || '';
-	        const gc = (window as any).__fav_dragCandidate || {};
-	        const fromId = gc.id;
-	        const fromParentId = gc.parentId || null;
-	        if (!fromId || !toParentId || fromParentId === toParentId) return;
-	        const droppedOnHeader = !!t.closest?.('.folder-header');
-	        const toIndex = droppedOnHeader ? 0 : undefined;
-	        console.log('[Global DnD] mouseup ALT detected drop', { fromId, fromParentId, toParentId, toIndex });
-	        const result = await BookmarkEditAPI.moveBookmark(fromId, { parentId: toParentId, index: toIndex });
-	        if (result?.success) {
-	          console.log('[Global DnD] moveBookmark ALT success', { fromId, toParentId, toIndex });
-	          BookmarkManager.clearCache();
-	          await refreshBookmarks();
-	        } else {
-	          console.error('[Global DnD] moveBookmark ALT failed', { fromId, toParentId, error: result?.error });
-	        }
-	      } catch (err) {
-	        console.error('[Global DnD] Error in ALT mouseup handler', err);
-	      } finally {
-	        (window as any).__fav_dragCandidate = null;
-	      }
-	    };
-	    // Attach listeners (capture phase)
-	    document.addEventListener('mousedown', onDocMouseDown, true);
-	    document.addEventListener('mouseup', onDocMouseUp, true);
+
+	    // Attach listeners (capture phase) - pointer events only to avoid duplicates
 	    document.addEventListener('pointerdown', onDocMouseDown as any, true);
 	    document.addEventListener('pointerup', onDocMouseUp as any, true);
-	    document.addEventListener('mouseup', onDocMouseUpAlt, true);
-	    document.addEventListener('pointerup', onDocMouseUpAlt as any, true);
-	    console.log('[Global DnD] Bridge installed with 4 event listeners (mousedown/up, pointerdown/up)');
-	    // Set both guards to avoid duplicate installs from onMount fallback
-	    (window as any).__fav_appGlobalDnDBridgeInstalled = true;
+	    console.log('[Global DnD] Bridge installed with 2 event listeners (pointerdown/up)');
+	    // Set guards to avoid duplicate installs and expose DOM signal
 	    (window as any).__fav_globalDnDBridgeInstalled = true;
+	    (window as any).__fav_appGlobalDnDBridgeInstalled = true;
+	    try {
+	      const body = document.body;
+	      if (body) {
+	        body.setAttribute('data-dnd-bridge', 'installed');
+	        if (!body.getAttribute('data-dnd-events')) body.setAttribute('data-dnd-events', '0');
+	      }
+	    } catch {}
 	  } catch (e) {
 	    console.error('[Global DnD] Failed to install module-scope bridge', e);
 	  }
@@ -918,50 +892,24 @@
 	    }
 	  };
 
-		  // Alternate mouseup handler that targets [data-testid="bookmark-folder"][data-folder-id]
-		  const onDocMouseUpAlt = async (e: MouseEvent | PointerEvent) => {
-		    try {
-		      const t = e.target as HTMLElement | null;
-		      if (!t) return;
-		      const containerAlt = (t.closest?.('[data-testid="bookmark-folder"][data-folder-id]') as HTMLElement | null);
-		      if (!containerAlt) return;
-		      const toParentId = containerAlt.getAttribute('data-folder-id') || '';
-		      const gc = (window as any).__fav_dragCandidate || {};
-		      const fromId = gc.id;
-		      const fromParentId = gc.parentId || null;
-		      if (!fromId || !toParentId || fromParentId === toParentId) {
-		        return;
-		      }
-		      const droppedOnHeader = !!t.closest?.('.folder-header');
-		      const toIndex = droppedOnHeader ? 0 : undefined;
-		      console.log('[Global DnD] mouseup ALT detected drop', { fromId, fromParentId, toParentId, toIndex });
-		      const result = await BookmarkEditAPI.moveBookmark(fromId, { parentId: toParentId, index: toIndex });
-		      if (result?.success) {
-		        console.log('[Global DnD] moveBookmark ALT success', { fromId, toParentId, toIndex });
-		        BookmarkManager.clearCache();
-		        await refreshBookmarks();
-		      } else {
-		        console.error('[Global DnD] moveBookmark ALT failed', { fromId, toParentId, error: result?.error });
-		      }
-		    } catch (err) {
-		      console.error('[Global DnD] Error in ALT mouseup handler', err);
-		    } finally {
-		      // Clear candidate to avoid duplicate handling in subsequent listeners
-		      (window as any).__fav_dragCandidate = null;
-		    }
-		  };
 
-	  // Mouse events
-	  document.addEventListener('mousedown', onDocMouseDown, true);
-	  document.addEventListener('mouseup', onDocMouseUp, true);
-	  // Pointer events (some automation setups trigger pointer events)
-	  document.addEventListener('pointerdown', onDocMouseDown as any, true);
-	  document.addEventListener('pointerup', onDocMouseUp as any, true);
-		  document.addEventListener('mouseup', onDocMouseUpAlt, true);
-		  document.addEventListener('pointerup', onDocMouseUpAlt as any, true);
-		  console.log('[Global DnD] Bridge installed with 4 event listeners (mousedown/up, pointerdown/up)');
-
-	  (window as any).__fav_globalDnDBridgeInstalled = true;
+	  // Install global DnD bridge only if not already installed (fallback)
+	  if (!(window as any).__fav_globalDnDBridgeInstalled) {
+	    // Pointer events only to avoid duplicate mouse/pointer firing
+	    document.addEventListener('pointerdown', onDocMouseDown as any, true);
+	    document.addEventListener('pointerup', onDocMouseUp as any, true);
+	    console.log('[Global DnD] Bridge installed (fallback) with 2 event listeners (pointerdown/up)');
+	    (window as any).__fav_globalDnDBridgeInstalled = true;
+	    try {
+	      const body = document.body;
+	      if (body) {
+	        body.setAttribute('data-dnd-bridge', 'installed');
+	        if (!body.getAttribute('data-dnd-events')) body.setAttribute('data-dnd-events', '0');
+	      }
+	    } catch {}
+	  } else {
+	    console.log('[Global DnD] Bridge already installed (skipping fallback)');
+	  }
 	}
 
 
@@ -1762,6 +1710,24 @@
     overflow-anchor: none;
     /* Stabilize layout during drag operations */
     contain: layout style;
+  }
+  
+  /* Prevent auto-scrolling in edit mode */
+  .app.edit-mode {
+    /* Disable smooth scrolling in edit mode */
+    scroll-behavior: auto !important;
+    /* Prevent automatic scroll adjustments */
+    overflow-anchor: none;
+  }
+  
+  /* Prevent focus-based scrolling on draggable items */
+  :global(.edit-mode .bookmark-item),
+  :global(.edit-mode .folder-container) {
+    /* Prevent focus outline from causing scroll */
+    outline-offset: -2px;
+    /* Prevent focus from triggering scroll */
+    scroll-margin: 0;
+    scroll-padding: 0;
   }
 
   /* Prevent auto-scrolling on the body during drag operations */

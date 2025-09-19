@@ -105,12 +105,10 @@ import App from './App.svelte';
       }
     };
 
-    document.addEventListener('mousedown', onDocMouseDown, true);
     document.addEventListener('pointerdown', onDocMouseDown as any, true);
-    document.addEventListener('mouseup', onDocMouseUp, true);
     document.addEventListener('pointerup', onDocMouseUp as any, true);
 
-    console.log('[Global DnD] Bridge installed (early) with 4 listeners');
+    console.log('[Global DnD] Bridge installed (early) with 2 listeners');
     try {
       const body = document.body;
       if (body) {

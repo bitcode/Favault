@@ -122,14 +122,15 @@ body.folder-drag-active {
   -ms-user-select: none;
 }
 
-/* Enhanced drop zone styles */
+/* Enhanced drop zone styles - stable version without flickering */
 .enhanced-drop-zone {
   position: relative;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .enhanced-drop-zone.drag-over {
-  animation: dropZoneHighlight 1s ease-in-out infinite;
+  background: rgba(59, 130, 246, 0.1);
+  border: 2px dashed #3b82f6;
 }
 
 .enhanced-drop-zone::after {

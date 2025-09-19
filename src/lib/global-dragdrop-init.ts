@@ -20,8 +20,10 @@ async function refreshBookmarksSafe() {
 
 // Global mouse-based fallback for inter-folder bookmark moves in headless tests
 if (typeof document !== 'undefined') {
-  // Ensure one-time installation
-  if (!(window as any).__fav_globalMouseBridgeInstalled) {
+  // Skip if primary bridge already installed
+  if ((window as any).__fav_globalDnDBridgeInstalled) {
+    console.log('[Global DnD] Primary bridge already installed; skipping global fallback');
+  } else if (!(window as any).__fav_globalMouseBridgeInstalled) {
     console.log('[Global DnD] Installing document-level mouse bridge (module-scope)');
     try {
       const body = document.body;
