@@ -1,0 +1,3806 @@
+<testsuites id="" name="" tests="36" failures="36" skipped="0" errors="0" time="90.95644800000001">
+<testsuite name="specs/comprehensive-console-error-analysis.test.ts" timestamp="2025-09-26T18:20:06.273Z" hostname="chromium-extension" tests="6" failures="6" skipped="0" time="78.196" errors="0">
+<testcase name="Comprehensive Console Error Analysis › should create comprehensive test bookmark data" classname="specs/comprehensive-console-error-analysis.test.ts" time="17.251">
+<failure message="comprehensive-console-error-analysis.test.ts:85:3 should create comprehensive test bookmark data" type="FAILURE">
+<![CDATA[  [chromium-extension] › specs/comprehensive-console-error-analysis.test.ts:85:3 › Comprehensive Console Error Analysis › should create comprehensive test bookmark data 
+
+    ReferenceError: require is not defined
+
+      70 |       
+      71 |       // Save report to file for easy access
+    > 72 |       const fs = require('fs');
+         |                  ^
+      73 |       const path = require('path');
+      74 |       const reportPath = path.join(__dirname, '../../test-results/console-error-analysis-report.json');
+      75 |       
+        at /Users/mdrozrosario/Favault/tests/playwright/specs/comprehensive-console-error-analysis.test.ts:72:18
+]]>
+</failure>
+<system-out>
+<![CDATA[🚀 Starting comprehensive console error analysis...
+📋 This test suite will:
+   1. Create test bookmarks programmatically
+   2. Test every major user interaction
+   3. Capture console errors for each interaction
+   4. Generate detailed error analysis report
+   5. Provide recommendations for fixing issues
+Extension ID: fdibjjncegalcajkaockapdcapalicef
+🚀 Starting enhanced console error monitoring...
+📚 Creating comprehensive test bookmark structure...
+🚀 Initializing test data setup with config: {
+  folderCount: [33m8[39m,
+  bookmarksPerFolder: [33m4[39m,
+  maxNestingLevel: [33m3[39m,
+  includeEmptyFolders: [33mtrue[39m,
+  includeSpecialCharacters: [33mtrue[39m,
+  includeLongTitles: [33mtrue[39m,
+  includeSpecialUrls: [33mtrue[39m,
+  includeDragTestFolders: [33mtrue[39m,
+  includeProtectedFolders: [33mfalse[39m,
+  includeReorderableItems: [33mtrue[39m,
+  browserType: [32m'chrome'[39m
+}
+📊 Generating test bookmark data...
+💾 Creating bookmark backup...
+✅ Bookmark backup created successfully
+🧹 Clearing existing test data...
+✅ Test data cleared successfully
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36'[39m
+}
+📁 Created folder: "Test Work Folder" with ID: 5
+🔖 Created bookmark: "GitHub" -> https://github.com with ID: 6
+🔖 Created bookmark: "Stack Overflow" -> https://stackoverflow.com with ID: 7
+🔖 Created bookmark: "MDN Web Docs" -> https://developer.mozilla.org with ID: 8
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36'[39m
+}
+📁 Created folder: "Test Personal Folder" with ID: 9
+🔖 Created bookmark: "Gmail" -> https://gmail.com with ID: 10
+🔖 Created bookmark: "YouTube" -> https://youtube.com with ID: 11
+🔖 Created bookmark: "Netflix" -> https://netflix.com with ID: 12
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36'[39m
+}
+📁 Created folder: "Test Development Tools" with ID: 13
+🔖 Created bookmark: "VS Code" -> https://code.visualstudio.com with ID: 14
+🔖 Created bookmark: "Chrome DevTools" -> chrome://devtools/ with ID: 15
+🔖 Created bookmark: "Playwright" -> https://playwright.dev with ID: 16
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36'[39m
+}
+📁 Created folder: "DragTest Source Folder" with ID: 17
+🔖 Created bookmark: "Draggable Item 1" -> https://example1.com with ID: 18
+🔖 Created bookmark: "Draggable Item 2" -> https://example2.com with ID: 19
+🔖 Created bookmark: "Draggable Item 3" -> https://example3.com with ID: 20
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36'[39m
+}
+📁 Created folder: "DragTest Target Folder" with ID: 21
+🔖 Created bookmark: "Target Item 1" -> https://target1.com with ID: 22
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36'[39m
+}
+📁 Created folder: "DragTest Empty Target" with ID: 23
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36'[39m
+}
+📁 Created folder: "Very Long Folder Title That Tests How The UI Handles Extended Text Content" with ID: 24
+🔖 Created bookmark: "Very Long Bookmark Title That Also Tests Extended Text Handling In The Interface" -> https://very-long-domain-name-for-testing-purposes.example.com/very/long/path/that/tests/url/handling with ID: 25
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36'[39m
+}
+📁 Created folder: "Special Chars: éñ中文🚀" with ID: 26
+🔖 Created bookmark: "Unicode Test: 🌟⭐✨" -> https://unicode-test.com with ID: 27
+🔖 Created bookmark: "Symbols: @#$%^&*()" -> https://symbols-test.com with ID: 28
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36'[39m
+}
+📁 Created folder: "Empty Test Folder" with ID: 29
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36'[39m
+}
+📁 Created folder: "Special URLs Test" with ID: 30
+🔖 Created bookmark: "Chrome Extension" -> chrome-extension://test with ID: 31
+🔖 Created bookmark: "Data URL" -> data:text/html,<h1>Test</h1> with ID: 32
+🔖 Created bookmark: "File URL" -> file:///test/path with ID: 33
+🔖 Created bookmark: "FTP URL" -> ftp://ftp.example.com with ID: 34
+🔖 Created bookmark: "Local Host" -> http://localhost:3000 with ID: 35
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36'[39m
+}
+📁 Created folder: "Nested Test Parent" with ID: 36
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36'[39m
+}
+📁 Created folder: "Nested Child Folder" with ID: 37
+🔖 Created bookmark: "Nested Bookmark" -> https://nested-test.com with ID: 38
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36'[39m
+}
+📁 Created folder: "Nested Grandchild" with ID: 39
+🔖 Created bookmark: "Deep Nested Bookmark" -> https://deep-nested.com with ID: 40
+🔧 Injecting mock DOM elements for testing...
+✅ Test data generation completed
+📊 Created 13 folders and 23 bookmarks
+🎯 Generating specific drag-and-drop test scenarios...
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36'[39m
+}
+📁 Created folder: "DragDrop Source" with ID: 41
+🔖 Created bookmark: "Reorderable Item A" -> https://item-a.com with ID: 42
+🔖 Created bookmark: "Reorderable Item B" -> https://item-b.com with ID: 43
+🔖 Created bookmark: "Reorderable Item C" -> https://item-c.com with ID: 44
+🔖 Created bookmark: "Reorderable Item D" -> https://item-d.com with ID: 45
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36'[39m
+}
+📁 Created folder: "Target Alpha" with ID: 46
+🔖 Created bookmark: "Target Alpha Item" -> https://target-item.com with ID: 47
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36'[39m
+}
+📁 Created folder: "Target Beta" with ID: 48
+🔖 Created bookmark: "Target Beta Item" -> https://target-item.com with ID: 49
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36'[39m
+}
+📁 Created folder: "Target Gamma" with ID: 50
+🔖 Created bookmark: "Target Gamma Item" -> https://target-item.com with ID: 51
+✅ Drag-drop scenarios generated successfully
+🔬 Generating boundary condition test data...
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36'[39m
+}
+📁 Created folder: "Single Item Folder" with ID: 52
+🔖 Created bookmark: "Only Item" -> https://only-item.com with ID: 53
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36'[39m
+}
+📁 Created folder: "Many Items Folder" with ID: 54
+🔖 Created bookmark: "Item 01" -> https://item1.com with ID: 55
+🔖 Created bookmark: "Item 02" -> https://item2.com with ID: 56
+🔖 Created bookmark: "Item 03" -> https://item3.com with ID: 57
+🔖 Created bookmark: "Item 04" -> https://item4.com with ID: 58
+🔖 Created bookmark: "Item 05" -> https://item5.com with ID: 59
+🔖 Created bookmark: "Item 06" -> https://item6.com with ID: 60
+🔖 Created bookmark: "Item 07" -> https://item7.com with ID: 61
+🔖 Created bookmark: "Item 08" -> https://item8.com with ID: 62
+🔖 Created bookmark: "Item 09" -> https://item9.com with ID: 63
+🔖 Created bookmark: "Item 10" -> https://item10.com with ID: 64
+🔖 Created bookmark: "Item 11" -> https://item11.com with ID: 65
+🔖 Created bookmark: "Item 12" -> https://item12.com with ID: 66
+🔖 Created bookmark: "Item 13" -> https://item13.com with ID: 67
+🔖 Created bookmark: "Item 14" -> https://item14.com with ID: 68
+🔖 Created bookmark: "Item 15" -> https://item15.com with ID: 69
+🔖 Created bookmark: "Item 16" -> https://item16.com with ID: 70
+🔖 Created bookmark: "Item 17" -> https://item17.com with ID: 71
+🔖 Created bookmark: "Item 18" -> https://item18.com with ID: 72
+🔖 Created bookmark: "Item 19" -> https://item19.com with ID: 73
+🔖 Created bookmark: "Item 20" -> https://item20.com with ID: 74
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36'[39m
+}
+📁 Created folder: "Test Folder A" with ID: 75
+🔖 Created bookmark: "Similar Item" -> https://similar.com with ID: 76
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36'[39m
+}
+📁 Created folder: "Test Folder B" with ID: 77
+🔖 Created bookmark: "Similar Item" -> https://similar.com with ID: 78
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36'[39m
+}
+📁 Created folder: "Test Folder C" with ID: 79
+🔖 Created bookmark: "Similar Item" -> https://similar.com with ID: 80
+✅ Boundary conditions generated successfully
+✅ Created test environment with:
+   📁 19 bookmark folders
+   🔖 54 bookmarks
+   📊 22 programmatically created folders
+   📊 54 programmatically created bookmarks
+🔍 Validating test data integrity...
+✅ Test data validation passed
+🔍 Test data validation: PASSED
+📊 Test data summary: {
+  totalFolders: [33m22[39m,
+  totalBookmarks: [33m54[39m,
+  emptyFolders: [33m0[39m,
+  nestedLevels: [33m0[39m
+}
+🔍 Stopped monitoring. Captured 0 console events
+
+🎯 COMPREHENSIVE CONSOLE ERROR ANALYSIS REPORT
+================================================
+{
+  "summary": {
+    "totalInteractions": 0,
+    "totalErrors": 0,
+    "totalWarnings": 0,
+    "interactionsWithErrors": 0,
+    "errorFreeInteractions": 0,
+    "faviconErrorsFiltered": 0
+  },
+  "errorsByInteraction": {},
+  "criticalErrors": [],
+  "recommendations": [],
+  "timestamp": "2025-09-26T18:20:23.922Z"
+}
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Console Error Analysis › should perform systematic user interaction testing with console error capture" classname="specs/comprehensive-console-error-analysis.test.ts" time="26.098">
+<failure message="comprehensive-console-error-analysis.test.ts:140:3 should perform systematic user interaction testing with console error capture" type="FAILURE">
+<![CDATA[  [chromium-extension] › specs/comprehensive-console-error-analysis.test.ts:140:3 › Comprehensive Console Error Analysis › should perform systematic user interaction testing with console error capture 
+
+    Error: expect(received).toBeGreaterThan(expected)
+
+    Expected: > 5
+    Received:   0
+
+      194 |
+      195 |     // Assertions to ensure test quality
+    > 196 |     expect(analysisReport.summary.totalInteractions).toBeGreaterThan(5);
+          |                                                      ^
+      197 |     
+      198 |     // Save the global report
+      199 |     globalReport = analysisReport;
+        at /Users/mdrozrosario/Favault/tests/playwright/specs/comprehensive-console-error-analysis.test.ts:196:54
+
+    ReferenceError: require is not defined
+
+      70 |       
+      71 |       // Save report to file for easy access
+    > 72 |       const fs = require('fs');
+         |                  ^
+      73 |       const path = require('path');
+      74 |       const reportPath = path.join(__dirname, '../../test-results/console-error-analysis-report.json');
+      75 |       
+        at /Users/mdrozrosario/Favault/tests/playwright/specs/comprehensive-console-error-analysis.test.ts:72:18
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../test-results/specs-comprehensive-consol-97c6c--with-console-error-capture-chromium-extension/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../test-results/specs-comprehensive-consol-97c6c--with-console-error-capture-chromium-extension/test-failed-2.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[🚀 Starting comprehensive console error analysis...
+📋 This test suite will:
+   1. Create test bookmarks programmatically
+   2. Test every major user interaction
+   3. Capture console errors for each interaction
+   4. Generate detailed error analysis report
+   5. Provide recommendations for fixing issues
+Extension ID: fdibjjncegalcajkaockapdcapalicef
+🚀 Starting enhanced console error monitoring...
+🎯 Starting systematic user interaction testing...
+🔬 Running systematic user interaction console error analysis...
+🎯 Testing interaction: bookmark_click
+⚠️ No bookmarks found for click test
+📊 Interaction "bookmark_click" generated 0 console events
+🎯 Testing interaction: edit_mode_enable
+📊 Interaction "edit_mode_enable" generated 0 console events
+🎯 Testing interaction: edit_mode_disable
+📊 Interaction "edit_mode_disable" generated 0 console events
+🎯 Testing interaction: search_bookmarks
+📊 Interaction "search_bookmarks" generated 0 console events
+🎯 Testing interaction: folder_expand_collapse
+📊 Interaction "folder_expand_collapse" generated 0 console events
+🎯 Testing interaction: drag_drop_simulation
+⚠️ Need at least 2 folders for drag-drop test
+📊 Interaction "drag_drop_simulation" generated 0 console events
+🎯 Testing interaction: right_click_context_menu
+📊 Interaction "right_click_context_menu" generated 0 console events
+🎯 Testing interaction: keyboard_shortcuts
+📊 Interaction "keyboard_shortcuts" generated 0 console events
+🎯 Testing interaction: window_resize
+📊 Interaction "window_resize" generated 0 console events
+🎯 Testing interaction: settings_panel_interaction
+📊 Interaction "settings_panel_interaction" generated 0 console events
+
+📊 INTERACTION TESTING RESULTS:
+================================
+Total Interactions Tested: 0
+Interactions with Errors: 0
+Error-free Interactions: 0
+Total Console Errors: 0
+Total Console Warnings: 0
+Critical Errors: 0
+
+🔍 ERRORS BY INTERACTION:
+
+💡 RECOMMENDATIONS:
+🎉 No issues found! Your extension is running cleanly.
+🔍 Stopped monitoring. Captured 0 console events
+
+🎯 COMPREHENSIVE CONSOLE ERROR ANALYSIS REPORT
+================================================
+{
+  "summary": {
+    "totalInteractions": 0,
+    "totalErrors": 0,
+    "totalWarnings": 0,
+    "interactionsWithErrors": 0,
+    "errorFreeInteractions": 0,
+    "faviconErrorsFiltered": 0
+  },
+  "errorsByInteraction": {},
+  "criticalErrors": [],
+  "recommendations": [],
+  "timestamp": "2025-09-26T18:20:31.586Z"
+}
+
+[[ATTACHMENT|specs-comprehensive-consol-97c6c--with-console-error-capture-chromium-extension/test-failed-1.png]]
+
+[[ATTACHMENT|specs-comprehensive-consol-97c6c--with-console-error-capture-chromium-extension/test-failed-2.png]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Console Error Analysis › should test specific drag-and-drop console errors" classname="specs/comprehensive-console-error-analysis.test.ts" time="19.048">
+<failure message="comprehensive-console-error-analysis.test.ts:202:3 should test specific drag-and-drop console errors" type="FAILURE">
+<![CDATA[  [chromium-extension] › specs/comprehensive-console-error-analysis.test.ts:202:3 › Comprehensive Console Error Analysis › should test specific drag-and-drop console errors 
+
+    ReferenceError: require is not defined
+
+      70 |       
+      71 |       // Save report to file for easy access
+    > 72 |       const fs = require('fs');
+         |                  ^
+      73 |       const path = require('path');
+      74 |       const reportPath = path.join(__dirname, '../../test-results/console-error-analysis-report.json');
+      75 |       
+        at /Users/mdrozrosario/Favault/tests/playwright/specs/comprehensive-console-error-analysis.test.ts:72:18
+]]>
+</failure>
+<system-out>
+<![CDATA[🚀 Starting comprehensive console error analysis...
+📋 This test suite will:
+   1. Create test bookmarks programmatically
+   2. Test every major user interaction
+   3. Capture console errors for each interaction
+   4. Generate detailed error analysis report
+   5. Provide recommendations for fixing issues
+Extension ID: fdibjjncegalcajkaockapdcapalicef
+🚀 Starting enhanced console error monitoring...
+🔄 Testing drag-and-drop specific console errors...
+🔧 Enabling edit mode...
+⏳ Waiting for extension initialization to complete...
+✅ Edit mode selectors found
+⏳ Waiting for enhanced drag-drop system to complete setup...
+🔍 Debug info: {
+  editModeEnabled: [33mtrue[39m,
+  appEditMode: [33mtrue[39m,
+  toggleActive: [33mtrue[39m,
+  enhancedReady: [33mtrue[39m,
+  draggableCount: [33m0[39m,
+  totalFolders: [33m0[39m
+}
+✅ Edit mode fully enabled and ready for testing
+📁 Found 0 folders available for drag-drop testing
+⚠️ Insufficient folders for drag-drop testing
+🔍 Stopped monitoring. Captured 0 console events
+
+🎯 COMPREHENSIVE CONSOLE ERROR ANALYSIS REPORT
+================================================
+{
+  "summary": {
+    "totalInteractions": 0,
+    "totalErrors": 0,
+    "totalWarnings": 0,
+    "interactionsWithErrors": 0,
+    "errorFreeInteractions": 0,
+    "faviconErrorsFiltered": 0
+  },
+  "errorsByInteraction": {},
+  "criticalErrors": [],
+  "recommendations": [],
+  "timestamp": "2025-09-26T18:20:24.938Z"
+}
+]]>
+</system-out>
+<system-err>
+<![CDATA[⚠️ Enhanced drag-drop setup may not have completed within timeout
+]]>
+</system-err>
+</testcase>
+<testcase name="Comprehensive Console Error Analysis › should test bookmark interaction console errors" classname="specs/comprehensive-console-error-analysis.test.ts" time="2.308">
+<failure message="comprehensive-console-error-analysis.test.ts:279:3 should test bookmark interaction console errors" type="FAILURE">
+<![CDATA[  [chromium-extension] › specs/comprehensive-console-error-analysis.test.ts:279:3 › Comprehensive Console Error Analysis › should test bookmark interaction console errors 
+
+    ReferenceError: require is not defined
+
+      70 |       
+      71 |       // Save report to file for easy access
+    > 72 |       const fs = require('fs');
+         |                  ^
+      73 |       const path = require('path');
+      74 |       const reportPath = path.join(__dirname, '../../test-results/console-error-analysis-report.json');
+      75 |       
+        at /Users/mdrozrosario/Favault/tests/playwright/specs/comprehensive-console-error-analysis.test.ts:72:18
+]]>
+</failure>
+<system-out>
+<![CDATA[🚀 Starting comprehensive console error analysis...
+📋 This test suite will:
+   1. Create test bookmarks programmatically
+   2. Test every major user interaction
+   3. Capture console errors for each interaction
+   4. Generate detailed error analysis report
+   5. Provide recommendations for fixing issues
+Extension ID: fdibjjncegalcajkaockapdcapalicef
+🚀 Starting enhanced console error monitoring...
+🔖 Testing bookmark interaction console errors...
+🔖 Found 0 bookmarks for interaction testing
+⚠️ No bookmarks available for interaction testing
+🔍 Stopped monitoring. Captured 0 console events
+
+🎯 COMPREHENSIVE CONSOLE ERROR ANALYSIS REPORT
+================================================
+{
+  "summary": {
+    "totalInteractions": 0,
+    "totalErrors": 0,
+    "totalWarnings": 0,
+    "interactionsWithErrors": 0,
+    "errorFreeInteractions": 0,
+    "faviconErrorsFiltered": 0
+  },
+  "errorsByInteraction": {},
+  "criticalErrors": [],
+  "recommendations": [],
+  "timestamp": "2025-09-26T18:20:09.433Z"
+}
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Console Error Analysis › should test edit mode console errors" classname="specs/comprehensive-console-error-analysis.test.ts" time="11.189">
+<failure message="comprehensive-console-error-analysis.test.ts:348:3 should test edit mode console errors" type="FAILURE">
+<![CDATA[  [chromium-extension] › specs/comprehensive-console-error-analysis.test.ts:348:3 › Comprehensive Console Error Analysis › should test edit mode console errors 
+
+    ReferenceError: require is not defined
+
+      70 |       
+      71 |       // Save report to file for easy access
+    > 72 |       const fs = require('fs');
+         |                  ^
+      73 |       const path = require('path');
+      74 |       const reportPath = path.join(__dirname, '../../test-results/console-error-analysis-report.json');
+      75 |       
+        at /Users/mdrozrosario/Favault/tests/playwright/specs/comprehensive-console-error-analysis.test.ts:72:18
+]]>
+</failure>
+<system-out>
+<![CDATA[🚀 Starting comprehensive console error analysis...
+📋 This test suite will:
+   1. Create test bookmarks programmatically
+   2. Test every major user interaction
+   3. Capture console errors for each interaction
+   4. Generate detailed error analysis report
+   5. Provide recommendations for fixing issues
+Extension ID: fdibjjncegalcajkaockapdcapalicef
+🚀 Starting enhanced console error monitoring...
+✏️ Testing edit mode console errors...
+🎯 Testing interaction: edit_mode_keyboard_enable
+📊 Interaction "edit_mode_keyboard_enable" generated 0 console events
+✅ edit_mode_keyboard_enable: No console errors
+🎯 Testing interaction: edit_mode_keyboard_disable
+📊 Interaction "edit_mode_keyboard_disable" generated 0 console events
+✅ edit_mode_keyboard_disable: No console errors
+🎯 Testing interaction: edit_mode_button_enable
+📊 Interaction "edit_mode_button_enable" generated 0 console events
+✅ edit_mode_button_enable: No console errors
+🎯 Testing interaction: edit_mode_button_disable
+📊 Interaction "edit_mode_button_disable" generated 0 console events
+✅ edit_mode_button_disable: No console errors
+🔍 Stopped monitoring. Captured 0 console events
+
+🎯 COMPREHENSIVE CONSOLE ERROR ANALYSIS REPORT
+================================================
+{
+  "summary": {
+    "totalInteractions": 0,
+    "totalErrors": 0,
+    "totalWarnings": 0,
+    "interactionsWithErrors": 0,
+    "errorFreeInteractions": 0,
+    "faviconErrorsFiltered": 0
+  },
+  "errorsByInteraction": {},
+  "criticalErrors": [],
+  "recommendations": [],
+  "timestamp": "2025-09-26T18:20:17.672Z"
+}
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Console Error Analysis › should generate final error analysis summary" classname="specs/comprehensive-console-error-analysis.test.ts" time="2.302">
+<failure message="comprehensive-console-error-analysis.test.ts:407:3 should generate final error analysis summary" type="FAILURE">
+<![CDATA[  [chromium-extension] › specs/comprehensive-console-error-analysis.test.ts:407:3 › Comprehensive Console Error Analysis › should generate final error analysis summary 
+
+    ReferenceError: require is not defined
+
+      70 |       
+      71 |       // Save report to file for easy access
+    > 72 |       const fs = require('fs');
+         |                  ^
+      73 |       const path = require('path');
+      74 |       const reportPath = path.join(__dirname, '../../test-results/console-error-analysis-report.json');
+      75 |       
+        at /Users/mdrozrosario/Favault/tests/playwright/specs/comprehensive-console-error-analysis.test.ts:72:18
+]]>
+</failure>
+<system-out>
+<![CDATA[🚀 Starting comprehensive console error analysis...
+📋 This test suite will:
+   1. Create test bookmarks programmatically
+   2. Test every major user interaction
+   3. Capture console errors for each interaction
+   4. Generate detailed error analysis report
+   5. Provide recommendations for fixing issues
+Extension ID: fdibjjncegalcajkaockapdcapalicef
+🚀 Starting enhanced console error monitoring...
+📋 Generating final error analysis summary...
+⚠️ No error analysis report available
+🔍 Stopped monitoring. Captured 0 console events
+
+🎯 COMPREHENSIVE CONSOLE ERROR ANALYSIS REPORT
+================================================
+{
+  "summary": {
+    "totalInteractions": 0,
+    "totalErrors": 0,
+    "totalWarnings": 0,
+    "interactionsWithErrors": 0,
+    "errorFreeInteractions": 0,
+    "faviconErrorsFiltered": 0
+  },
+  "errorsByInteraction": {},
+  "criticalErrors": [],
+  "recommendations": [],
+  "timestamp": "2025-09-26T18:20:09.256Z"
+}
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="specs/comprehensive-console-error-analysis.test.ts" timestamp="2025-09-26T18:20:06.273Z" hostname="chrome-extension" tests="6" failures="6" skipped="0" time="64.075" errors="0">
+<testcase name="Comprehensive Console Error Analysis › should create comprehensive test bookmark data" classname="specs/comprehensive-console-error-analysis.test.ts" time="6.717">
+<failure message="comprehensive-console-error-analysis.test.ts:85:3 should create comprehensive test bookmark data" type="FAILURE">
+<![CDATA[  [chrome-extension] › specs/comprehensive-console-error-analysis.test.ts:85:3 › Comprehensive Console Error Analysis › should create comprehensive test bookmark data 
+
+    ReferenceError: require is not defined
+
+      70 |       
+      71 |       // Save report to file for easy access
+    > 72 |       const fs = require('fs');
+         |                  ^
+      73 |       const path = require('path');
+      74 |       const reportPath = path.join(__dirname, '../../test-results/console-error-analysis-report.json');
+      75 |       
+        at /Users/mdrozrosario/Favault/tests/playwright/specs/comprehensive-console-error-analysis.test.ts:72:18
+]]>
+</failure>
+<system-out>
+<![CDATA[🚀 Starting comprehensive console error analysis...
+📋 This test suite will:
+   1. Create test bookmarks programmatically
+   2. Test every major user interaction
+   3. Capture console errors for each interaction
+   4. Generate detailed error analysis report
+   5. Provide recommendations for fixing issues
+Extension ID: fdibjjncegalcajkaockapdcapalicef
+🚀 Starting enhanced console error monitoring...
+📚 Creating comprehensive test bookmark structure...
+🚀 Initializing test data setup with config: {
+  folderCount: [33m8[39m,
+  bookmarksPerFolder: [33m4[39m,
+  maxNestingLevel: [33m3[39m,
+  includeEmptyFolders: [33mtrue[39m,
+  includeSpecialCharacters: [33mtrue[39m,
+  includeLongTitles: [33mtrue[39m,
+  includeSpecialUrls: [33mtrue[39m,
+  includeDragTestFolders: [33mtrue[39m,
+  includeProtectedFolders: [33mfalse[39m,
+  includeReorderableItems: [33mtrue[39m,
+  browserType: [32m'chrome'[39m
+}
+📊 Generating test bookmark data...
+💾 Creating bookmark backup...
+✅ Bookmark backup created successfully
+🧹 Clearing existing test data...
+✅ Test data cleared successfully
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36'[39m
+}
+📁 Created folder: "Test Work Folder" with ID: 5
+🔖 Created bookmark: "GitHub" -> https://github.com with ID: 6
+🔖 Created bookmark: "Stack Overflow" -> https://stackoverflow.com with ID: 7
+🔖 Created bookmark: "MDN Web Docs" -> https://developer.mozilla.org with ID: 8
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36'[39m
+}
+📁 Created folder: "Test Personal Folder" with ID: 9
+🔖 Created bookmark: "Gmail" -> https://gmail.com with ID: 10
+🔖 Created bookmark: "YouTube" -> https://youtube.com with ID: 11
+🔖 Created bookmark: "Netflix" -> https://netflix.com with ID: 12
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36'[39m
+}
+📁 Created folder: "Test Development Tools" with ID: 13
+🔖 Created bookmark: "VS Code" -> https://code.visualstudio.com with ID: 14
+🔖 Created bookmark: "Chrome DevTools" -> chrome://devtools/ with ID: 15
+🔖 Created bookmark: "Playwright" -> https://playwright.dev with ID: 16
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36'[39m
+}
+📁 Created folder: "DragTest Source Folder" with ID: 17
+🔖 Created bookmark: "Draggable Item 1" -> https://example1.com with ID: 18
+🔖 Created bookmark: "Draggable Item 2" -> https://example2.com with ID: 19
+🔖 Created bookmark: "Draggable Item 3" -> https://example3.com with ID: 20
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36'[39m
+}
+📁 Created folder: "DragTest Target Folder" with ID: 21
+🔖 Created bookmark: "Target Item 1" -> https://target1.com with ID: 22
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36'[39m
+}
+📁 Created folder: "DragTest Empty Target" with ID: 23
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36'[39m
+}
+📁 Created folder: "Very Long Folder Title That Tests How The UI Handles Extended Text Content" with ID: 24
+🔖 Created bookmark: "Very Long Bookmark Title That Also Tests Extended Text Handling In The Interface" -> https://very-long-domain-name-for-testing-purposes.example.com/very/long/path/that/tests/url/handling with ID: 25
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36'[39m
+}
+📁 Created folder: "Special Chars: éñ中文🚀" with ID: 26
+🔖 Created bookmark: "Unicode Test: 🌟⭐✨" -> https://unicode-test.com with ID: 27
+🔖 Created bookmark: "Symbols: @#$%^&*()" -> https://symbols-test.com with ID: 28
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36'[39m
+}
+📁 Created folder: "Empty Test Folder" with ID: 29
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36'[39m
+}
+📁 Created folder: "Special URLs Test" with ID: 30
+🔖 Created bookmark: "Chrome Extension" -> chrome-extension://test with ID: 31
+🔖 Created bookmark: "Data URL" -> data:text/html,<h1>Test</h1> with ID: 32
+🔖 Created bookmark: "File URL" -> file:///test/path with ID: 33
+🔖 Created bookmark: "FTP URL" -> ftp://ftp.example.com with ID: 34
+🔖 Created bookmark: "Local Host" -> http://localhost:3000 with ID: 35
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36'[39m
+}
+📁 Created folder: "Nested Test Parent" with ID: 36
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36'[39m
+}
+📁 Created folder: "Nested Child Folder" with ID: 37
+🔖 Created bookmark: "Nested Bookmark" -> https://nested-test.com with ID: 38
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36'[39m
+}
+📁 Created folder: "Nested Grandchild" with ID: 39
+🔖 Created bookmark: "Deep Nested Bookmark" -> https://deep-nested.com with ID: 40
+🔧 Injecting mock DOM elements for testing...
+✅ Test data generation completed
+📊 Created 13 folders and 23 bookmarks
+🎯 Generating specific drag-and-drop test scenarios...
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36'[39m
+}
+📁 Created folder: "DragDrop Source" with ID: 41
+🔖 Created bookmark: "Reorderable Item A" -> https://item-a.com with ID: 42
+🔖 Created bookmark: "Reorderable Item B" -> https://item-b.com with ID: 43
+🔖 Created bookmark: "Reorderable Item C" -> https://item-c.com with ID: 44
+🔖 Created bookmark: "Reorderable Item D" -> https://item-d.com with ID: 45
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36'[39m
+}
+📁 Created folder: "Target Alpha" with ID: 46
+🔖 Created bookmark: "Target Alpha Item" -> https://target-item.com with ID: 47
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36'[39m
+}
+📁 Created folder: "Target Beta" with ID: 48
+🔖 Created bookmark: "Target Beta Item" -> https://target-item.com with ID: 49
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36'[39m
+}
+📁 Created folder: "Target Gamma" with ID: 50
+🔖 Created bookmark: "Target Gamma Item" -> https://target-item.com with ID: 51
+✅ Drag-drop scenarios generated successfully
+🔬 Generating boundary condition test data...
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36'[39m
+}
+📁 Created folder: "Single Item Folder" with ID: 52
+🔖 Created bookmark: "Only Item" -> https://only-item.com with ID: 53
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36'[39m
+}
+📁 Created folder: "Many Items Folder" with ID: 54
+🔖 Created bookmark: "Item 01" -> https://item1.com with ID: 55
+🔖 Created bookmark: "Item 02" -> https://item2.com with ID: 56
+🔖 Created bookmark: "Item 03" -> https://item3.com with ID: 57
+🔖 Created bookmark: "Item 04" -> https://item4.com with ID: 58
+🔖 Created bookmark: "Item 05" -> https://item5.com with ID: 59
+🔖 Created bookmark: "Item 06" -> https://item6.com with ID: 60
+🔖 Created bookmark: "Item 07" -> https://item7.com with ID: 61
+🔖 Created bookmark: "Item 08" -> https://item8.com with ID: 62
+🔖 Created bookmark: "Item 09" -> https://item9.com with ID: 63
+🔖 Created bookmark: "Item 10" -> https://item10.com with ID: 64
+🔖 Created bookmark: "Item 11" -> https://item11.com with ID: 65
+🔖 Created bookmark: "Item 12" -> https://item12.com with ID: 66
+🔖 Created bookmark: "Item 13" -> https://item13.com with ID: 67
+🔖 Created bookmark: "Item 14" -> https://item14.com with ID: 68
+🔖 Created bookmark: "Item 15" -> https://item15.com with ID: 69
+🔖 Created bookmark: "Item 16" -> https://item16.com with ID: 70
+🔖 Created bookmark: "Item 17" -> https://item17.com with ID: 71
+🔖 Created bookmark: "Item 18" -> https://item18.com with ID: 72
+🔖 Created bookmark: "Item 19" -> https://item19.com with ID: 73
+🔖 Created bookmark: "Item 20" -> https://item20.com with ID: 74
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36'[39m
+}
+📁 Created folder: "Test Folder A" with ID: 75
+🔖 Created bookmark: "Similar Item" -> https://similar.com with ID: 76
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36'[39m
+}
+📁 Created folder: "Test Folder B" with ID: 77
+🔖 Created bookmark: "Similar Item" -> https://similar.com with ID: 78
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36'[39m
+}
+📁 Created folder: "Test Folder C" with ID: 79
+🔖 Created bookmark: "Similar Item" -> https://similar.com with ID: 80
+✅ Boundary conditions generated successfully
+✅ Created test environment with:
+   📁 19 bookmark folders
+   🔖 54 bookmarks
+   📊 22 programmatically created folders
+   📊 54 programmatically created bookmarks
+🔍 Validating test data integrity...
+✅ Test data validation passed
+🔍 Test data validation: PASSED
+📊 Test data summary: {
+  totalFolders: [33m22[39m,
+  totalBookmarks: [33m54[39m,
+  emptyFolders: [33m0[39m,
+  nestedLevels: [33m0[39m
+}
+🔍 Stopped monitoring. Captured 0 console events
+
+🎯 COMPREHENSIVE CONSOLE ERROR ANALYSIS REPORT
+================================================
+{
+  "summary": {
+    "totalInteractions": 0,
+    "totalErrors": 0,
+    "totalWarnings": 0,
+    "interactionsWithErrors": 0,
+    "errorFreeInteractions": 0,
+    "faviconErrorsFiltered": 0
+  },
+  "errorsByInteraction": {},
+  "criticalErrors": [],
+  "recommendations": [],
+  "timestamp": "2025-09-26T18:20:16.536Z"
+}
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Console Error Analysis › should perform systematic user interaction testing with console error capture" classname="specs/comprehensive-console-error-analysis.test.ts" time="25.504">
+<failure message="comprehensive-console-error-analysis.test.ts:140:3 should perform systematic user interaction testing with console error capture" type="FAILURE">
+<![CDATA[  [chrome-extension] › specs/comprehensive-console-error-analysis.test.ts:140:3 › Comprehensive Console Error Analysis › should perform systematic user interaction testing with console error capture 
+
+    Error: expect(received).toBeGreaterThan(expected)
+
+    Expected: > 5
+    Received:   0
+
+      194 |
+      195 |     // Assertions to ensure test quality
+    > 196 |     expect(analysisReport.summary.totalInteractions).toBeGreaterThan(5);
+          |                                                      ^
+      197 |     
+      198 |     // Save the global report
+      199 |     globalReport = analysisReport;
+        at /Users/mdrozrosario/Favault/tests/playwright/specs/comprehensive-console-error-analysis.test.ts:196:54
+
+    ReferenceError: require is not defined
+
+      70 |       
+      71 |       // Save report to file for easy access
+    > 72 |       const fs = require('fs');
+         |                  ^
+      73 |       const path = require('path');
+      74 |       const reportPath = path.join(__dirname, '../../test-results/console-error-analysis-report.json');
+      75 |       
+        at /Users/mdrozrosario/Favault/tests/playwright/specs/comprehensive-console-error-analysis.test.ts:72:18
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../test-results/specs-comprehensive-consol-97c6c--with-console-error-capture-chrome-extension/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../test-results/specs-comprehensive-consol-97c6c--with-console-error-capture-chrome-extension/test-failed-2.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[🚀 Starting comprehensive console error analysis...
+📋 This test suite will:
+   1. Create test bookmarks programmatically
+   2. Test every major user interaction
+   3. Capture console errors for each interaction
+   4. Generate detailed error analysis report
+   5. Provide recommendations for fixing issues
+Extension ID: fdibjjncegalcajkaockapdcapalicef
+🚀 Starting enhanced console error monitoring...
+🎯 Starting systematic user interaction testing...
+🔬 Running systematic user interaction console error analysis...
+🎯 Testing interaction: bookmark_click
+⚠️ No bookmarks found for click test
+📊 Interaction "bookmark_click" generated 0 console events
+🎯 Testing interaction: edit_mode_enable
+📊 Interaction "edit_mode_enable" generated 0 console events
+🎯 Testing interaction: edit_mode_disable
+📊 Interaction "edit_mode_disable" generated 0 console events
+🎯 Testing interaction: search_bookmarks
+📊 Interaction "search_bookmarks" generated 0 console events
+🎯 Testing interaction: folder_expand_collapse
+📊 Interaction "folder_expand_collapse" generated 0 console events
+🎯 Testing interaction: drag_drop_simulation
+⚠️ Need at least 2 folders for drag-drop test
+📊 Interaction "drag_drop_simulation" generated 0 console events
+🎯 Testing interaction: right_click_context_menu
+📊 Interaction "right_click_context_menu" generated 0 console events
+🎯 Testing interaction: keyboard_shortcuts
+📊 Interaction "keyboard_shortcuts" generated 0 console events
+🎯 Testing interaction: window_resize
+📊 Interaction "window_resize" generated 0 console events
+🎯 Testing interaction: settings_panel_interaction
+📊 Interaction "settings_panel_interaction" generated 0 console events
+
+📊 INTERACTION TESTING RESULTS:
+================================
+Total Interactions Tested: 0
+Interactions with Errors: 0
+Error-free Interactions: 0
+Total Console Errors: 0
+Total Console Warnings: 0
+Critical Errors: 0
+
+🔍 ERRORS BY INTERACTION:
+
+💡 RECOMMENDATIONS:
+🎉 No issues found! Your extension is running cleanly.
+🔍 Stopped monitoring. Captured 0 console events
+
+🎯 COMPREHENSIVE CONSOLE ERROR ANALYSIS REPORT
+================================================
+{
+  "summary": {
+    "totalInteractions": 0,
+    "totalErrors": 0,
+    "totalWarnings": 0,
+    "interactionsWithErrors": 0,
+    "errorFreeInteractions": 0,
+    "faviconErrorsFiltered": 0
+  },
+  "errorsByInteraction": {},
+  "criticalErrors": [],
+  "recommendations": [],
+  "timestamp": "2025-09-26T18:20:33.938Z"
+}
+
+[[ATTACHMENT|specs-comprehensive-consol-97c6c--with-console-error-capture-chrome-extension/test-failed-1.png]]
+
+[[ATTACHMENT|specs-comprehensive-consol-97c6c--with-console-error-capture-chrome-extension/test-failed-2.png]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Console Error Analysis › should test specific drag-and-drop console errors" classname="specs/comprehensive-console-error-analysis.test.ts" time="18.5">
+<failure message="comprehensive-console-error-analysis.test.ts:202:3 should test specific drag-and-drop console errors" type="FAILURE">
+<![CDATA[  [chrome-extension] › specs/comprehensive-console-error-analysis.test.ts:202:3 › Comprehensive Console Error Analysis › should test specific drag-and-drop console errors 
+
+    ReferenceError: require is not defined
+
+      70 |       
+      71 |       // Save report to file for easy access
+    > 72 |       const fs = require('fs');
+         |                  ^
+      73 |       const path = require('path');
+      74 |       const reportPath = path.join(__dirname, '../../test-results/console-error-analysis-report.json');
+      75 |       
+        at /Users/mdrozrosario/Favault/tests/playwright/specs/comprehensive-console-error-analysis.test.ts:72:18
+]]>
+</failure>
+<system-out>
+<![CDATA[🚀 Starting comprehensive console error analysis...
+📋 This test suite will:
+   1. Create test bookmarks programmatically
+   2. Test every major user interaction
+   3. Capture console errors for each interaction
+   4. Generate detailed error analysis report
+   5. Provide recommendations for fixing issues
+Extension ID: fdibjjncegalcajkaockapdcapalicef
+🚀 Starting enhanced console error monitoring...
+🔄 Testing drag-and-drop specific console errors...
+🔧 Enabling edit mode...
+⏳ Waiting for extension initialization to complete...
+✅ Edit mode selectors found
+⏳ Waiting for enhanced drag-drop system to complete setup...
+🔍 Debug info: {
+  editModeEnabled: [33mtrue[39m,
+  appEditMode: [33mtrue[39m,
+  toggleActive: [33mtrue[39m,
+  enhancedReady: [33mtrue[39m,
+  draggableCount: [33m0[39m,
+  totalFolders: [33m0[39m
+}
+✅ Edit mode fully enabled and ready for testing
+📁 Found 0 folders available for drag-drop testing
+⚠️ Insufficient folders for drag-drop testing
+🔍 Stopped monitoring. Captured 0 console events
+
+🎯 COMPREHENSIVE CONSOLE ERROR ANALYSIS REPORT
+================================================
+{
+  "summary": {
+    "totalInteractions": 0,
+    "totalErrors": 0,
+    "totalWarnings": 0,
+    "interactionsWithErrors": 0,
+    "errorFreeInteractions": 0,
+    "faviconErrorsFiltered": 0
+  },
+  "errorsByInteraction": {},
+  "criticalErrors": [],
+  "recommendations": [],
+  "timestamp": "2025-09-26T18:20:34.810Z"
+}
+]]>
+</system-out>
+<system-err>
+<![CDATA[⚠️ Enhanced drag-drop setup may not have completed within timeout
+]]>
+</system-err>
+</testcase>
+<testcase name="Comprehensive Console Error Analysis › should test bookmark interaction console errors" classname="specs/comprehensive-console-error-analysis.test.ts" time="1.708">
+<failure message="comprehensive-console-error-analysis.test.ts:279:3 should test bookmark interaction console errors" type="FAILURE">
+<![CDATA[  [chrome-extension] › specs/comprehensive-console-error-analysis.test.ts:279:3 › Comprehensive Console Error Analysis › should test bookmark interaction console errors 
+
+    ReferenceError: require is not defined
+
+      70 |       
+      71 |       // Save report to file for easy access
+    > 72 |       const fs = require('fs');
+         |                  ^
+      73 |       const path = require('path');
+      74 |       const reportPath = path.join(__dirname, '../../test-results/console-error-analysis-report.json');
+      75 |       
+        at /Users/mdrozrosario/Favault/tests/playwright/specs/comprehensive-console-error-analysis.test.ts:72:18
+]]>
+</failure>
+<system-out>
+<![CDATA[🚀 Starting comprehensive console error analysis...
+📋 This test suite will:
+   1. Create test bookmarks programmatically
+   2. Test every major user interaction
+   3. Capture console errors for each interaction
+   4. Generate detailed error analysis report
+   5. Provide recommendations for fixing issues
+Extension ID: fdibjjncegalcajkaockapdcapalicef
+🚀 Starting enhanced console error monitoring...
+🔖 Testing bookmark interaction console errors...
+🔖 Found 0 bookmarks for interaction testing
+⚠️ No bookmarks available for interaction testing
+🔍 Stopped monitoring. Captured 0 console events
+
+🎯 COMPREHENSIVE CONSOLE ERROR ANALYSIS REPORT
+================================================
+{
+  "summary": {
+    "totalInteractions": 0,
+    "totalErrors": 0,
+    "totalWarnings": 0,
+    "interactionsWithErrors": 0,
+    "errorFreeInteractions": 0,
+    "faviconErrorsFiltered": 0
+  },
+  "errorsByInteraction": {},
+  "criticalErrors": [],
+  "recommendations": [],
+  "timestamp": "2025-09-26T18:20:20.767Z"
+}
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Console Error Analysis › should test edit mode console errors" classname="specs/comprehensive-console-error-analysis.test.ts" time="10.098">
+<failure message="comprehensive-console-error-analysis.test.ts:348:3 should test edit mode console errors" type="FAILURE">
+<![CDATA[  [chrome-extension] › specs/comprehensive-console-error-analysis.test.ts:348:3 › Comprehensive Console Error Analysis › should test edit mode console errors 
+
+    ReferenceError: require is not defined
+
+      70 |       
+      71 |       // Save report to file for easy access
+    > 72 |       const fs = require('fs');
+         |                  ^
+      73 |       const path = require('path');
+      74 |       const reportPath = path.join(__dirname, '../../test-results/console-error-analysis-report.json');
+      75 |       
+        at /Users/mdrozrosario/Favault/tests/playwright/specs/comprehensive-console-error-analysis.test.ts:72:18
+]]>
+</failure>
+<system-out>
+<![CDATA[🚀 Starting comprehensive console error analysis...
+📋 This test suite will:
+   1. Create test bookmarks programmatically
+   2. Test every major user interaction
+   3. Capture console errors for each interaction
+   4. Generate detailed error analysis report
+   5. Provide recommendations for fixing issues
+Extension ID: fdibjjncegalcajkaockapdcapalicef
+🚀 Starting enhanced console error monitoring...
+✏️ Testing edit mode console errors...
+🎯 Testing interaction: edit_mode_keyboard_enable
+📊 Interaction "edit_mode_keyboard_enable" generated 0 console events
+✅ edit_mode_keyboard_enable: No console errors
+🎯 Testing interaction: edit_mode_keyboard_disable
+📊 Interaction "edit_mode_keyboard_disable" generated 0 console events
+✅ edit_mode_keyboard_disable: No console errors
+🎯 Testing interaction: edit_mode_button_enable
+📊 Interaction "edit_mode_button_enable" generated 0 console events
+✅ edit_mode_button_enable: No console errors
+🎯 Testing interaction: edit_mode_button_disable
+📊 Interaction "edit_mode_button_disable" generated 0 console events
+✅ edit_mode_button_disable: No console errors
+🔍 Stopped monitoring. Captured 0 console events
+
+🎯 COMPREHENSIVE CONSOLE ERROR ANALYSIS REPORT
+================================================
+{
+  "summary": {
+    "totalInteractions": 0,
+    "totalErrors": 0,
+    "totalWarnings": 0,
+    "interactionsWithErrors": 0,
+    "errorFreeInteractions": 0,
+    "faviconErrorsFiltered": 0
+  },
+  "errorsByInteraction": {},
+  "criticalErrors": [],
+  "recommendations": [],
+  "timestamp": "2025-09-26T18:20:31.143Z"
+}
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Console Error Analysis › should generate final error analysis summary" classname="specs/comprehensive-console-error-analysis.test.ts" time="1.548">
+<failure message="comprehensive-console-error-analysis.test.ts:407:3 should generate final error analysis summary" type="FAILURE">
+<![CDATA[  [chrome-extension] › specs/comprehensive-console-error-analysis.test.ts:407:3 › Comprehensive Console Error Analysis › should generate final error analysis summary 
+
+    ReferenceError: require is not defined
+
+      70 |       
+      71 |       // Save report to file for easy access
+    > 72 |       const fs = require('fs');
+         |                  ^
+      73 |       const path = require('path');
+      74 |       const reportPath = path.join(__dirname, '../../test-results/console-error-analysis-report.json');
+      75 |       
+        at /Users/mdrozrosario/Favault/tests/playwright/specs/comprehensive-console-error-analysis.test.ts:72:18
+]]>
+</failure>
+<system-out>
+<![CDATA[🚀 Starting comprehensive console error analysis...
+📋 This test suite will:
+   1. Create test bookmarks programmatically
+   2. Test every major user interaction
+   3. Capture console errors for each interaction
+   4. Generate detailed error analysis report
+   5. Provide recommendations for fixing issues
+Extension ID: fdibjjncegalcajkaockapdcapalicef
+🚀 Starting enhanced console error monitoring...
+📋 Generating final error analysis summary...
+⚠️ No error analysis report available
+🔍 Stopped monitoring. Captured 0 console events
+
+🎯 COMPREHENSIVE CONSOLE ERROR ANALYSIS REPORT
+================================================
+{
+  "summary": {
+    "totalInteractions": 0,
+    "totalErrors": 0,
+    "totalWarnings": 0,
+    "interactionsWithErrors": 0,
+    "errorFreeInteractions": 0,
+    "faviconErrorsFiltered": 0
+  },
+  "errorsByInteraction": {},
+  "criticalErrors": [],
+  "recommendations": [],
+  "timestamp": "2025-09-26T18:20:26.547Z"
+}
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="specs/comprehensive-console-error-analysis.test.ts" timestamp="2025-09-26T18:20:06.273Z" hostname="firefox-extension" tests="6" failures="6" skipped="0" time="64.683" errors="0">
+<testcase name="Comprehensive Console Error Analysis › should create comprehensive test bookmark data" classname="specs/comprehensive-console-error-analysis.test.ts" time="6.884">
+<failure message="comprehensive-console-error-analysis.test.ts:85:3 should create comprehensive test bookmark data" type="FAILURE">
+<![CDATA[  [firefox-extension] › specs/comprehensive-console-error-analysis.test.ts:85:3 › Comprehensive Console Error Analysis › should create comprehensive test bookmark data 
+
+    ReferenceError: require is not defined
+
+      70 |       
+      71 |       // Save report to file for easy access
+    > 72 |       const fs = require('fs');
+         |                  ^
+      73 |       const path = require('path');
+      74 |       const reportPath = path.join(__dirname, '../../test-results/console-error-analysis-report.json');
+      75 |       
+        at /Users/mdrozrosario/Favault/tests/playwright/specs/comprehensive-console-error-analysis.test.ts:72:18
+]]>
+</failure>
+<system-out>
+<![CDATA[🚀 Starting comprehensive console error analysis...
+📋 This test suite will:
+   1. Create test bookmarks programmatically
+   2. Test every major user interaction
+   3. Capture console errors for each interaction
+   4. Generate detailed error analysis report
+   5. Provide recommendations for fixing issues
+Extension ID: fdibjjncegalcajkaockapdcapalicef
+🚀 Starting enhanced console error monitoring...
+📚 Creating comprehensive test bookmark structure...
+🚀 Initializing test data setup with config: {
+  folderCount: [33m8[39m,
+  bookmarksPerFolder: [33m4[39m,
+  maxNestingLevel: [33m3[39m,
+  includeEmptyFolders: [33mtrue[39m,
+  includeSpecialCharacters: [33mtrue[39m,
+  includeLongTitles: [33mtrue[39m,
+  includeSpecialUrls: [33mtrue[39m,
+  includeDragTestFolders: [33mtrue[39m,
+  includeProtectedFolders: [33mfalse[39m,
+  includeReorderableItems: [33mtrue[39m,
+  browserType: [32m'chrome'[39m
+}
+📊 Generating test bookmark data...
+💾 Creating bookmark backup...
+✅ Bookmark backup created successfully
+🧹 Clearing existing test data...
+✅ Test data cleared successfully
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0.2) Gecko/20100101 Firefox/140.0.2'[39m
+}
+📁 Created folder: "Test Work Folder" with ID: 5
+🔖 Created bookmark: "GitHub" -> https://github.com with ID: 6
+🔖 Created bookmark: "Stack Overflow" -> https://stackoverflow.com with ID: 7
+🔖 Created bookmark: "MDN Web Docs" -> https://developer.mozilla.org with ID: 8
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0.2) Gecko/20100101 Firefox/140.0.2'[39m
+}
+📁 Created folder: "Test Personal Folder" with ID: 9
+🔖 Created bookmark: "Gmail" -> https://gmail.com with ID: 10
+🔖 Created bookmark: "YouTube" -> https://youtube.com with ID: 11
+🔖 Created bookmark: "Netflix" -> https://netflix.com with ID: 12
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0.2) Gecko/20100101 Firefox/140.0.2'[39m
+}
+📁 Created folder: "Test Development Tools" with ID: 13
+🔖 Created bookmark: "VS Code" -> https://code.visualstudio.com with ID: 14
+🔖 Created bookmark: "Chrome DevTools" -> chrome://devtools/ with ID: 15
+🔖 Created bookmark: "Playwright" -> https://playwright.dev with ID: 16
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0.2) Gecko/20100101 Firefox/140.0.2'[39m
+}
+📁 Created folder: "DragTest Source Folder" with ID: 17
+🔖 Created bookmark: "Draggable Item 1" -> https://example1.com with ID: 18
+🔖 Created bookmark: "Draggable Item 2" -> https://example2.com with ID: 19
+🔖 Created bookmark: "Draggable Item 3" -> https://example3.com with ID: 20
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0.2) Gecko/20100101 Firefox/140.0.2'[39m
+}
+📁 Created folder: "DragTest Target Folder" with ID: 21
+🔖 Created bookmark: "Target Item 1" -> https://target1.com with ID: 22
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0.2) Gecko/20100101 Firefox/140.0.2'[39m
+}
+📁 Created folder: "DragTest Empty Target" with ID: 23
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0.2) Gecko/20100101 Firefox/140.0.2'[39m
+}
+📁 Created folder: "Very Long Folder Title That Tests How The UI Handles Extended Text Content" with ID: 24
+🔖 Created bookmark: "Very Long Bookmark Title That Also Tests Extended Text Handling In The Interface" -> https://very-long-domain-name-for-testing-purposes.example.com/very/long/path/that/tests/url/handling with ID: 25
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0.2) Gecko/20100101 Firefox/140.0.2'[39m
+}
+📁 Created folder: "Special Chars: éñ中文🚀" with ID: 26
+🔖 Created bookmark: "Unicode Test: 🌟⭐✨" -> https://unicode-test.com with ID: 27
+🔖 Created bookmark: "Symbols: @#$%^&*()" -> https://symbols-test.com with ID: 28
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0.2) Gecko/20100101 Firefox/140.0.2'[39m
+}
+📁 Created folder: "Empty Test Folder" with ID: 29
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0.2) Gecko/20100101 Firefox/140.0.2'[39m
+}
+📁 Created folder: "Special URLs Test" with ID: 30
+🔖 Created bookmark: "Chrome Extension" -> chrome-extension://test with ID: 31
+🔖 Created bookmark: "Data URL" -> data:text/html,<h1>Test</h1> with ID: 32
+🔖 Created bookmark: "File URL" -> file:///test/path with ID: 33
+🔖 Created bookmark: "FTP URL" -> ftp://ftp.example.com with ID: 34
+🔖 Created bookmark: "Local Host" -> http://localhost:3000 with ID: 35
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0.2) Gecko/20100101 Firefox/140.0.2'[39m
+}
+📁 Created folder: "Nested Test Parent" with ID: 36
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0.2) Gecko/20100101 Firefox/140.0.2'[39m
+}
+📁 Created folder: "Nested Child Folder" with ID: 37
+🔖 Created bookmark: "Nested Bookmark" -> https://nested-test.com with ID: 38
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0.2) Gecko/20100101 Firefox/140.0.2'[39m
+}
+📁 Created folder: "Nested Grandchild" with ID: 39
+🔖 Created bookmark: "Deep Nested Bookmark" -> https://deep-nested.com with ID: 40
+🔧 Injecting mock DOM elements for testing...
+✅ Test data generation completed
+📊 Created 13 folders and 23 bookmarks
+🎯 Generating specific drag-and-drop test scenarios...
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0.2) Gecko/20100101 Firefox/140.0.2'[39m
+}
+📁 Created folder: "DragDrop Source" with ID: 41
+🔖 Created bookmark: "Reorderable Item A" -> https://item-a.com with ID: 42
+🔖 Created bookmark: "Reorderable Item B" -> https://item-b.com with ID: 43
+🔖 Created bookmark: "Reorderable Item C" -> https://item-c.com with ID: 44
+🔖 Created bookmark: "Reorderable Item D" -> https://item-d.com with ID: 45
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0.2) Gecko/20100101 Firefox/140.0.2'[39m
+}
+📁 Created folder: "Target Alpha" with ID: 46
+🔖 Created bookmark: "Target Alpha Item" -> https://target-item.com with ID: 47
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0.2) Gecko/20100101 Firefox/140.0.2'[39m
+}
+📁 Created folder: "Target Beta" with ID: 48
+🔖 Created bookmark: "Target Beta Item" -> https://target-item.com with ID: 49
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0.2) Gecko/20100101 Firefox/140.0.2'[39m
+}
+📁 Created folder: "Target Gamma" with ID: 50
+🔖 Created bookmark: "Target Gamma Item" -> https://target-item.com with ID: 51
+✅ Drag-drop scenarios generated successfully
+🔬 Generating boundary condition test data...
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0.2) Gecko/20100101 Firefox/140.0.2'[39m
+}
+📁 Created folder: "Single Item Folder" with ID: 52
+🔖 Created bookmark: "Only Item" -> https://only-item.com with ID: 53
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0.2) Gecko/20100101 Firefox/140.0.2'[39m
+}
+📁 Created folder: "Many Items Folder" with ID: 54
+🔖 Created bookmark: "Item 01" -> https://item1.com with ID: 55
+🔖 Created bookmark: "Item 02" -> https://item2.com with ID: 56
+🔖 Created bookmark: "Item 03" -> https://item3.com with ID: 57
+🔖 Created bookmark: "Item 04" -> https://item4.com with ID: 58
+🔖 Created bookmark: "Item 05" -> https://item5.com with ID: 59
+🔖 Created bookmark: "Item 06" -> https://item6.com with ID: 60
+🔖 Created bookmark: "Item 07" -> https://item7.com with ID: 61
+🔖 Created bookmark: "Item 08" -> https://item8.com with ID: 62
+🔖 Created bookmark: "Item 09" -> https://item9.com with ID: 63
+🔖 Created bookmark: "Item 10" -> https://item10.com with ID: 64
+🔖 Created bookmark: "Item 11" -> https://item11.com with ID: 65
+🔖 Created bookmark: "Item 12" -> https://item12.com with ID: 66
+🔖 Created bookmark: "Item 13" -> https://item13.com with ID: 67
+🔖 Created bookmark: "Item 14" -> https://item14.com with ID: 68
+🔖 Created bookmark: "Item 15" -> https://item15.com with ID: 69
+🔖 Created bookmark: "Item 16" -> https://item16.com with ID: 70
+🔖 Created bookmark: "Item 17" -> https://item17.com with ID: 71
+🔖 Created bookmark: "Item 18" -> https://item18.com with ID: 72
+🔖 Created bookmark: "Item 19" -> https://item19.com with ID: 73
+🔖 Created bookmark: "Item 20" -> https://item20.com with ID: 74
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0.2) Gecko/20100101 Firefox/140.0.2'[39m
+}
+📁 Created folder: "Test Folder A" with ID: 75
+🔖 Created bookmark: "Similar Item" -> https://similar.com with ID: 76
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0.2) Gecko/20100101 Firefox/140.0.2'[39m
+}
+📁 Created folder: "Test Folder B" with ID: 77
+🔖 Created bookmark: "Similar Item" -> https://similar.com with ID: 78
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0.2) Gecko/20100101 Firefox/140.0.2'[39m
+}
+📁 Created folder: "Test Folder C" with ID: 79
+🔖 Created bookmark: "Similar Item" -> https://similar.com with ID: 80
+✅ Boundary conditions generated successfully
+✅ Created test environment with:
+   📁 19 bookmark folders
+   🔖 54 bookmarks
+   📊 22 programmatically created folders
+   📊 54 programmatically created bookmarks
+🔍 Validating test data integrity...
+✅ Test data validation passed
+🔍 Test data validation: PASSED
+📊 Test data summary: {
+  totalFolders: [33m22[39m,
+  totalBookmarks: [33m54[39m,
+  emptyFolders: [33m0[39m,
+  nestedLevels: [33m0[39m
+}
+🔍 Stopped monitoring. Captured 0 console events
+
+🎯 COMPREHENSIVE CONSOLE ERROR ANALYSIS REPORT
+================================================
+{
+  "summary": {
+    "totalInteractions": 0,
+    "totalErrors": 0,
+    "totalWarnings": 0,
+    "interactionsWithErrors": 0,
+    "errorFreeInteractions": 0,
+    "faviconErrorsFiltered": 0
+  },
+  "errorsByInteraction": {},
+  "criticalErrors": [],
+  "recommendations": [],
+  "timestamp": "2025-09-26T18:20:33.530Z"
+}
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Console Error Analysis › should perform systematic user interaction testing with console error capture" classname="specs/comprehensive-console-error-analysis.test.ts" time="25.488">
+<failure message="comprehensive-console-error-analysis.test.ts:140:3 should perform systematic user interaction testing with console error capture" type="FAILURE">
+<![CDATA[  [firefox-extension] › specs/comprehensive-console-error-analysis.test.ts:140:3 › Comprehensive Console Error Analysis › should perform systematic user interaction testing with console error capture 
+
+    Error: expect(received).toBeGreaterThan(expected)
+
+    Expected: > 5
+    Received:   0
+
+      194 |
+      195 |     // Assertions to ensure test quality
+    > 196 |     expect(analysisReport.summary.totalInteractions).toBeGreaterThan(5);
+          |                                                      ^
+      197 |     
+      198 |     // Save the global report
+      199 |     globalReport = analysisReport;
+        at /Users/mdrozrosario/Favault/tests/playwright/specs/comprehensive-console-error-analysis.test.ts:196:54
+
+    ReferenceError: require is not defined
+
+      70 |       
+      71 |       // Save report to file for easy access
+    > 72 |       const fs = require('fs');
+         |                  ^
+      73 |       const path = require('path');
+      74 |       const reportPath = path.join(__dirname, '../../test-results/console-error-analysis-report.json');
+      75 |       
+        at /Users/mdrozrosario/Favault/tests/playwright/specs/comprehensive-console-error-analysis.test.ts:72:18
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../test-results/specs-comprehensive-consol-97c6c--with-console-error-capture-firefox-extension/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../test-results/specs-comprehensive-consol-97c6c--with-console-error-capture-firefox-extension/test-failed-2.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[🚀 Starting comprehensive console error analysis...
+📋 This test suite will:
+   1. Create test bookmarks programmatically
+   2. Test every major user interaction
+   3. Capture console errors for each interaction
+   4. Generate detailed error analysis report
+   5. Provide recommendations for fixing issues
+Extension ID: fdibjjncegalcajkaockapdcapalicef
+🚀 Starting enhanced console error monitoring...
+🎯 Starting systematic user interaction testing...
+🔬 Running systematic user interaction console error analysis...
+🎯 Testing interaction: bookmark_click
+⚠️ No bookmarks found for click test
+📊 Interaction "bookmark_click" generated 0 console events
+🎯 Testing interaction: edit_mode_enable
+📊 Interaction "edit_mode_enable" generated 0 console events
+🎯 Testing interaction: edit_mode_disable
+📊 Interaction "edit_mode_disable" generated 0 console events
+🎯 Testing interaction: search_bookmarks
+📊 Interaction "search_bookmarks" generated 0 console events
+🎯 Testing interaction: folder_expand_collapse
+📊 Interaction "folder_expand_collapse" generated 0 console events
+🎯 Testing interaction: drag_drop_simulation
+⚠️ Need at least 2 folders for drag-drop test
+📊 Interaction "drag_drop_simulation" generated 0 console events
+🎯 Testing interaction: right_click_context_menu
+📊 Interaction "right_click_context_menu" generated 0 console events
+🎯 Testing interaction: keyboard_shortcuts
+📊 Interaction "keyboard_shortcuts" generated 0 console events
+🎯 Testing interaction: window_resize
+📊 Interaction "window_resize" generated 0 console events
+🎯 Testing interaction: settings_panel_interaction
+📊 Interaction "settings_panel_interaction" generated 0 console events
+
+📊 INTERACTION TESTING RESULTS:
+================================
+Total Interactions Tested: 0
+Interactions with Errors: 0
+Error-free Interactions: 0
+Total Console Errors: 0
+Total Console Warnings: 0
+Critical Errors: 0
+
+🔍 ERRORS BY INTERACTION:
+
+💡 RECOMMENDATIONS:
+🎉 No issues found! Your extension is running cleanly.
+🔍 Stopped monitoring. Captured 0 console events
+
+🎯 COMPREHENSIVE CONSOLE ERROR ANALYSIS REPORT
+================================================
+{
+  "summary": {
+    "totalInteractions": 0,
+    "totalErrors": 0,
+    "totalWarnings": 0,
+    "interactionsWithErrors": 0,
+    "errorFreeInteractions": 0,
+    "faviconErrorsFiltered": 0
+  },
+  "errorsByInteraction": {},
+  "criticalErrors": [],
+  "recommendations": [],
+  "timestamp": "2025-09-26T18:20:51.249Z"
+}
+
+[[ATTACHMENT|specs-comprehensive-consol-97c6c--with-console-error-capture-firefox-extension/test-failed-1.png]]
+
+[[ATTACHMENT|specs-comprehensive-consol-97c6c--with-console-error-capture-firefox-extension/test-failed-2.png]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Console Error Analysis › should test specific drag-and-drop console errors" classname="specs/comprehensive-console-error-analysis.test.ts" time="18.215">
+<failure message="comprehensive-console-error-analysis.test.ts:202:3 should test specific drag-and-drop console errors" type="FAILURE">
+<![CDATA[  [firefox-extension] › specs/comprehensive-console-error-analysis.test.ts:202:3 › Comprehensive Console Error Analysis › should test specific drag-and-drop console errors 
+
+    ReferenceError: require is not defined
+
+      70 |       
+      71 |       // Save report to file for easy access
+    > 72 |       const fs = require('fs');
+         |                  ^
+      73 |       const path = require('path');
+      74 |       const reportPath = path.join(__dirname, '../../test-results/console-error-analysis-report.json');
+      75 |       
+        at /Users/mdrozrosario/Favault/tests/playwright/specs/comprehensive-console-error-analysis.test.ts:72:18
+]]>
+</failure>
+<system-out>
+<![CDATA[🚀 Starting comprehensive console error analysis...
+📋 This test suite will:
+   1. Create test bookmarks programmatically
+   2. Test every major user interaction
+   3. Capture console errors for each interaction
+   4. Generate detailed error analysis report
+   5. Provide recommendations for fixing issues
+Extension ID: fdibjjncegalcajkaockapdcapalicef
+🚀 Starting enhanced console error monitoring...
+🔄 Testing drag-and-drop specific console errors...
+🔧 Enabling edit mode...
+⏳ Waiting for extension initialization to complete...
+✅ Edit mode selectors found
+⏳ Waiting for enhanced drag-drop system to complete setup...
+🔍 Debug info: {
+  editModeEnabled: [33mtrue[39m,
+  appEditMode: [33mtrue[39m,
+  toggleActive: [33mtrue[39m,
+  enhancedReady: [33mtrue[39m,
+  draggableCount: [33m0[39m,
+  totalFolders: [33m0[39m
+}
+✅ Edit mode fully enabled and ready for testing
+📁 Found 0 folders available for drag-drop testing
+⚠️ Insufficient folders for drag-drop testing
+🔍 Stopped monitoring. Captured 0 console events
+
+🎯 COMPREHENSIVE CONSOLE ERROR ANALYSIS REPORT
+================================================
+{
+  "summary": {
+    "totalInteractions": 0,
+    "totalErrors": 0,
+    "totalWarnings": 0,
+    "interactionsWithErrors": 0,
+    "errorFreeInteractions": 0,
+    "faviconErrorsFiltered": 0
+  },
+  "errorsByInteraction": {},
+  "criticalErrors": [],
+  "recommendations": [],
+  "timestamp": "2025-09-26T18:20:49.795Z"
+}
+]]>
+</system-out>
+<system-err>
+<![CDATA[⚠️ Enhanced drag-drop setup may not have completed within timeout
+]]>
+</system-err>
+</testcase>
+<testcase name="Comprehensive Console Error Analysis › should test bookmark interaction console errors" classname="specs/comprehensive-console-error-analysis.test.ts" time="1.939">
+<failure message="comprehensive-console-error-analysis.test.ts:279:3 should test bookmark interaction console errors" type="FAILURE">
+<![CDATA[  [firefox-extension] › specs/comprehensive-console-error-analysis.test.ts:279:3 › Comprehensive Console Error Analysis › should test bookmark interaction console errors 
+
+    ReferenceError: require is not defined
+
+      70 |       
+      71 |       // Save report to file for easy access
+    > 72 |       const fs = require('fs');
+         |                  ^
+      73 |       const path = require('path');
+      74 |       const reportPath = path.join(__dirname, '../../test-results/console-error-analysis-report.json');
+      75 |       
+        at /Users/mdrozrosario/Favault/tests/playwright/specs/comprehensive-console-error-analysis.test.ts:72:18
+]]>
+</failure>
+<system-out>
+<![CDATA[🚀 Starting comprehensive console error analysis...
+📋 This test suite will:
+   1. Create test bookmarks programmatically
+   2. Test every major user interaction
+   3. Capture console errors for each interaction
+   4. Generate detailed error analysis report
+   5. Provide recommendations for fixing issues
+Extension ID: fdibjjncegalcajkaockapdcapalicef
+🚀 Starting enhanced console error monitoring...
+🔖 Testing bookmark interaction console errors...
+🔖 Found 0 bookmarks for interaction testing
+⚠️ No bookmarks available for interaction testing
+🔍 Stopped monitoring. Captured 0 console events
+
+🎯 COMPREHENSIVE CONSOLE ERROR ANALYSIS REPORT
+================================================
+{
+  "summary": {
+    "totalInteractions": 0,
+    "totalErrors": 0,
+    "totalWarnings": 0,
+    "interactionsWithErrors": 0,
+    "errorFreeInteractions": 0,
+    "faviconErrorsFiltered": 0
+  },
+  "errorsByInteraction": {},
+  "criticalErrors": [],
+  "recommendations": [],
+  "timestamp": "2025-09-26T18:20:35.897Z"
+}
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Console Error Analysis › should test edit mode console errors" classname="specs/comprehensive-console-error-analysis.test.ts" time="10.332">
+<failure message="comprehensive-console-error-analysis.test.ts:348:3 should test edit mode console errors" type="FAILURE">
+<![CDATA[  [firefox-extension] › specs/comprehensive-console-error-analysis.test.ts:348:3 › Comprehensive Console Error Analysis › should test edit mode console errors 
+
+    ReferenceError: require is not defined
+
+      70 |       
+      71 |       // Save report to file for easy access
+    > 72 |       const fs = require('fs');
+         |                  ^
+      73 |       const path = require('path');
+      74 |       const reportPath = path.join(__dirname, '../../test-results/console-error-analysis-report.json');
+      75 |       
+        at /Users/mdrozrosario/Favault/tests/playwright/specs/comprehensive-console-error-analysis.test.ts:72:18
+]]>
+</failure>
+<system-out>
+<![CDATA[🚀 Starting comprehensive console error analysis...
+📋 This test suite will:
+   1. Create test bookmarks programmatically
+   2. Test every major user interaction
+   3. Capture console errors for each interaction
+   4. Generate detailed error analysis report
+   5. Provide recommendations for fixing issues
+Extension ID: fdibjjncegalcajkaockapdcapalicef
+🚀 Starting enhanced console error monitoring...
+✏️ Testing edit mode console errors...
+🎯 Testing interaction: edit_mode_keyboard_enable
+📊 Interaction "edit_mode_keyboard_enable" generated 0 console events
+✅ edit_mode_keyboard_enable: No console errors
+🎯 Testing interaction: edit_mode_keyboard_disable
+📊 Interaction "edit_mode_keyboard_disable" generated 0 console events
+✅ edit_mode_keyboard_disable: No console errors
+🎯 Testing interaction: edit_mode_button_enable
+📊 Interaction "edit_mode_button_enable" generated 0 console events
+✅ edit_mode_button_enable: No console errors
+🎯 Testing interaction: edit_mode_button_disable
+📊 Interaction "edit_mode_button_disable" generated 0 console events
+✅ edit_mode_button_disable: No console errors
+🔍 Stopped monitoring. Captured 0 console events
+
+🎯 COMPREHENSIVE CONSOLE ERROR ANALYSIS REPORT
+================================================
+{
+  "summary": {
+    "totalInteractions": 0,
+    "totalErrors": 0,
+    "totalWarnings": 0,
+    "interactionsWithErrors": 0,
+    "errorFreeInteractions": 0,
+    "faviconErrorsFiltered": 0
+  },
+  "errorsByInteraction": {},
+  "criticalErrors": [],
+  "recommendations": [],
+  "timestamp": "2025-09-26T18:20:44.940Z"
+}
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Console Error Analysis › should generate final error analysis summary" classname="specs/comprehensive-console-error-analysis.test.ts" time="1.825">
+<failure message="comprehensive-console-error-analysis.test.ts:407:3 should generate final error analysis summary" type="FAILURE">
+<![CDATA[  [firefox-extension] › specs/comprehensive-console-error-analysis.test.ts:407:3 › Comprehensive Console Error Analysis › should generate final error analysis summary 
+
+    ReferenceError: require is not defined
+
+      70 |       
+      71 |       // Save report to file for easy access
+    > 72 |       const fs = require('fs');
+         |                  ^
+      73 |       const path = require('path');
+      74 |       const reportPath = path.join(__dirname, '../../test-results/console-error-analysis-report.json');
+      75 |       
+        at /Users/mdrozrosario/Favault/tests/playwright/specs/comprehensive-console-error-analysis.test.ts:72:18
+]]>
+</failure>
+<system-out>
+<![CDATA[🚀 Starting comprehensive console error analysis...
+📋 This test suite will:
+   1. Create test bookmarks programmatically
+   2. Test every major user interaction
+   3. Capture console errors for each interaction
+   4. Generate detailed error analysis report
+   5. Provide recommendations for fixing issues
+Extension ID: fdibjjncegalcajkaockapdcapalicef
+🚀 Starting enhanced console error monitoring...
+📋 Generating final error analysis summary...
+⚠️ No error analysis report available
+🔍 Stopped monitoring. Captured 0 console events
+
+🎯 COMPREHENSIVE CONSOLE ERROR ANALYSIS REPORT
+================================================
+{
+  "summary": {
+    "totalInteractions": 0,
+    "totalErrors": 0,
+    "totalWarnings": 0,
+    "interactionsWithErrors": 0,
+    "errorFreeInteractions": 0,
+    "faviconErrorsFiltered": 0
+  },
+  "errorsByInteraction": {},
+  "criticalErrors": [],
+  "recommendations": [],
+  "timestamp": "2025-09-26T18:20:38.639Z"
+}
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="specs/comprehensive-console-error-analysis.test.ts" timestamp="2025-09-26T18:20:06.273Z" hostname="edge-extension" tests="6" failures="6" skipped="0" time="64.377" errors="0">
+<testcase name="Comprehensive Console Error Analysis › should create comprehensive test bookmark data" classname="specs/comprehensive-console-error-analysis.test.ts" time="6.838">
+<failure message="comprehensive-console-error-analysis.test.ts:85:3 should create comprehensive test bookmark data" type="FAILURE">
+<![CDATA[  [edge-extension] › specs/comprehensive-console-error-analysis.test.ts:85:3 › Comprehensive Console Error Analysis › should create comprehensive test bookmark data 
+
+    ReferenceError: require is not defined
+
+      70 |       
+      71 |       // Save report to file for easy access
+    > 72 |       const fs = require('fs');
+         |                  ^
+      73 |       const path = require('path');
+      74 |       const reportPath = path.join(__dirname, '../../test-results/console-error-analysis-report.json');
+      75 |       
+        at /Users/mdrozrosario/Favault/tests/playwright/specs/comprehensive-console-error-analysis.test.ts:72:18
+]]>
+</failure>
+<system-out>
+<![CDATA[🚀 Starting comprehensive console error analysis...
+📋 This test suite will:
+   1. Create test bookmarks programmatically
+   2. Test every major user interaction
+   3. Capture console errors for each interaction
+   4. Generate detailed error analysis report
+   5. Provide recommendations for fixing issues
+Extension ID: fdibjjncegalcajkaockapdcapalicef
+🚀 Starting enhanced console error monitoring...
+📚 Creating comprehensive test bookmark structure...
+🚀 Initializing test data setup with config: {
+  folderCount: [33m8[39m,
+  bookmarksPerFolder: [33m4[39m,
+  maxNestingLevel: [33m3[39m,
+  includeEmptyFolders: [33mtrue[39m,
+  includeSpecialCharacters: [33mtrue[39m,
+  includeLongTitles: [33mtrue[39m,
+  includeSpecialUrls: [33mtrue[39m,
+  includeDragTestFolders: [33mtrue[39m,
+  includeProtectedFolders: [33mfalse[39m,
+  includeReorderableItems: [33mtrue[39m,
+  browserType: [32m'chrome'[39m
+}
+📊 Generating test bookmark data...
+💾 Creating bookmark backup...
+✅ Bookmark backup created successfully
+🧹 Clearing existing test data...
+✅ Test data cleared successfully
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36 Edg/139.0.7258.5'[39m
+}
+📁 Created folder: "Test Work Folder" with ID: 5
+🔖 Created bookmark: "GitHub" -> https://github.com with ID: 6
+🔖 Created bookmark: "Stack Overflow" -> https://stackoverflow.com with ID: 7
+🔖 Created bookmark: "MDN Web Docs" -> https://developer.mozilla.org with ID: 8
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36 Edg/139.0.7258.5'[39m
+}
+📁 Created folder: "Test Personal Folder" with ID: 9
+🔖 Created bookmark: "Gmail" -> https://gmail.com with ID: 10
+🔖 Created bookmark: "YouTube" -> https://youtube.com with ID: 11
+🔖 Created bookmark: "Netflix" -> https://netflix.com with ID: 12
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36 Edg/139.0.7258.5'[39m
+}
+📁 Created folder: "Test Development Tools" with ID: 13
+🔖 Created bookmark: "VS Code" -> https://code.visualstudio.com with ID: 14
+🔖 Created bookmark: "Chrome DevTools" -> chrome://devtools/ with ID: 15
+🔖 Created bookmark: "Playwright" -> https://playwright.dev with ID: 16
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36 Edg/139.0.7258.5'[39m
+}
+📁 Created folder: "DragTest Source Folder" with ID: 17
+🔖 Created bookmark: "Draggable Item 1" -> https://example1.com with ID: 18
+🔖 Created bookmark: "Draggable Item 2" -> https://example2.com with ID: 19
+🔖 Created bookmark: "Draggable Item 3" -> https://example3.com with ID: 20
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36 Edg/139.0.7258.5'[39m
+}
+📁 Created folder: "DragTest Target Folder" with ID: 21
+🔖 Created bookmark: "Target Item 1" -> https://target1.com with ID: 22
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36 Edg/139.0.7258.5'[39m
+}
+📁 Created folder: "DragTest Empty Target" with ID: 23
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36 Edg/139.0.7258.5'[39m
+}
+📁 Created folder: "Very Long Folder Title That Tests How The UI Handles Extended Text Content" with ID: 24
+🔖 Created bookmark: "Very Long Bookmark Title That Also Tests Extended Text Handling In The Interface" -> https://very-long-domain-name-for-testing-purposes.example.com/very/long/path/that/tests/url/handling with ID: 25
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36 Edg/139.0.7258.5'[39m
+}
+📁 Created folder: "Special Chars: éñ中文🚀" with ID: 26
+🔖 Created bookmark: "Unicode Test: 🌟⭐✨" -> https://unicode-test.com with ID: 27
+🔖 Created bookmark: "Symbols: @#$%^&*()" -> https://symbols-test.com with ID: 28
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36 Edg/139.0.7258.5'[39m
+}
+📁 Created folder: "Empty Test Folder" with ID: 29
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36 Edg/139.0.7258.5'[39m
+}
+📁 Created folder: "Special URLs Test" with ID: 30
+🔖 Created bookmark: "Chrome Extension" -> chrome-extension://test with ID: 31
+🔖 Created bookmark: "Data URL" -> data:text/html,<h1>Test</h1> with ID: 32
+🔖 Created bookmark: "File URL" -> file:///test/path with ID: 33
+🔖 Created bookmark: "FTP URL" -> ftp://ftp.example.com with ID: 34
+🔖 Created bookmark: "Local Host" -> http://localhost:3000 with ID: 35
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36 Edg/139.0.7258.5'[39m
+}
+📁 Created folder: "Nested Test Parent" with ID: 36
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36 Edg/139.0.7258.5'[39m
+}
+📁 Created folder: "Nested Child Folder" with ID: 37
+🔖 Created bookmark: "Nested Bookmark" -> https://nested-test.com with ID: 38
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36 Edg/139.0.7258.5'[39m
+}
+📁 Created folder: "Nested Grandchild" with ID: 39
+🔖 Created bookmark: "Deep Nested Bookmark" -> https://deep-nested.com with ID: 40
+🔧 Injecting mock DOM elements for testing...
+✅ Test data generation completed
+📊 Created 13 folders and 23 bookmarks
+🎯 Generating specific drag-and-drop test scenarios...
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36 Edg/139.0.7258.5'[39m
+}
+📁 Created folder: "DragDrop Source" with ID: 41
+🔖 Created bookmark: "Reorderable Item A" -> https://item-a.com with ID: 42
+🔖 Created bookmark: "Reorderable Item B" -> https://item-b.com with ID: 43
+🔖 Created bookmark: "Reorderable Item C" -> https://item-c.com with ID: 44
+🔖 Created bookmark: "Reorderable Item D" -> https://item-d.com with ID: 45
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36 Edg/139.0.7258.5'[39m
+}
+📁 Created folder: "Target Alpha" with ID: 46
+🔖 Created bookmark: "Target Alpha Item" -> https://target-item.com with ID: 47
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36 Edg/139.0.7258.5'[39m
+}
+📁 Created folder: "Target Beta" with ID: 48
+🔖 Created bookmark: "Target Beta Item" -> https://target-item.com with ID: 49
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36 Edg/139.0.7258.5'[39m
+}
+📁 Created folder: "Target Gamma" with ID: 50
+🔖 Created bookmark: "Target Gamma Item" -> https://target-item.com with ID: 51
+✅ Drag-drop scenarios generated successfully
+🔬 Generating boundary condition test data...
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36 Edg/139.0.7258.5'[39m
+}
+📁 Created folder: "Single Item Folder" with ID: 52
+🔖 Created bookmark: "Only Item" -> https://only-item.com with ID: 53
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36 Edg/139.0.7258.5'[39m
+}
+📁 Created folder: "Many Items Folder" with ID: 54
+🔖 Created bookmark: "Item 01" -> https://item1.com with ID: 55
+🔖 Created bookmark: "Item 02" -> https://item2.com with ID: 56
+🔖 Created bookmark: "Item 03" -> https://item3.com with ID: 57
+🔖 Created bookmark: "Item 04" -> https://item4.com with ID: 58
+🔖 Created bookmark: "Item 05" -> https://item5.com with ID: 59
+🔖 Created bookmark: "Item 06" -> https://item6.com with ID: 60
+🔖 Created bookmark: "Item 07" -> https://item7.com with ID: 61
+🔖 Created bookmark: "Item 08" -> https://item8.com with ID: 62
+🔖 Created bookmark: "Item 09" -> https://item9.com with ID: 63
+🔖 Created bookmark: "Item 10" -> https://item10.com with ID: 64
+🔖 Created bookmark: "Item 11" -> https://item11.com with ID: 65
+🔖 Created bookmark: "Item 12" -> https://item12.com with ID: 66
+🔖 Created bookmark: "Item 13" -> https://item13.com with ID: 67
+🔖 Created bookmark: "Item 14" -> https://item14.com with ID: 68
+🔖 Created bookmark: "Item 15" -> https://item15.com with ID: 69
+🔖 Created bookmark: "Item 16" -> https://item16.com with ID: 70
+🔖 Created bookmark: "Item 17" -> https://item17.com with ID: 71
+🔖 Created bookmark: "Item 18" -> https://item18.com with ID: 72
+🔖 Created bookmark: "Item 19" -> https://item19.com with ID: 73
+🔖 Created bookmark: "Item 20" -> https://item20.com with ID: 74
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36 Edg/139.0.7258.5'[39m
+}
+📁 Created folder: "Test Folder A" with ID: 75
+🔖 Created bookmark: "Similar Item" -> https://similar.com with ID: 76
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36 Edg/139.0.7258.5'[39m
+}
+📁 Created folder: "Test Folder B" with ID: 77
+🔖 Created bookmark: "Similar Item" -> https://similar.com with ID: 78
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36 Edg/139.0.7258.5'[39m
+}
+📁 Created folder: "Test Folder C" with ID: 79
+🔖 Created bookmark: "Similar Item" -> https://similar.com with ID: 80
+✅ Boundary conditions generated successfully
+✅ Created test environment with:
+   📁 19 bookmark folders
+   🔖 54 bookmarks
+   📊 22 programmatically created folders
+   📊 54 programmatically created bookmarks
+🔍 Validating test data integrity...
+✅ Test data validation passed
+🔍 Test data validation: PASSED
+📊 Test data summary: {
+  totalFolders: [33m22[39m,
+  totalBookmarks: [33m54[39m,
+  emptyFolders: [33m0[39m,
+  nestedLevels: [33m0[39m
+}
+🔍 Stopped monitoring. Captured 0 console events
+
+🎯 COMPREHENSIVE CONSOLE ERROR ANALYSIS REPORT
+================================================
+{
+  "summary": {
+    "totalInteractions": 0,
+    "totalErrors": 0,
+    "totalWarnings": 0,
+    "interactionsWithErrors": 0,
+    "errorFreeInteractions": 0,
+    "faviconErrorsFiltered": 0
+  },
+  "errorsByInteraction": {},
+  "criticalErrors": [],
+  "recommendations": [],
+  "timestamp": "2025-09-26T18:20:43.648Z"
+}
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Console Error Analysis › should perform systematic user interaction testing with console error capture" classname="specs/comprehensive-console-error-analysis.test.ts" time="25.713">
+<failure message="comprehensive-console-error-analysis.test.ts:140:3 should perform systematic user interaction testing with console error capture" type="FAILURE">
+<![CDATA[  [edge-extension] › specs/comprehensive-console-error-analysis.test.ts:140:3 › Comprehensive Console Error Analysis › should perform systematic user interaction testing with console error capture 
+
+    Error: expect(received).toBeGreaterThan(expected)
+
+    Expected: > 5
+    Received:   0
+
+      194 |
+      195 |     // Assertions to ensure test quality
+    > 196 |     expect(analysisReport.summary.totalInteractions).toBeGreaterThan(5);
+          |                                                      ^
+      197 |     
+      198 |     // Save the global report
+      199 |     globalReport = analysisReport;
+        at /Users/mdrozrosario/Favault/tests/playwright/specs/comprehensive-console-error-analysis.test.ts:196:54
+
+    ReferenceError: require is not defined
+
+      70 |       
+      71 |       // Save report to file for easy access
+    > 72 |       const fs = require('fs');
+         |                  ^
+      73 |       const path = require('path');
+      74 |       const reportPath = path.join(__dirname, '../../test-results/console-error-analysis-report.json');
+      75 |       
+        at /Users/mdrozrosario/Favault/tests/playwright/specs/comprehensive-console-error-analysis.test.ts:72:18
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../test-results/specs-comprehensive-consol-97c6c--with-console-error-capture-edge-extension/test-failed-2.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../test-results/specs-comprehensive-consol-97c6c--with-console-error-capture-edge-extension/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[🚀 Starting comprehensive console error analysis...
+📋 This test suite will:
+   1. Create test bookmarks programmatically
+   2. Test every major user interaction
+   3. Capture console errors for each interaction
+   4. Generate detailed error analysis report
+   5. Provide recommendations for fixing issues
+Extension ID: fdibjjncegalcajkaockapdcapalicef
+🚀 Starting enhanced console error monitoring...
+🎯 Starting systematic user interaction testing...
+🔬 Running systematic user interaction console error analysis...
+🎯 Testing interaction: bookmark_click
+⚠️ No bookmarks found for click test
+📊 Interaction "bookmark_click" generated 0 console events
+🎯 Testing interaction: edit_mode_enable
+📊 Interaction "edit_mode_enable" generated 0 console events
+🎯 Testing interaction: edit_mode_disable
+📊 Interaction "edit_mode_disable" generated 0 console events
+🎯 Testing interaction: search_bookmarks
+📊 Interaction "search_bookmarks" generated 0 console events
+🎯 Testing interaction: folder_expand_collapse
+📊 Interaction "folder_expand_collapse" generated 0 console events
+🎯 Testing interaction: drag_drop_simulation
+⚠️ Need at least 2 folders for drag-drop test
+📊 Interaction "drag_drop_simulation" generated 0 console events
+🎯 Testing interaction: right_click_context_menu
+📊 Interaction "right_click_context_menu" generated 0 console events
+🎯 Testing interaction: keyboard_shortcuts
+📊 Interaction "keyboard_shortcuts" generated 0 console events
+🎯 Testing interaction: window_resize
+📊 Interaction "window_resize" generated 0 console events
+🎯 Testing interaction: settings_panel_interaction
+📊 Interaction "settings_panel_interaction" generated 0 console events
+
+📊 INTERACTION TESTING RESULTS:
+================================
+Total Interactions Tested: 0
+Interactions with Errors: 0
+Error-free Interactions: 0
+Total Console Errors: 0
+Total Console Warnings: 0
+Critical Errors: 0
+
+🔍 ERRORS BY INTERACTION:
+
+💡 RECOMMENDATIONS:
+🎉 No issues found! Your extension is running cleanly.
+🔍 Stopped monitoring. Captured 0 console events
+
+🎯 COMPREHENSIVE CONSOLE ERROR ANALYSIS REPORT
+================================================
+{
+  "summary": {
+    "totalInteractions": 0,
+    "totalErrors": 0,
+    "totalWarnings": 0,
+    "interactionsWithErrors": 0,
+    "errorFreeInteractions": 0,
+    "faviconErrorsFiltered": 0
+  },
+  "errorsByInteraction": {},
+  "criticalErrors": [],
+  "recommendations": [],
+  "timestamp": "2025-09-26T18:21:01.184Z"
+}
+
+[[ATTACHMENT|specs-comprehensive-consol-97c6c--with-console-error-capture-edge-extension/test-failed-2.png]]
+
+[[ATTACHMENT|specs-comprehensive-consol-97c6c--with-console-error-capture-edge-extension/test-failed-1.png]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Console Error Analysis › should test specific drag-and-drop console errors" classname="specs/comprehensive-console-error-analysis.test.ts" time="18.34">
+<failure message="comprehensive-console-error-analysis.test.ts:202:3 should test specific drag-and-drop console errors" type="FAILURE">
+<![CDATA[  [edge-extension] › specs/comprehensive-console-error-analysis.test.ts:202:3 › Comprehensive Console Error Analysis › should test specific drag-and-drop console errors 
+
+    ReferenceError: require is not defined
+
+      70 |       
+      71 |       // Save report to file for easy access
+    > 72 |       const fs = require('fs');
+         |                  ^
+      73 |       const path = require('path');
+      74 |       const reportPath = path.join(__dirname, '../../test-results/console-error-analysis-report.json');
+      75 |       
+        at /Users/mdrozrosario/Favault/tests/playwright/specs/comprehensive-console-error-analysis.test.ts:72:18
+]]>
+</failure>
+<system-out>
+<![CDATA[🚀 Starting comprehensive console error analysis...
+📋 This test suite will:
+   1. Create test bookmarks programmatically
+   2. Test every major user interaction
+   3. Capture console errors for each interaction
+   4. Generate detailed error analysis report
+   5. Provide recommendations for fixing issues
+Extension ID: fdibjjncegalcajkaockapdcapalicef
+🚀 Starting enhanced console error monitoring...
+🔄 Testing drag-and-drop specific console errors...
+🔧 Enabling edit mode...
+⏳ Waiting for extension initialization to complete...
+✅ Edit mode selectors found
+⏳ Waiting for enhanced drag-drop system to complete setup...
+🔍 Debug info: {
+  editModeEnabled: [33mtrue[39m,
+  appEditMode: [33mtrue[39m,
+  toggleActive: [33mtrue[39m,
+  enhancedReady: [33mtrue[39m,
+  draggableCount: [33m0[39m,
+  totalFolders: [33m0[39m
+}
+✅ Edit mode fully enabled and ready for testing
+📁 Found 0 folders available for drag-drop testing
+⚠️ Insufficient folders for drag-drop testing
+🔍 Stopped monitoring. Captured 0 console events
+
+🎯 COMPREHENSIVE CONSOLE ERROR ANALYSIS REPORT
+================================================
+{
+  "summary": {
+    "totalInteractions": 0,
+    "totalErrors": 0,
+    "totalWarnings": 0,
+    "interactionsWithErrors": 0,
+    "errorFreeInteractions": 0,
+    "faviconErrorsFiltered": 0
+  },
+  "errorsByInteraction": {},
+  "criticalErrors": [],
+  "recommendations": [],
+  "timestamp": "2025-09-26T18:20:56.671Z"
+}
+]]>
+</system-out>
+<system-err>
+<![CDATA[⚠️ Enhanced drag-drop setup may not have completed within timeout
+]]>
+</system-err>
+</testcase>
+<testcase name="Comprehensive Console Error Analysis › should test bookmark interaction console errors" classname="specs/comprehensive-console-error-analysis.test.ts" time="1.689">
+<failure message="comprehensive-console-error-analysis.test.ts:279:3 should test bookmark interaction console errors" type="FAILURE">
+<![CDATA[  [edge-extension] › specs/comprehensive-console-error-analysis.test.ts:279:3 › Comprehensive Console Error Analysis › should test bookmark interaction console errors 
+
+    ReferenceError: require is not defined
+
+      70 |       
+      71 |       // Save report to file for easy access
+    > 72 |       const fs = require('fs');
+         |                  ^
+      73 |       const path = require('path');
+      74 |       const reportPath = path.join(__dirname, '../../test-results/console-error-analysis-report.json');
+      75 |       
+        at /Users/mdrozrosario/Favault/tests/playwright/specs/comprehensive-console-error-analysis.test.ts:72:18
+]]>
+</failure>
+<system-out>
+<![CDATA[🚀 Starting comprehensive console error analysis...
+📋 This test suite will:
+   1. Create test bookmarks programmatically
+   2. Test every major user interaction
+   3. Capture console errors for each interaction
+   4. Generate detailed error analysis report
+   5. Provide recommendations for fixing issues
+Extension ID: fdibjjncegalcajkaockapdcapalicef
+🚀 Starting enhanced console error monitoring...
+🔖 Testing bookmark interaction console errors...
+🔖 Found 0 bookmarks for interaction testing
+⚠️ No bookmarks available for interaction testing
+🔍 Stopped monitoring. Captured 0 console events
+
+🎯 COMPREHENSIVE CONSOLE ERROR ANALYSIS REPORT
+================================================
+{
+  "summary": {
+    "totalInteractions": 0,
+    "totalErrors": 0,
+    "totalWarnings": 0,
+    "interactionsWithErrors": 0,
+    "errorFreeInteractions": 0,
+    "faviconErrorsFiltered": 0
+  },
+  "errorsByInteraction": {},
+  "criticalErrors": [],
+  "recommendations": [],
+  "timestamp": "2025-09-26T18:20:46.808Z"
+}
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Console Error Analysis › should test edit mode console errors" classname="specs/comprehensive-console-error-analysis.test.ts" time="10.231">
+<failure message="comprehensive-console-error-analysis.test.ts:348:3 should test edit mode console errors" type="FAILURE">
+<![CDATA[  [edge-extension] › specs/comprehensive-console-error-analysis.test.ts:348:3 › Comprehensive Console Error Analysis › should test edit mode console errors 
+
+    ReferenceError: require is not defined
+
+      70 |       
+      71 |       // Save report to file for easy access
+    > 72 |       const fs = require('fs');
+         |                  ^
+      73 |       const path = require('path');
+      74 |       const reportPath = path.join(__dirname, '../../test-results/console-error-analysis-report.json');
+      75 |       
+        at /Users/mdrozrosario/Favault/tests/playwright/specs/comprehensive-console-error-analysis.test.ts:72:18
+]]>
+</failure>
+<system-out>
+<![CDATA[🚀 Starting comprehensive console error analysis...
+📋 This test suite will:
+   1. Create test bookmarks programmatically
+   2. Test every major user interaction
+   3. Capture console errors for each interaction
+   4. Generate detailed error analysis report
+   5. Provide recommendations for fixing issues
+Extension ID: fdibjjncegalcajkaockapdcapalicef
+🚀 Starting enhanced console error monitoring...
+✏️ Testing edit mode console errors...
+🎯 Testing interaction: edit_mode_keyboard_enable
+📊 Interaction "edit_mode_keyboard_enable" generated 0 console events
+✅ edit_mode_keyboard_enable: No console errors
+🎯 Testing interaction: edit_mode_keyboard_disable
+📊 Interaction "edit_mode_keyboard_disable" generated 0 console events
+✅ edit_mode_keyboard_disable: No console errors
+🎯 Testing interaction: edit_mode_button_enable
+📊 Interaction "edit_mode_button_enable" generated 0 console events
+✅ edit_mode_button_enable: No console errors
+🎯 Testing interaction: edit_mode_button_disable
+📊 Interaction "edit_mode_button_disable" generated 0 console events
+✅ edit_mode_button_disable: No console errors
+🔍 Stopped monitoring. Captured 0 console events
+
+🎯 COMPREHENSIVE CONSOLE ERROR ANALYSIS REPORT
+================================================
+{
+  "summary": {
+    "totalInteractions": 0,
+    "totalErrors": 0,
+    "totalWarnings": 0,
+    "interactionsWithErrors": 0,
+    "errorFreeInteractions": 0,
+    "faviconErrorsFiltered": 0
+  },
+  "errorsByInteraction": {},
+  "criticalErrors": [],
+  "recommendations": [],
+  "timestamp": "2025-09-26T18:20:56.074Z"
+}
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Console Error Analysis › should generate final error analysis summary" classname="specs/comprehensive-console-error-analysis.test.ts" time="1.566">
+<failure message="comprehensive-console-error-analysis.test.ts:407:3 should generate final error analysis summary" type="FAILURE">
+<![CDATA[  [edge-extension] › specs/comprehensive-console-error-analysis.test.ts:407:3 › Comprehensive Console Error Analysis › should generate final error analysis summary 
+
+    ReferenceError: require is not defined
+
+      70 |       
+      71 |       // Save report to file for easy access
+    > 72 |       const fs = require('fs');
+         |                  ^
+      73 |       const path = require('path');
+      74 |       const reportPath = path.join(__dirname, '../../test-results/console-error-analysis-report.json');
+      75 |       
+        at /Users/mdrozrosario/Favault/tests/playwright/specs/comprehensive-console-error-analysis.test.ts:72:18
+]]>
+</failure>
+<system-out>
+<![CDATA[🚀 Starting comprehensive console error analysis...
+📋 This test suite will:
+   1. Create test bookmarks programmatically
+   2. Test every major user interaction
+   3. Capture console errors for each interaction
+   4. Generate detailed error analysis report
+   5. Provide recommendations for fixing issues
+Extension ID: fdibjjncegalcajkaockapdcapalicef
+🚀 Starting enhanced console error monitoring...
+📋 Generating final error analysis summary...
+⚠️ No error analysis report available
+🔍 Stopped monitoring. Captured 0 console events
+
+🎯 COMPREHENSIVE CONSOLE ERROR ANALYSIS REPORT
+================================================
+{
+  "summary": {
+    "totalInteractions": 0,
+    "totalErrors": 0,
+    "totalWarnings": 0,
+    "interactionsWithErrors": 0,
+    "errorFreeInteractions": 0,
+    "faviconErrorsFiltered": 0
+  },
+  "errorsByInteraction": {},
+  "criticalErrors": [],
+  "recommendations": [],
+  "timestamp": "2025-09-26T18:20:49.222Z"
+}
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="specs/comprehensive-console-error-analysis.test.ts" timestamp="2025-09-26T18:20:06.273Z" hostname="Mobile Chrome" tests="6" failures="6" skipped="0" time="64.447" errors="0">
+<testcase name="Comprehensive Console Error Analysis › should create comprehensive test bookmark data" classname="specs/comprehensive-console-error-analysis.test.ts" time="6.978">
+<failure message="comprehensive-console-error-analysis.test.ts:85:3 should create comprehensive test bookmark data" type="FAILURE">
+<![CDATA[  [Mobile Chrome] › specs/comprehensive-console-error-analysis.test.ts:85:3 › Comprehensive Console Error Analysis › should create comprehensive test bookmark data 
+
+    ReferenceError: require is not defined
+
+      70 |       
+      71 |       // Save report to file for easy access
+    > 72 |       const fs = require('fs');
+         |                  ^
+      73 |       const path = require('path');
+      74 |       const reportPath = path.join(__dirname, '../../test-results/console-error-analysis-report.json');
+      75 |       
+        at /Users/mdrozrosario/Favault/tests/playwright/specs/comprehensive-console-error-analysis.test.ts:72:18
+]]>
+</failure>
+<system-out>
+<![CDATA[🚀 Starting comprehensive console error analysis...
+📋 This test suite will:
+   1. Create test bookmarks programmatically
+   2. Test every major user interaction
+   3. Capture console errors for each interaction
+   4. Generate detailed error analysis report
+   5. Provide recommendations for fixing issues
+Extension ID: fdibjjncegalcajkaockapdcapalicef
+🚀 Starting enhanced console error monitoring...
+📚 Creating comprehensive test bookmark structure...
+🚀 Initializing test data setup with config: {
+  folderCount: [33m8[39m,
+  bookmarksPerFolder: [33m4[39m,
+  maxNestingLevel: [33m3[39m,
+  includeEmptyFolders: [33mtrue[39m,
+  includeSpecialCharacters: [33mtrue[39m,
+  includeLongTitles: [33mtrue[39m,
+  includeSpecialUrls: [33mtrue[39m,
+  includeDragTestFolders: [33mtrue[39m,
+  includeProtectedFolders: [33mfalse[39m,
+  includeReorderableItems: [33mtrue[39m,
+  browserType: [32m'chrome'[39m
+}
+📊 Generating test bookmark data...
+💾 Creating bookmark backup...
+✅ Bookmark backup created successfully
+🧹 Clearing existing test data...
+✅ Test data cleared successfully
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Mobile Safari/537.36'[39m
+}
+📁 Created folder: "Test Work Folder" with ID: 5
+🔖 Created bookmark: "GitHub" -> https://github.com with ID: 6
+🔖 Created bookmark: "Stack Overflow" -> https://stackoverflow.com with ID: 7
+🔖 Created bookmark: "MDN Web Docs" -> https://developer.mozilla.org with ID: 8
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Mobile Safari/537.36'[39m
+}
+📁 Created folder: "Test Personal Folder" with ID: 9
+🔖 Created bookmark: "Gmail" -> https://gmail.com with ID: 10
+🔖 Created bookmark: "YouTube" -> https://youtube.com with ID: 11
+🔖 Created bookmark: "Netflix" -> https://netflix.com with ID: 12
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Mobile Safari/537.36'[39m
+}
+📁 Created folder: "Test Development Tools" with ID: 13
+🔖 Created bookmark: "VS Code" -> https://code.visualstudio.com with ID: 14
+🔖 Created bookmark: "Chrome DevTools" -> chrome://devtools/ with ID: 15
+🔖 Created bookmark: "Playwright" -> https://playwright.dev with ID: 16
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Mobile Safari/537.36'[39m
+}
+📁 Created folder: "DragTest Source Folder" with ID: 17
+🔖 Created bookmark: "Draggable Item 1" -> https://example1.com with ID: 18
+🔖 Created bookmark: "Draggable Item 2" -> https://example2.com with ID: 19
+🔖 Created bookmark: "Draggable Item 3" -> https://example3.com with ID: 20
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Mobile Safari/537.36'[39m
+}
+📁 Created folder: "DragTest Target Folder" with ID: 21
+🔖 Created bookmark: "Target Item 1" -> https://target1.com with ID: 22
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Mobile Safari/537.36'[39m
+}
+📁 Created folder: "DragTest Empty Target" with ID: 23
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Mobile Safari/537.36'[39m
+}
+📁 Created folder: "Very Long Folder Title That Tests How The UI Handles Extended Text Content" with ID: 24
+🔖 Created bookmark: "Very Long Bookmark Title That Also Tests Extended Text Handling In The Interface" -> https://very-long-domain-name-for-testing-purposes.example.com/very/long/path/that/tests/url/handling with ID: 25
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Mobile Safari/537.36'[39m
+}
+📁 Created folder: "Special Chars: éñ中文🚀" with ID: 26
+🔖 Created bookmark: "Unicode Test: 🌟⭐✨" -> https://unicode-test.com with ID: 27
+🔖 Created bookmark: "Symbols: @#$%^&*()" -> https://symbols-test.com with ID: 28
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Mobile Safari/537.36'[39m
+}
+📁 Created folder: "Empty Test Folder" with ID: 29
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Mobile Safari/537.36'[39m
+}
+📁 Created folder: "Special URLs Test" with ID: 30
+🔖 Created bookmark: "Chrome Extension" -> chrome-extension://test with ID: 31
+🔖 Created bookmark: "Data URL" -> data:text/html,<h1>Test</h1> with ID: 32
+🔖 Created bookmark: "File URL" -> file:///test/path with ID: 33
+🔖 Created bookmark: "FTP URL" -> ftp://ftp.example.com with ID: 34
+🔖 Created bookmark: "Local Host" -> http://localhost:3000 with ID: 35
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Mobile Safari/537.36'[39m
+}
+📁 Created folder: "Nested Test Parent" with ID: 36
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Mobile Safari/537.36'[39m
+}
+📁 Created folder: "Nested Child Folder" with ID: 37
+🔖 Created bookmark: "Nested Bookmark" -> https://nested-test.com with ID: 38
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Mobile Safari/537.36'[39m
+}
+📁 Created folder: "Nested Grandchild" with ID: 39
+🔖 Created bookmark: "Deep Nested Bookmark" -> https://deep-nested.com with ID: 40
+🔧 Injecting mock DOM elements for testing...
+✅ Test data generation completed
+📊 Created 13 folders and 23 bookmarks
+🎯 Generating specific drag-and-drop test scenarios...
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Mobile Safari/537.36'[39m
+}
+📁 Created folder: "DragDrop Source" with ID: 41
+🔖 Created bookmark: "Reorderable Item A" -> https://item-a.com with ID: 42
+🔖 Created bookmark: "Reorderable Item B" -> https://item-b.com with ID: 43
+🔖 Created bookmark: "Reorderable Item C" -> https://item-c.com with ID: 44
+🔖 Created bookmark: "Reorderable Item D" -> https://item-d.com with ID: 45
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Mobile Safari/537.36'[39m
+}
+📁 Created folder: "Target Alpha" with ID: 46
+🔖 Created bookmark: "Target Alpha Item" -> https://target-item.com with ID: 47
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Mobile Safari/537.36'[39m
+}
+📁 Created folder: "Target Beta" with ID: 48
+🔖 Created bookmark: "Target Beta Item" -> https://target-item.com with ID: 49
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Mobile Safari/537.36'[39m
+}
+📁 Created folder: "Target Gamma" with ID: 50
+🔖 Created bookmark: "Target Gamma Item" -> https://target-item.com with ID: 51
+✅ Drag-drop scenarios generated successfully
+🔬 Generating boundary condition test data...
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Mobile Safari/537.36'[39m
+}
+📁 Created folder: "Single Item Folder" with ID: 52
+🔖 Created bookmark: "Only Item" -> https://only-item.com with ID: 53
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Mobile Safari/537.36'[39m
+}
+📁 Created folder: "Many Items Folder" with ID: 54
+🔖 Created bookmark: "Item 01" -> https://item1.com with ID: 55
+🔖 Created bookmark: "Item 02" -> https://item2.com with ID: 56
+🔖 Created bookmark: "Item 03" -> https://item3.com with ID: 57
+🔖 Created bookmark: "Item 04" -> https://item4.com with ID: 58
+🔖 Created bookmark: "Item 05" -> https://item5.com with ID: 59
+🔖 Created bookmark: "Item 06" -> https://item6.com with ID: 60
+🔖 Created bookmark: "Item 07" -> https://item7.com with ID: 61
+🔖 Created bookmark: "Item 08" -> https://item8.com with ID: 62
+🔖 Created bookmark: "Item 09" -> https://item9.com with ID: 63
+🔖 Created bookmark: "Item 10" -> https://item10.com with ID: 64
+🔖 Created bookmark: "Item 11" -> https://item11.com with ID: 65
+🔖 Created bookmark: "Item 12" -> https://item12.com with ID: 66
+🔖 Created bookmark: "Item 13" -> https://item13.com with ID: 67
+🔖 Created bookmark: "Item 14" -> https://item14.com with ID: 68
+🔖 Created bookmark: "Item 15" -> https://item15.com with ID: 69
+🔖 Created bookmark: "Item 16" -> https://item16.com with ID: 70
+🔖 Created bookmark: "Item 17" -> https://item17.com with ID: 71
+🔖 Created bookmark: "Item 18" -> https://item18.com with ID: 72
+🔖 Created bookmark: "Item 19" -> https://item19.com with ID: 73
+🔖 Created bookmark: "Item 20" -> https://item20.com with ID: 74
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Mobile Safari/537.36'[39m
+}
+📁 Created folder: "Test Folder A" with ID: 75
+🔖 Created bookmark: "Similar Item" -> https://similar.com with ID: 76
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Mobile Safari/537.36'[39m
+}
+📁 Created folder: "Test Folder B" with ID: 77
+🔖 Created bookmark: "Similar Item" -> https://similar.com with ID: 78
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Mobile Safari/537.36'[39m
+}
+📁 Created folder: "Test Folder C" with ID: 79
+🔖 Created bookmark: "Similar Item" -> https://similar.com with ID: 80
+✅ Boundary conditions generated successfully
+✅ Created test environment with:
+   📁 19 bookmark folders
+   🔖 54 bookmarks
+   📊 22 programmatically created folders
+   📊 54 programmatically created bookmarks
+🔍 Validating test data integrity...
+✅ Test data validation passed
+🔍 Test data validation: PASSED
+📊 Test data summary: {
+  totalFolders: [33m22[39m,
+  totalBookmarks: [33m54[39m,
+  emptyFolders: [33m0[39m,
+  nestedLevels: [33m0[39m
+}
+🔍 Stopped monitoring. Captured 0 console events
+
+🎯 COMPREHENSIVE CONSOLE ERROR ANALYSIS REPORT
+================================================
+{
+  "summary": {
+    "totalInteractions": 0,
+    "totalErrors": 0,
+    "totalWarnings": 0,
+    "interactionsWithErrors": 0,
+    "errorFreeInteractions": 0,
+    "faviconErrorsFiltered": 0
+  },
+  "errorsByInteraction": {},
+  "criticalErrors": [],
+  "recommendations": [],
+  "timestamp": "2025-09-26T18:20:57.382Z"
+}
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Console Error Analysis › should perform systematic user interaction testing with console error capture" classname="specs/comprehensive-console-error-analysis.test.ts" time="25.125">
+<failure message="comprehensive-console-error-analysis.test.ts:140:3 should perform systematic user interaction testing with console error capture" type="FAILURE">
+<![CDATA[  [Mobile Chrome] › specs/comprehensive-console-error-analysis.test.ts:140:3 › Comprehensive Console Error Analysis › should perform systematic user interaction testing with console error capture 
+
+    Error: expect(received).toBeGreaterThan(expected)
+
+    Expected: > 5
+    Received:   0
+
+      194 |
+      195 |     // Assertions to ensure test quality
+    > 196 |     expect(analysisReport.summary.totalInteractions).toBeGreaterThan(5);
+          |                                                      ^
+      197 |     
+      198 |     // Save the global report
+      199 |     globalReport = analysisReport;
+        at /Users/mdrozrosario/Favault/tests/playwright/specs/comprehensive-console-error-analysis.test.ts:196:54
+
+    ReferenceError: require is not defined
+
+      70 |       
+      71 |       // Save report to file for easy access
+    > 72 |       const fs = require('fs');
+         |                  ^
+      73 |       const path = require('path');
+      74 |       const reportPath = path.join(__dirname, '../../test-results/console-error-analysis-report.json');
+      75 |       
+        at /Users/mdrozrosario/Favault/tests/playwright/specs/comprehensive-console-error-analysis.test.ts:72:18
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../test-results/specs-comprehensive-consol-97c6c--with-console-error-capture-Mobile-Chrome/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../test-results/specs-comprehensive-consol-97c6c--with-console-error-capture-Mobile-Chrome/test-failed-2.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[🚀 Starting comprehensive console error analysis...
+📋 This test suite will:
+   1. Create test bookmarks programmatically
+   2. Test every major user interaction
+   3. Capture console errors for each interaction
+   4. Generate detailed error analysis report
+   5. Provide recommendations for fixing issues
+Extension ID: fdibjjncegalcajkaockapdcapalicef
+🚀 Starting enhanced console error monitoring...
+🎯 Starting systematic user interaction testing...
+🔬 Running systematic user interaction console error analysis...
+🎯 Testing interaction: bookmark_click
+⚠️ No bookmarks found for click test
+📊 Interaction "bookmark_click" generated 0 console events
+🎯 Testing interaction: edit_mode_enable
+📊 Interaction "edit_mode_enable" generated 0 console events
+🎯 Testing interaction: edit_mode_disable
+📊 Interaction "edit_mode_disable" generated 0 console events
+🎯 Testing interaction: search_bookmarks
+📊 Interaction "search_bookmarks" generated 0 console events
+🎯 Testing interaction: folder_expand_collapse
+📊 Interaction "folder_expand_collapse" generated 0 console events
+🎯 Testing interaction: drag_drop_simulation
+⚠️ Need at least 2 folders for drag-drop test
+📊 Interaction "drag_drop_simulation" generated 0 console events
+🎯 Testing interaction: right_click_context_menu
+📊 Interaction "right_click_context_menu" generated 0 console events
+🎯 Testing interaction: keyboard_shortcuts
+📊 Interaction "keyboard_shortcuts" generated 0 console events
+🎯 Testing interaction: window_resize
+📊 Interaction "window_resize" generated 0 console events
+🎯 Testing interaction: settings_panel_interaction
+📊 Interaction "settings_panel_interaction" generated 0 console events
+
+📊 INTERACTION TESTING RESULTS:
+================================
+Total Interactions Tested: 0
+Interactions with Errors: 0
+Error-free Interactions: 0
+Total Console Errors: 0
+Total Console Warnings: 0
+Critical Errors: 0
+
+🔍 ERRORS BY INTERACTION:
+
+💡 RECOMMENDATIONS:
+🎉 No issues found! Your extension is running cleanly.
+🔍 Stopped monitoring. Captured 0 console events
+
+🎯 COMPREHENSIVE CONSOLE ERROR ANALYSIS REPORT
+================================================
+{
+  "summary": {
+    "totalInteractions": 0,
+    "totalErrors": 0,
+    "totalWarnings": 0,
+    "interactionsWithErrors": 0,
+    "errorFreeInteractions": 0,
+    "faviconErrorsFiltered": 0
+  },
+  "errorsByInteraction": {},
+  "criticalErrors": [],
+  "recommendations": [],
+  "timestamp": "2025-09-26T18:21:15.542Z"
+}
+
+[[ATTACHMENT|specs-comprehensive-consol-97c6c--with-console-error-capture-Mobile-Chrome/test-failed-1.png]]
+
+[[ATTACHMENT|specs-comprehensive-consol-97c6c--with-console-error-capture-Mobile-Chrome/test-failed-2.png]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Console Error Analysis › should test specific drag-and-drop console errors" classname="specs/comprehensive-console-error-analysis.test.ts" time="18.314">
+<failure message="comprehensive-console-error-analysis.test.ts:202:3 should test specific drag-and-drop console errors" type="FAILURE">
+<![CDATA[  [Mobile Chrome] › specs/comprehensive-console-error-analysis.test.ts:202:3 › Comprehensive Console Error Analysis › should test specific drag-and-drop console errors 
+
+    ReferenceError: require is not defined
+
+      70 |       
+      71 |       // Save report to file for easy access
+    > 72 |       const fs = require('fs');
+         |                  ^
+      73 |       const path = require('path');
+      74 |       const reportPath = path.join(__dirname, '../../test-results/console-error-analysis-report.json');
+      75 |       
+        at /Users/mdrozrosario/Favault/tests/playwright/specs/comprehensive-console-error-analysis.test.ts:72:18
+]]>
+</failure>
+<system-out>
+<![CDATA[🚀 Starting comprehensive console error analysis...
+📋 This test suite will:
+   1. Create test bookmarks programmatically
+   2. Test every major user interaction
+   3. Capture console errors for each interaction
+   4. Generate detailed error analysis report
+   5. Provide recommendations for fixing issues
+Extension ID: fdibjjncegalcajkaockapdcapalicef
+🚀 Starting enhanced console error monitoring...
+🔄 Testing drag-and-drop specific console errors...
+🔧 Enabling edit mode...
+⏳ Waiting for extension initialization to complete...
+✅ Edit mode selectors found
+⏳ Waiting for enhanced drag-drop system to complete setup...
+🔍 Debug info: {
+  editModeEnabled: [33mtrue[39m,
+  appEditMode: [33mtrue[39m,
+  toggleActive: [33mtrue[39m,
+  enhancedReady: [33mtrue[39m,
+  draggableCount: [33m0[39m,
+  totalFolders: [33m0[39m
+}
+✅ Edit mode fully enabled and ready for testing
+📁 Found 0 folders available for drag-drop testing
+⚠️ Insufficient folders for drag-drop testing
+🔍 Stopped monitoring. Captured 0 console events
+
+🎯 COMPREHENSIVE CONSOLE ERROR ANALYSIS REPORT
+================================================
+{
+  "summary": {
+    "totalInteractions": 0,
+    "totalErrors": 0,
+    "totalWarnings": 0,
+    "interactionsWithErrors": 0,
+    "errorFreeInteractions": 0,
+    "faviconErrorsFiltered": 0
+  },
+  "errorsByInteraction": {},
+  "criticalErrors": [],
+  "recommendations": [],
+  "timestamp": "2025-09-26T18:21:10.695Z"
+}
+]]>
+</system-out>
+<system-err>
+<![CDATA[⚠️ Enhanced drag-drop setup may not have completed within timeout
+]]>
+</system-err>
+</testcase>
+<testcase name="Comprehensive Console Error Analysis › should test bookmark interaction console errors" classname="specs/comprehensive-console-error-analysis.test.ts" time="1.815">
+<failure message="comprehensive-console-error-analysis.test.ts:279:3 should test bookmark interaction console errors" type="FAILURE">
+<![CDATA[  [Mobile Chrome] › specs/comprehensive-console-error-analysis.test.ts:279:3 › Comprehensive Console Error Analysis › should test bookmark interaction console errors 
+
+    ReferenceError: require is not defined
+
+      70 |       
+      71 |       // Save report to file for easy access
+    > 72 |       const fs = require('fs');
+         |                  ^
+      73 |       const path = require('path');
+      74 |       const reportPath = path.join(__dirname, '../../test-results/console-error-analysis-report.json');
+      75 |       
+        at /Users/mdrozrosario/Favault/tests/playwright/specs/comprehensive-console-error-analysis.test.ts:72:18
+]]>
+</failure>
+<system-out>
+<![CDATA[🚀 Starting comprehensive console error analysis...
+📋 This test suite will:
+   1. Create test bookmarks programmatically
+   2. Test every major user interaction
+   3. Capture console errors for each interaction
+   4. Generate detailed error analysis report
+   5. Provide recommendations for fixing issues
+Extension ID: fdibjjncegalcajkaockapdcapalicef
+🚀 Starting enhanced console error monitoring...
+🔖 Testing bookmark interaction console errors...
+🔖 Found 0 bookmarks for interaction testing
+⚠️ No bookmarks available for interaction testing
+🔍 Stopped monitoring. Captured 0 console events
+
+🎯 COMPREHENSIVE CONSOLE ERROR ANALYSIS REPORT
+================================================
+{
+  "summary": {
+    "totalInteractions": 0,
+    "totalErrors": 0,
+    "totalWarnings": 0,
+    "interactionsWithErrors": 0,
+    "errorFreeInteractions": 0,
+    "faviconErrorsFiltered": 0
+  },
+  "errorsByInteraction": {},
+  "criticalErrors": [],
+  "recommendations": [],
+  "timestamp": "2025-09-26T18:20:58.945Z"
+}
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Console Error Analysis › should test edit mode console errors" classname="specs/comprehensive-console-error-analysis.test.ts" time="10.358">
+<failure message="comprehensive-console-error-analysis.test.ts:348:3 should test edit mode console errors" type="FAILURE">
+<![CDATA[  [Mobile Chrome] › specs/comprehensive-console-error-analysis.test.ts:348:3 › Comprehensive Console Error Analysis › should test edit mode console errors 
+
+    ReferenceError: require is not defined
+
+      70 |       
+      71 |       // Save report to file for easy access
+    > 72 |       const fs = require('fs');
+         |                  ^
+      73 |       const path = require('path');
+      74 |       const reportPath = path.join(__dirname, '../../test-results/console-error-analysis-report.json');
+      75 |       
+        at /Users/mdrozrosario/Favault/tests/playwright/specs/comprehensive-console-error-analysis.test.ts:72:18
+]]>
+</failure>
+<system-out>
+<![CDATA[🚀 Starting comprehensive console error analysis...
+📋 This test suite will:
+   1. Create test bookmarks programmatically
+   2. Test every major user interaction
+   3. Capture console errors for each interaction
+   4. Generate detailed error analysis report
+   5. Provide recommendations for fixing issues
+Extension ID: fdibjjncegalcajkaockapdcapalicef
+🚀 Starting enhanced console error monitoring...
+✏️ Testing edit mode console errors...
+🎯 Testing interaction: edit_mode_keyboard_enable
+📊 Interaction "edit_mode_keyboard_enable" generated 0 console events
+✅ edit_mode_keyboard_enable: No console errors
+🎯 Testing interaction: edit_mode_keyboard_disable
+📊 Interaction "edit_mode_keyboard_disable" generated 0 console events
+✅ edit_mode_keyboard_disable: No console errors
+🎯 Testing interaction: edit_mode_button_enable
+📊 Interaction "edit_mode_button_enable" generated 0 console events
+✅ edit_mode_button_enable: No console errors
+🎯 Testing interaction: edit_mode_button_disable
+📊 Interaction "edit_mode_button_disable" generated 0 console events
+✅ edit_mode_button_disable: No console errors
+🔍 Stopped monitoring. Captured 0 console events
+
+🎯 COMPREHENSIVE CONSOLE ERROR ANALYSIS REPORT
+================================================
+{
+  "summary": {
+    "totalInteractions": 0,
+    "totalErrors": 0,
+    "totalWarnings": 0,
+    "interactionsWithErrors": 0,
+    "errorFreeInteractions": 0,
+    "faviconErrorsFiltered": 0
+  },
+  "errorsByInteraction": {},
+  "criticalErrors": [],
+  "recommendations": [],
+  "timestamp": "2025-09-26T18:21:08.322Z"
+}
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Console Error Analysis › should generate final error analysis summary" classname="specs/comprehensive-console-error-analysis.test.ts" time="1.857">
+<failure message="comprehensive-console-error-analysis.test.ts:407:3 should generate final error analysis summary" type="FAILURE">
+<![CDATA[  [Mobile Chrome] › specs/comprehensive-console-error-analysis.test.ts:407:3 › Comprehensive Console Error Analysis › should generate final error analysis summary 
+
+    ReferenceError: require is not defined
+
+      70 |       
+      71 |       // Save report to file for easy access
+    > 72 |       const fs = require('fs');
+         |                  ^
+      73 |       const path = require('path');
+      74 |       const reportPath = path.join(__dirname, '../../test-results/console-error-analysis-report.json');
+      75 |       
+        at /Users/mdrozrosario/Favault/tests/playwright/specs/comprehensive-console-error-analysis.test.ts:72:18
+]]>
+</failure>
+<system-out>
+<![CDATA[🚀 Starting comprehensive console error analysis...
+📋 This test suite will:
+   1. Create test bookmarks programmatically
+   2. Test every major user interaction
+   3. Capture console errors for each interaction
+   4. Generate detailed error analysis report
+   5. Provide recommendations for fixing issues
+Extension ID: fdibjjncegalcajkaockapdcapalicef
+🚀 Starting enhanced console error monitoring...
+📋 Generating final error analysis summary...
+⚠️ No error analysis report available
+🔍 Stopped monitoring. Captured 0 console events
+
+🎯 COMPREHENSIVE CONSOLE ERROR ANALYSIS REPORT
+================================================
+{
+  "summary": {
+    "totalInteractions": 0,
+    "totalErrors": 0,
+    "totalWarnings": 0,
+    "interactionsWithErrors": 0,
+    "errorFreeInteractions": 0,
+    "faviconErrorsFiltered": 0
+  },
+  "errorsByInteraction": {},
+  "criticalErrors": [],
+  "recommendations": [],
+  "timestamp": "2025-09-26T18:21:00.231Z"
+}
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="specs/comprehensive-console-error-analysis.test.ts" timestamp="2025-09-26T18:20:06.273Z" hostname="Mobile Safari" tests="6" failures="6" skipped="0" time="63.872" errors="0">
+<testcase name="Comprehensive Console Error Analysis › should create comprehensive test bookmark data" classname="specs/comprehensive-console-error-analysis.test.ts" time="6.801">
+<failure message="comprehensive-console-error-analysis.test.ts:85:3 should create comprehensive test bookmark data" type="FAILURE">
+<![CDATA[  [Mobile Safari] › specs/comprehensive-console-error-analysis.test.ts:85:3 › Comprehensive Console Error Analysis › should create comprehensive test bookmark data 
+
+    ReferenceError: require is not defined
+
+      70 |       
+      71 |       // Save report to file for easy access
+    > 72 |       const fs = require('fs');
+         |                  ^
+      73 |       const path = require('path');
+      74 |       const reportPath = path.join(__dirname, '../../test-results/console-error-analysis-report.json');
+      75 |       
+        at /Users/mdrozrosario/Favault/tests/playwright/specs/comprehensive-console-error-analysis.test.ts:72:18
+]]>
+</failure>
+<system-out>
+<![CDATA[🚀 Starting comprehensive console error analysis...
+📋 This test suite will:
+   1. Create test bookmarks programmatically
+   2. Test every major user interaction
+   3. Capture console errors for each interaction
+   4. Generate detailed error analysis report
+   5. Provide recommendations for fixing issues
+Extension ID: fdibjjncegalcajkaockapdcapalicef
+🚀 Starting enhanced console error monitoring...
+📚 Creating comprehensive test bookmark structure...
+🚀 Initializing test data setup with config: {
+  folderCount: [33m8[39m,
+  bookmarksPerFolder: [33m4[39m,
+  maxNestingLevel: [33m3[39m,
+  includeEmptyFolders: [33mtrue[39m,
+  includeSpecialCharacters: [33mtrue[39m,
+  includeLongTitles: [33mtrue[39m,
+  includeSpecialUrls: [33mtrue[39m,
+  includeDragTestFolders: [33mtrue[39m,
+  includeProtectedFolders: [33mfalse[39m,
+  includeReorderableItems: [33mtrue[39m,
+  browserType: [32m'chrome'[39m
+}
+📊 Generating test bookmark data...
+💾 Creating bookmark backup...
+✅ Bookmark backup created successfully
+🧹 Clearing existing test data...
+✅ Test data cleared successfully
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (iPhone; CPU iPhone OS 14_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1'[39m
+}
+📁 Created folder: "Test Work Folder" with ID: 5
+🔖 Created bookmark: "GitHub" -> https://github.com with ID: 6
+🔖 Created bookmark: "Stack Overflow" -> https://stackoverflow.com with ID: 7
+🔖 Created bookmark: "MDN Web Docs" -> https://developer.mozilla.org with ID: 8
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (iPhone; CPU iPhone OS 14_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1'[39m
+}
+📁 Created folder: "Test Personal Folder" with ID: 9
+🔖 Created bookmark: "Gmail" -> https://gmail.com with ID: 10
+🔖 Created bookmark: "YouTube" -> https://youtube.com with ID: 11
+🔖 Created bookmark: "Netflix" -> https://netflix.com with ID: 12
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (iPhone; CPU iPhone OS 14_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1'[39m
+}
+📁 Created folder: "Test Development Tools" with ID: 13
+🔖 Created bookmark: "VS Code" -> https://code.visualstudio.com with ID: 14
+🔖 Created bookmark: "Chrome DevTools" -> chrome://devtools/ with ID: 15
+🔖 Created bookmark: "Playwright" -> https://playwright.dev with ID: 16
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (iPhone; CPU iPhone OS 14_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1'[39m
+}
+📁 Created folder: "DragTest Source Folder" with ID: 17
+🔖 Created bookmark: "Draggable Item 1" -> https://example1.com with ID: 18
+🔖 Created bookmark: "Draggable Item 2" -> https://example2.com with ID: 19
+🔖 Created bookmark: "Draggable Item 3" -> https://example3.com with ID: 20
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (iPhone; CPU iPhone OS 14_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1'[39m
+}
+📁 Created folder: "DragTest Target Folder" with ID: 21
+🔖 Created bookmark: "Target Item 1" -> https://target1.com with ID: 22
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (iPhone; CPU iPhone OS 14_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1'[39m
+}
+📁 Created folder: "DragTest Empty Target" with ID: 23
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (iPhone; CPU iPhone OS 14_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1'[39m
+}
+📁 Created folder: "Very Long Folder Title That Tests How The UI Handles Extended Text Content" with ID: 24
+🔖 Created bookmark: "Very Long Bookmark Title That Also Tests Extended Text Handling In The Interface" -> https://very-long-domain-name-for-testing-purposes.example.com/very/long/path/that/tests/url/handling with ID: 25
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (iPhone; CPU iPhone OS 14_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1'[39m
+}
+📁 Created folder: "Special Chars: éñ中文🚀" with ID: 26
+🔖 Created bookmark: "Unicode Test: 🌟⭐✨" -> https://unicode-test.com with ID: 27
+🔖 Created bookmark: "Symbols: @#$%^&*()" -> https://symbols-test.com with ID: 28
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (iPhone; CPU iPhone OS 14_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1'[39m
+}
+📁 Created folder: "Empty Test Folder" with ID: 29
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (iPhone; CPU iPhone OS 14_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1'[39m
+}
+📁 Created folder: "Special URLs Test" with ID: 30
+🔖 Created bookmark: "Chrome Extension" -> chrome-extension://test with ID: 31
+🔖 Created bookmark: "Data URL" -> data:text/html,<h1>Test</h1> with ID: 32
+🔖 Created bookmark: "File URL" -> file:///test/path with ID: 33
+🔖 Created bookmark: "FTP URL" -> ftp://ftp.example.com with ID: 34
+🔖 Created bookmark: "Local Host" -> http://localhost:3000 with ID: 35
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (iPhone; CPU iPhone OS 14_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1'[39m
+}
+📁 Created folder: "Nested Test Parent" with ID: 36
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (iPhone; CPU iPhone OS 14_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1'[39m
+}
+📁 Created folder: "Nested Child Folder" with ID: 37
+🔖 Created bookmark: "Nested Bookmark" -> https://nested-test.com with ID: 38
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (iPhone; CPU iPhone OS 14_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1'[39m
+}
+📁 Created folder: "Nested Grandchild" with ID: 39
+🔖 Created bookmark: "Deep Nested Bookmark" -> https://deep-nested.com with ID: 40
+🔧 Injecting mock DOM elements for testing...
+✅ Test data generation completed
+📊 Created 13 folders and 23 bookmarks
+🎯 Generating specific drag-and-drop test scenarios...
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (iPhone; CPU iPhone OS 14_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1'[39m
+}
+📁 Created folder: "DragDrop Source" with ID: 41
+🔖 Created bookmark: "Reorderable Item A" -> https://item-a.com with ID: 42
+🔖 Created bookmark: "Reorderable Item B" -> https://item-b.com with ID: 43
+🔖 Created bookmark: "Reorderable Item C" -> https://item-c.com with ID: 44
+🔖 Created bookmark: "Reorderable Item D" -> https://item-d.com with ID: 45
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (iPhone; CPU iPhone OS 14_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1'[39m
+}
+📁 Created folder: "Target Alpha" with ID: 46
+🔖 Created bookmark: "Target Alpha Item" -> https://target-item.com with ID: 47
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (iPhone; CPU iPhone OS 14_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1'[39m
+}
+📁 Created folder: "Target Beta" with ID: 48
+🔖 Created bookmark: "Target Beta Item" -> https://target-item.com with ID: 49
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (iPhone; CPU iPhone OS 14_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1'[39m
+}
+📁 Created folder: "Target Gamma" with ID: 50
+🔖 Created bookmark: "Target Gamma Item" -> https://target-item.com with ID: 51
+✅ Drag-drop scenarios generated successfully
+🔬 Generating boundary condition test data...
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (iPhone; CPU iPhone OS 14_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1'[39m
+}
+📁 Created folder: "Single Item Folder" with ID: 52
+🔖 Created bookmark: "Only Item" -> https://only-item.com with ID: 53
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (iPhone; CPU iPhone OS 14_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1'[39m
+}
+📁 Created folder: "Many Items Folder" with ID: 54
+🔖 Created bookmark: "Item 01" -> https://item1.com with ID: 55
+🔖 Created bookmark: "Item 02" -> https://item2.com with ID: 56
+🔖 Created bookmark: "Item 03" -> https://item3.com with ID: 57
+🔖 Created bookmark: "Item 04" -> https://item4.com with ID: 58
+🔖 Created bookmark: "Item 05" -> https://item5.com with ID: 59
+🔖 Created bookmark: "Item 06" -> https://item6.com with ID: 60
+🔖 Created bookmark: "Item 07" -> https://item7.com with ID: 61
+🔖 Created bookmark: "Item 08" -> https://item8.com with ID: 62
+🔖 Created bookmark: "Item 09" -> https://item9.com with ID: 63
+🔖 Created bookmark: "Item 10" -> https://item10.com with ID: 64
+🔖 Created bookmark: "Item 11" -> https://item11.com with ID: 65
+🔖 Created bookmark: "Item 12" -> https://item12.com with ID: 66
+🔖 Created bookmark: "Item 13" -> https://item13.com with ID: 67
+🔖 Created bookmark: "Item 14" -> https://item14.com with ID: 68
+🔖 Created bookmark: "Item 15" -> https://item15.com with ID: 69
+🔖 Created bookmark: "Item 16" -> https://item16.com with ID: 70
+🔖 Created bookmark: "Item 17" -> https://item17.com with ID: 71
+🔖 Created bookmark: "Item 18" -> https://item18.com with ID: 72
+🔖 Created bookmark: "Item 19" -> https://item19.com with ID: 73
+🔖 Created bookmark: "Item 20" -> https://item20.com with ID: 74
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (iPhone; CPU iPhone OS 14_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1'[39m
+}
+📁 Created folder: "Test Folder A" with ID: 75
+🔖 Created bookmark: "Similar Item" -> https://similar.com with ID: 76
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (iPhone; CPU iPhone OS 14_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1'[39m
+}
+📁 Created folder: "Test Folder B" with ID: 77
+🔖 Created bookmark: "Similar Item" -> https://similar.com with ID: 78
+🔍 Chrome API status for folder creation: {
+  chromeExists: [33mtrue[39m,
+  bookmarksExists: [33mtrue[39m,
+  createExists: [33mtrue[39m,
+  userAgent: [32m'Mozilla/5.0 (iPhone; CPU iPhone OS 14_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1'[39m
+}
+📁 Created folder: "Test Folder C" with ID: 79
+🔖 Created bookmark: "Similar Item" -> https://similar.com with ID: 80
+✅ Boundary conditions generated successfully
+✅ Created test environment with:
+   📁 19 bookmark folders
+   🔖 54 bookmarks
+   📊 22 programmatically created folders
+   📊 54 programmatically created bookmarks
+🔍 Validating test data integrity...
+✅ Test data validation passed
+🔍 Test data validation: PASSED
+📊 Test data summary: {
+  totalFolders: [33m22[39m,
+  totalBookmarks: [33m54[39m,
+  emptyFolders: [33m0[39m,
+  nestedLevels: [33m0[39m
+}
+🔍 Stopped monitoring. Captured 0 console events
+
+🎯 COMPREHENSIVE CONSOLE ERROR ANALYSIS REPORT
+================================================
+{
+  "summary": {
+    "totalInteractions": 0,
+    "totalErrors": 0,
+    "totalWarnings": 0,
+    "interactionsWithErrors": 0,
+    "errorFreeInteractions": 0,
+    "faviconErrorsFiltered": 0
+  },
+  "errorsByInteraction": {},
+  "criticalErrors": [],
+  "recommendations": [],
+  "timestamp": "2025-09-26T18:21:06.389Z"
+}
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Console Error Analysis › should perform systematic user interaction testing with console error capture" classname="specs/comprehensive-console-error-analysis.test.ts" time="25.18">
+<failure message="comprehensive-console-error-analysis.test.ts:140:3 should perform systematic user interaction testing with console error capture" type="FAILURE">
+<![CDATA[  [Mobile Safari] › specs/comprehensive-console-error-analysis.test.ts:140:3 › Comprehensive Console Error Analysis › should perform systematic user interaction testing with console error capture 
+
+    Error: expect(received).toBeGreaterThan(expected)
+
+    Expected: > 5
+    Received:   0
+
+      194 |
+      195 |     // Assertions to ensure test quality
+    > 196 |     expect(analysisReport.summary.totalInteractions).toBeGreaterThan(5);
+          |                                                      ^
+      197 |     
+      198 |     // Save the global report
+      199 |     globalReport = analysisReport;
+        at /Users/mdrozrosario/Favault/tests/playwright/specs/comprehensive-console-error-analysis.test.ts:196:54
+
+    ReferenceError: require is not defined
+
+      70 |       
+      71 |       // Save report to file for easy access
+    > 72 |       const fs = require('fs');
+         |                  ^
+      73 |       const path = require('path');
+      74 |       const reportPath = path.join(__dirname, '../../test-results/console-error-analysis-report.json');
+      75 |       
+        at /Users/mdrozrosario/Favault/tests/playwright/specs/comprehensive-console-error-analysis.test.ts:72:18
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../test-results/specs-comprehensive-consol-97c6c--with-console-error-capture-Mobile-Safari/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../test-results/specs-comprehensive-consol-97c6c--with-console-error-capture-Mobile-Safari/test-failed-2.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[🚀 Starting comprehensive console error analysis...
+📋 This test suite will:
+   1. Create test bookmarks programmatically
+   2. Test every major user interaction
+   3. Capture console errors for each interaction
+   4. Generate detailed error analysis report
+   5. Provide recommendations for fixing issues
+Extension ID: fdibjjncegalcajkaockapdcapalicef
+🚀 Starting enhanced console error monitoring...
+🎯 Starting systematic user interaction testing...
+🔬 Running systematic user interaction console error analysis...
+🎯 Testing interaction: bookmark_click
+⚠️ No bookmarks found for click test
+📊 Interaction "bookmark_click" generated 0 console events
+🎯 Testing interaction: edit_mode_enable
+📊 Interaction "edit_mode_enable" generated 0 console events
+🎯 Testing interaction: edit_mode_disable
+📊 Interaction "edit_mode_disable" generated 0 console events
+🎯 Testing interaction: search_bookmarks
+📊 Interaction "search_bookmarks" generated 0 console events
+🎯 Testing interaction: folder_expand_collapse
+📊 Interaction "folder_expand_collapse" generated 0 console events
+🎯 Testing interaction: drag_drop_simulation
+⚠️ Need at least 2 folders for drag-drop test
+📊 Interaction "drag_drop_simulation" generated 0 console events
+🎯 Testing interaction: right_click_context_menu
+📊 Interaction "right_click_context_menu" generated 0 console events
+🎯 Testing interaction: keyboard_shortcuts
+📊 Interaction "keyboard_shortcuts" generated 0 console events
+🎯 Testing interaction: window_resize
+📊 Interaction "window_resize" generated 0 console events
+🎯 Testing interaction: settings_panel_interaction
+📊 Interaction "settings_panel_interaction" generated 0 console events
+
+📊 INTERACTION TESTING RESULTS:
+================================
+Total Interactions Tested: 0
+Interactions with Errors: 0
+Error-free Interactions: 0
+Total Console Errors: 0
+Total Console Warnings: 0
+Critical Errors: 0
+
+🔍 ERRORS BY INTERACTION:
+
+💡 RECOMMENDATIONS:
+🎉 No issues found! Your extension is running cleanly.
+🔍 Stopped monitoring. Captured 0 console events
+
+🎯 COMPREHENSIVE CONSOLE ERROR ANALYSIS REPORT
+================================================
+{
+  "summary": {
+    "totalInteractions": 0,
+    "totalErrors": 0,
+    "totalWarnings": 0,
+    "interactionsWithErrors": 0,
+    "errorFreeInteractions": 0,
+    "faviconErrorsFiltered": 0
+  },
+  "errorsByInteraction": {},
+  "criticalErrors": [],
+  "recommendations": [],
+  "timestamp": "2025-09-26T18:21:24.961Z"
+}
+
+[[ATTACHMENT|specs-comprehensive-consol-97c6c--with-console-error-capture-Mobile-Safari/test-failed-1.png]]
+
+[[ATTACHMENT|specs-comprehensive-consol-97c6c--with-console-error-capture-Mobile-Safari/test-failed-2.png]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Console Error Analysis › should test specific drag-and-drop console errors" classname="specs/comprehensive-console-error-analysis.test.ts" time="18.333">
+<failure message="comprehensive-console-error-analysis.test.ts:202:3 should test specific drag-and-drop console errors" type="FAILURE">
+<![CDATA[  [Mobile Safari] › specs/comprehensive-console-error-analysis.test.ts:202:3 › Comprehensive Console Error Analysis › should test specific drag-and-drop console errors 
+
+    ReferenceError: require is not defined
+
+      70 |       
+      71 |       // Save report to file for easy access
+    > 72 |       const fs = require('fs');
+         |                  ^
+      73 |       const path = require('path');
+      74 |       const reportPath = path.join(__dirname, '../../test-results/console-error-analysis-report.json');
+      75 |       
+        at /Users/mdrozrosario/Favault/tests/playwright/specs/comprehensive-console-error-analysis.test.ts:72:18
+]]>
+</failure>
+<system-out>
+<![CDATA[🚀 Starting comprehensive console error analysis...
+📋 This test suite will:
+   1. Create test bookmarks programmatically
+   2. Test every major user interaction
+   3. Capture console errors for each interaction
+   4. Generate detailed error analysis report
+   5. Provide recommendations for fixing issues
+Extension ID: fdibjjncegalcajkaockapdcapalicef
+🚀 Starting enhanced console error monitoring...
+🔄 Testing drag-and-drop specific console errors...
+🔧 Enabling edit mode...
+⏳ Waiting for extension initialization to complete...
+✅ Edit mode selectors found
+⏳ Waiting for enhanced drag-drop system to complete setup...
+🔍 Debug info: {
+  editModeEnabled: [33mtrue[39m,
+  appEditMode: [33mtrue[39m,
+  toggleActive: [33mtrue[39m,
+  enhancedReady: [33mtrue[39m,
+  draggableCount: [33m0[39m,
+  totalFolders: [33m0[39m
+}
+✅ Edit mode fully enabled and ready for testing
+📁 Found 0 folders available for drag-drop testing
+⚠️ Insufficient folders for drag-drop testing
+🔍 Stopped monitoring. Captured 0 console events
+
+🎯 COMPREHENSIVE CONSOLE ERROR ANALYSIS REPORT
+================================================
+{
+  "summary": {
+    "totalInteractions": 0,
+    "totalErrors": 0,
+    "totalWarnings": 0,
+    "interactionsWithErrors": 0,
+    "errorFreeInteractions": 0,
+    "faviconErrorsFiltered": 0
+  },
+  "errorsByInteraction": {},
+  "criticalErrors": [],
+  "recommendations": [],
+  "timestamp": "2025-09-26T18:21:24.440Z"
+}
+]]>
+</system-out>
+<system-err>
+<![CDATA[⚠️ Enhanced drag-drop setup may not have completed within timeout
+]]>
+</system-err>
+</testcase>
+<testcase name="Comprehensive Console Error Analysis › should test bookmark interaction console errors" classname="specs/comprehensive-console-error-analysis.test.ts" time="1.648">
+<failure message="comprehensive-console-error-analysis.test.ts:279:3 should test bookmark interaction console errors" type="FAILURE">
+<![CDATA[  [Mobile Safari] › specs/comprehensive-console-error-analysis.test.ts:279:3 › Comprehensive Console Error Analysis › should test bookmark interaction console errors 
+
+    ReferenceError: require is not defined
+
+      70 |       
+      71 |       // Save report to file for easy access
+    > 72 |       const fs = require('fs');
+         |                  ^
+      73 |       const path = require('path');
+      74 |       const reportPath = path.join(__dirname, '../../test-results/console-error-analysis-report.json');
+      75 |       
+        at /Users/mdrozrosario/Favault/tests/playwright/specs/comprehensive-console-error-analysis.test.ts:72:18
+]]>
+</failure>
+<system-out>
+<![CDATA[🚀 Starting comprehensive console error analysis...
+📋 This test suite will:
+   1. Create test bookmarks programmatically
+   2. Test every major user interaction
+   3. Capture console errors for each interaction
+   4. Generate detailed error analysis report
+   5. Provide recommendations for fixing issues
+Extension ID: fdibjjncegalcajkaockapdcapalicef
+🚀 Starting enhanced console error monitoring...
+🔖 Testing bookmark interaction console errors...
+🔖 Found 0 bookmarks for interaction testing
+⚠️ No bookmarks available for interaction testing
+🔍 Stopped monitoring. Captured 0 console events
+
+🎯 COMPREHENSIVE CONSOLE ERROR ANALYSIS REPORT
+================================================
+{
+  "summary": {
+    "totalInteractions": 0,
+    "totalErrors": 0,
+    "totalWarnings": 0,
+    "interactionsWithErrors": 0,
+    "errorFreeInteractions": 0,
+    "faviconErrorsFiltered": 0
+  },
+  "errorsByInteraction": {},
+  "criticalErrors": [],
+  "recommendations": [],
+  "timestamp": "2025-09-26T18:21:10.951Z"
+}
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Console Error Analysis › should test edit mode console errors" classname="specs/comprehensive-console-error-analysis.test.ts" time="10.178">
+<failure message="comprehensive-console-error-analysis.test.ts:348:3 should test edit mode console errors" type="FAILURE">
+<![CDATA[  [Mobile Safari] › specs/comprehensive-console-error-analysis.test.ts:348:3 › Comprehensive Console Error Analysis › should test edit mode console errors 
+
+    ReferenceError: require is not defined
+
+      70 |       
+      71 |       // Save report to file for easy access
+    > 72 |       const fs = require('fs');
+         |                  ^
+      73 |       const path = require('path');
+      74 |       const reportPath = path.join(__dirname, '../../test-results/console-error-analysis-report.json');
+      75 |       
+        at /Users/mdrozrosario/Favault/tests/playwright/specs/comprehensive-console-error-analysis.test.ts:72:18
+]]>
+</failure>
+<system-out>
+<![CDATA[🚀 Starting comprehensive console error analysis...
+📋 This test suite will:
+   1. Create test bookmarks programmatically
+   2. Test every major user interaction
+   3. Capture console errors for each interaction
+   4. Generate detailed error analysis report
+   5. Provide recommendations for fixing issues
+Extension ID: fdibjjncegalcajkaockapdcapalicef
+🚀 Starting enhanced console error monitoring...
+✏️ Testing edit mode console errors...
+🎯 Testing interaction: edit_mode_keyboard_enable
+📊 Interaction "edit_mode_keyboard_enable" generated 0 console events
+✅ edit_mode_keyboard_enable: No console errors
+🎯 Testing interaction: edit_mode_keyboard_disable
+📊 Interaction "edit_mode_keyboard_disable" generated 0 console events
+✅ edit_mode_keyboard_disable: No console errors
+🎯 Testing interaction: edit_mode_button_enable
+📊 Interaction "edit_mode_button_enable" generated 0 console events
+✅ edit_mode_button_enable: No console errors
+🎯 Testing interaction: edit_mode_button_disable
+📊 Interaction "edit_mode_button_disable" generated 0 console events
+✅ edit_mode_button_disable: No console errors
+🔍 Stopped monitoring. Captured 0 console events
+
+🎯 COMPREHENSIVE CONSOLE ERROR ANALYSIS REPORT
+================================================
+{
+  "summary": {
+    "totalInteractions": 0,
+    "totalErrors": 0,
+    "totalWarnings": 0,
+    "interactionsWithErrors": 0,
+    "errorFreeInteractions": 0,
+    "faviconErrorsFiltered": 0
+  },
+  "errorsByInteraction": {},
+  "criticalErrors": [],
+  "recommendations": [],
+  "timestamp": "2025-09-26T18:21:21.114Z"
+}
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Console Error Analysis › should generate final error analysis summary" classname="specs/comprehensive-console-error-analysis.test.ts" time="1.732">
+<failure message="comprehensive-console-error-analysis.test.ts:407:3 should generate final error analysis summary" type="FAILURE">
+<![CDATA[  [Mobile Safari] › specs/comprehensive-console-error-analysis.test.ts:407:3 › Comprehensive Console Error Analysis › should generate final error analysis summary 
+
+    ReferenceError: require is not defined
+
+      70 |       
+      71 |       // Save report to file for easy access
+    > 72 |       const fs = require('fs');
+         |                  ^
+      73 |       const path = require('path');
+      74 |       const reportPath = path.join(__dirname, '../../test-results/console-error-analysis-report.json');
+      75 |       
+        at /Users/mdrozrosario/Favault/tests/playwright/specs/comprehensive-console-error-analysis.test.ts:72:18
+]]>
+</failure>
+<system-out>
+<![CDATA[🚀 Starting comprehensive console error analysis...
+📋 This test suite will:
+   1. Create test bookmarks programmatically
+   2. Test every major user interaction
+   3. Capture console errors for each interaction
+   4. Generate detailed error analysis report
+   5. Provide recommendations for fixing issues
+Extension ID: fdibjjncegalcajkaockapdcapalicef
+🚀 Starting enhanced console error monitoring...
+📋 Generating final error analysis summary...
+⚠️ No error analysis report available
+🔍 Stopped monitoring. Captured 0 console events
+
+🎯 COMPREHENSIVE CONSOLE ERROR ANALYSIS REPORT
+================================================
+{
+  "summary": {
+    "totalInteractions": 0,
+    "totalErrors": 0,
+    "totalWarnings": 0,
+    "interactionsWithErrors": 0,
+    "errorFreeInteractions": 0,
+    "faviconErrorsFiltered": 0
+  },
+  "errorsByInteraction": {},
+  "criticalErrors": [],
+  "recommendations": [],
+  "timestamp": "2025-09-26T18:21:14.102Z"
+}
+]]>
+</system-out>
+</testcase>
+</testsuite>
+</testsuites>

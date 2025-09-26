@@ -10,6 +10,7 @@
   import AutoSaveStatus from './AutoSaveStatus.svelte';
   import { BookmarkValidator, createRealTimeValidator, type ValidationResult } from './validation';
   import ValidationStatus from './ValidationStatus.svelte';
+  import { FaviconManager } from './favicon-utils';
   // import { DragDropValidator } from './drag-drop-validation'; // Disabled with on-bookmark drop zones
 
   export let bookmark: BookmarkItem;
@@ -65,19 +66,24 @@
     }
   }, 500);
 
-  // Generate favicon URL
+  // Generate favicon URL using enhanced utility with performance optimization
+  let faviconUrlCache: string | null = null;
   function getFaviconUrl(url: string): string {
-    try {
-      const domain = new URL(url).hostname;
-      return `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
-    } catch {
-      return '';
+    // Cache the favicon URL to prevent repeated calculations during refreshes
+    if (faviconUrlCache === null) {
+      faviconUrlCache = FaviconManager.getFaviconUrl(url, {
+        size: 32,
+        skipLocalUrls: true,
+        skipSpecialUrls: true
+      });
     }
+    return faviconUrlCache;
   }
 
-  // Handle favicon load error
+  // Handle favicon error using enhanced utility (performance optimized)
   function handleFaviconError(event: Event) {
     const img = event.target as HTMLImageElement;
+    // Simple fallback to prevent excessive processing during refreshes
     img.style.display = 'none';
   }
 
@@ -411,14 +417,26 @@
   }
   */
 
-  // Refresh bookmarks after changes
+  // Debounced refresh to prevent cascade refreshes
+  let refreshTimeout: NodeJS.Timeout | null = null;
   async function refreshBookmarks() {
-    try {
-      const folders = await BookmarkManager.getOrganizedBookmarks();
-      bookmarkFolders.set(folders);
-    } catch (error) {
-      console.error('Failed to refresh bookmarks:', error);
+    // Cancel any pending refresh
+    if (refreshTimeout) {
+      clearTimeout(refreshTimeout);
     }
+    
+    // Debounce refresh calls to prevent performance issues
+    refreshTimeout = setTimeout(async () => {
+      try {
+        console.log('🔄 Performing debounced bookmark refresh (BookmarkItem)');
+        const folders = await BookmarkManager.getOrganizedBookmarks();
+        bookmarkFolders.set(folders);
+        refreshTimeout = null;
+      } catch (error) {
+        console.error('Failed to refresh bookmarks:', error);
+        refreshTimeout = null;
+      }
+    }, 150); // 150ms debounce
   }
 
   // Handle save-all-edits event
@@ -604,12 +622,13 @@
   data-index={bookmark.index || 0}
 >
   <div class="favicon-container">
-    {#if bookmark.url}
+    {#if bookmark.url && getFaviconUrl(bookmark.url)}
       <img
         src={getFaviconUrl(bookmark.url)}
         alt=""
         class="favicon"
         on:error={handleFaviconError}
+        loading="lazy"
       />
     {/if}
     <div class="favicon-fallback">

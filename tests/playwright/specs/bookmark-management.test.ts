@@ -58,9 +58,12 @@ test.describe('Bookmark Management', () => {
       }
     }
     
-    // Check for console errors
-    const errors = consoleUtils.getErrorMessages();
-    expect(errors.filter(err => !err.includes('favicon') && !err.includes('net::ERR'))).toHaveLength(0);
+    // Check for console errors (excluding favicon errors)
+    const criticalErrors = consoleUtils.getNonFaviconErrorMessages();
+    const faviconErrorCount = consoleUtils.getFaviconErrorCount();
+    
+    console.log(`📊 Found ${faviconErrorCount} favicon errors (filtered out) and ${criticalErrors.length} critical errors`);
+    expect(criticalErrors.filter(err => !err.includes('net::ERR'))).toHaveLength(0);
   });
 
   test('should display bookmarks within folders', async ({ newTabPage }) => {
@@ -300,14 +303,15 @@ test.describe('Bookmark Management', () => {
     // Should load within reasonable time (5 seconds)
     expect(loadTime).toBeLessThan(5000);
     
-    // Should handle large collections without errors
-    const errors = consoleUtils.getErrorMessages();
-    const relevantErrors = errors.filter(err => 
-      !err.includes('favicon') && 
+    // Should handle large collections without critical errors
+    const criticalErrors = consoleUtils.getNonFaviconErrorMessages();
+    const faviconErrorCount = consoleUtils.getFaviconErrorCount();
+    const relevantErrors = criticalErrors.filter(err => 
       !err.includes('net::ERR') &&
       !err.includes('chrome-extension://')
     );
     
+    console.log(`📊 Performance test: ${faviconErrorCount} favicon errors filtered, ${relevantErrors.length} critical errors found`);
     expect(relevantErrors).toHaveLength(0);
     
     console.log(`📊 Performance: Loaded ${folders.length} folders and ${bookmarks.length} bookmarks in ${loadTime}ms`);

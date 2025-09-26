@@ -241,7 +241,7 @@
             showInterSectionMoveSuccess(dragData.title, folder.title);
 
             // Dispatch custom event for additional refresh if needed
-            document.dispatchEvent(new CustomEvent('favault-bookmark-moved', {
+            document?.dispatchEvent(new CustomEvent('favault-bookmark-moved', {
               detail: {
                 bookmarkId: dragData.id,
                 fromFolder: dragData.parentId,
@@ -340,7 +340,7 @@
             showInterSectionMoveSuccess(dragData.title, folder.title, 'beginning');
 
             // Dispatch custom event for additional refresh if needed
-            document.dispatchEvent(new CustomEvent('favault-bookmark-moved', {
+            document?.dispatchEvent(new CustomEvent('favault-bookmark-moved', {
               detail: {
                 bookmarkId: dragData.id,
                 fromFolder: dragData.parentId,

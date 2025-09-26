@@ -1,4 +1,5 @@
 import { Page, ConsoleMessage } from '@playwright/test';
+import { FaviconErrorFilter } from '../../../src/lib/favicon-utils';
 
 /**
  * Console and network testing utilities for FaVault extension
@@ -99,6 +100,22 @@ export class ConsoleTestUtils {
    */
   getErrorMessages(): string[] {
     return this.getConsoleMessagesByType('error').map(msg => msg.text());
+  }
+
+  /**
+   * Get error messages excluding favicon-related errors
+   */
+  getNonFaviconErrorMessages(): string[] {
+    const allErrors = this.getErrorMessages();
+    return FaviconErrorFilter.filterFaviconErrors(allErrors);
+  }
+
+  /**
+   * Count favicon-related errors
+   */
+  getFaviconErrorCount(): number {
+    const allErrors = this.getErrorMessages();
+    return FaviconErrorFilter.countFaviconErrors(allErrors);
   }
 
   /**
@@ -357,25 +374,39 @@ export class ConsoleTestUtils {
   }
 
   /**
-   * Generate test report
+   * Generate enhanced test report with favicon error filtering
    */
   generateTestReport(): {
     summary: any;
     errors: string[];
     warnings: string[];
     networkIssues: any[];
+    faviconErrors?: {
+      count: number;
+      filtered: boolean;
+    };
   } {
+    const allErrors = this.getErrorMessages();
+    const faviconErrorCount = FaviconErrorFilter.countFaviconErrors(allErrors);
+    const criticalErrors = FaviconErrorFilter.filterFaviconErrors(allErrors);
+    
     return {
       summary: {
         totalConsoleMessages: this.consoleMessages.length,
-        errorCount: this.getConsoleMessagesByType('error').length,
+        errorCount: allErrors.length,
+        criticalErrorCount: criticalErrors.length,
+        faviconErrorCount: faviconErrorCount,
         warningCount: this.getConsoleMessagesByType('warn').length,
         networkRequests: this.networkRequests.filter(req => req.type === 'request').length,
         networkResponses: this.networkRequests.filter(req => req.type === 'response').length
       },
-      errors: this.getErrorMessages(),
+      errors: criticalErrors, // Only include non-favicon errors
       warnings: this.getWarningMessages(),
-      networkIssues: this.getFailedRequests()
+      networkIssues: this.getFailedRequests(),
+      faviconErrors: {
+        count: faviconErrorCount,
+        filtered: faviconErrorCount > 0
+      }
     };
   }
 

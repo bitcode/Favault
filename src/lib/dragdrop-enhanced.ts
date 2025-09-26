@@ -58,13 +58,13 @@ export class EnhancedDragDropManager {
   private static maxRetryAttempts = 5;
   private static retryTimeouts: Set<number> = new Set();
 
-  // DOM Observer debouncing and logging controls
+  // DOM Observer debouncing and logging controls - PERFORMANCE OPTIMIZED
   private static domObserverDebounceTimer: number | null = null;
-  private static readonly DOM_OBSERVER_DEBOUNCE_MS = 500;
+  private static readonly DOM_OBSERVER_DEBOUNCE_MS = 1000; // Increased debounce
   private static lastDomObserverTrigger = 0;
   private static domObserverTriggerCount = 0;
-  private static readonly MAX_OBSERVER_TRIGGERS_PER_SECOND = 5;
-  private static debugLoggingEnabled = true; // Will be set based on production mode in initialize()
+  private static readonly MAX_OBSERVER_TRIGGERS_PER_SECOND = 2; // Reduced triggers
+  private static debugLoggingEnabled = false; // DISABLED for performance
 
   // Auto-scroll prevention properties
   private static originalScrollPosition: { x: number; y: number } | null = null;
@@ -74,16 +74,16 @@ export class EnhancedDragDropManager {
   private static mousedownScrollPreventionHandler: ((e: MouseEvent) => void) | null = null;
   private static isScrollPreventionActive = false;
 
-  // Refresh system management
+  // Refresh system management - PERFORMANCE OPTIMIZED
   private static pendingRefreshTimers: Set<number> = new Set();
   private static isRefreshInProgress = false;
   private static lastRefreshTime = 0;
-  private static readonly REFRESH_DEBOUNCE_MS = 100;
+  private static readonly REFRESH_DEBOUNCE_MS = 300; // Increased debounce
 
-  // Operation management for preventing race conditions
+  // Operation management for preventing race conditions - PERFORMANCE OPTIMIZED
   private static activeOperations: Set<string> = new Set();
   private static lastOperationTime = 0;
-  private static readonly OPERATION_DEBOUNCE_MS = 150;
+  private static readonly OPERATION_DEBOUNCE_MS = 250; // Increased debounce
   private static operationQueue: Array<() => Promise<any>> = [];
 
   // Protected folder patterns from console script
@@ -453,7 +453,7 @@ export class EnhancedDragDropManager {
           clearCache: true
         }
       });
-      document.dispatchEvent(refreshEvent);
+      document?.dispatchEvent(refreshEvent);
       console.log('✅ UI refresh event dispatched');
 
       return true;

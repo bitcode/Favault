@@ -50,11 +50,49 @@ class ErrorReporter {
   private pageLoadTime: number = Date.now();
   private maxStoredErrors: number = 100;
   private errorCategories = new Map<string, number>();
+  private isProduction: boolean = this.detectProductionEnvironment();
+  private errorThrottle: Map<string, number> = new Map();
+  private throttleWindow: number = 5000; // 5 seconds
 
   private constructor() {
-    this.setupGlobalErrorHandlers();
-    this.setupUnhandledRejectionHandler();
-    this.setupConsoleErrorCapture();
+    // Only setup error handling if not in production or if explicitly enabled
+    if (!this.isProduction || this.isErrorReportingEnabled()) {
+      this.setupGlobalErrorHandlers();
+      this.setupUnhandledRejectionHandler();
+      this.setupConsoleErrorCapture();
+    }
+  }
+
+  /**
+   * Detect if we're running in production environment
+   */
+  private detectProductionEnvironment(): boolean {
+    try {
+      // Check if we're in a Chrome extension context (production indicator)
+      const isExtension = !!(typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id);
+      
+      // Check for development indicators
+      const isDevelopment = window.location.hostname === 'localhost' || 
+                           window.location.hostname.includes('127.0.0.1') ||
+                           window.location.protocol === 'file:' ||
+                           !isExtension;
+      
+      return isExtension && !isDevelopment;
+    } catch {
+      return false; // Assume development if detection fails
+    }
+  }
+
+  /**
+   * Check if error reporting is explicitly enabled (for debugging)
+   */
+  private isErrorReportingEnabled(): boolean {
+    try {
+      return localStorage.getItem('favault-debug-error-reporting') === 'true' ||
+             (window as any).__FAVAULT_DEBUG_ERRORS === true;
+    } catch {
+      return false;
+    }
   }
 
   static getInstance(): ErrorReporter {
@@ -182,8 +220,22 @@ class ErrorReporter {
     additionalData?: Record<string, any>;
     suggestions?: string[];
   }): string {
-    const errorId = this.generateErrorId();
+    // In production, skip error reporting unless explicitly enabled
+    if (this.isProduction && !this.isErrorReportingEnabled()) {
+      return 'SKIPPED_PRODUCTION';
+    }
+
+    // Throttle similar errors to prevent spam
+    const errorKey = `${errorData.type}-${errorData.category}-${errorData.message.substring(0, 100)}`;
     const now = Date.now();
+    const lastReported = this.errorThrottle.get(errorKey) || 0;
+    
+    if (now - lastReported < this.throttleWindow) {
+      return 'THROTTLED';
+    }
+    
+    this.errorThrottle.set(errorKey, now);
+    const errorId = this.generateErrorId();
     
     const errorReport: ErrorReport = {
       id: errorId,
@@ -225,18 +277,16 @@ class ErrorReporter {
       (this.errorCategories.get(errorData.category) || 0) + 1
     );
 
-    // Log to console for immediate debugging
-    console.group(`🚨 FaVault Error Report [${errorId}]`);
-    console.error('Message:', errorData.message);
-    console.error('Type:', errorData.type);
-    console.error('Severity:', errorData.severity);
-    console.error('Category:', errorData.category);
-    if (errorData.stack) {
-      console.error('Stack:', errorData.stack);
-    }
-    console.error('Context:', errorReport.context);
-    console.error('Suggestions:', errorReport.suggestions);
-    console.groupEnd();
+    // Log to console for immediate debugging - consolidated to prevent cascade errors
+    const logMessage = `🚨 FaVault Error Report [${errorId}]\n` +
+      `Message: ${errorData.message}\n` +
+      `Type: ${errorData.type} | Severity: ${errorData.severity} | Category: ${errorData.category}\n` +
+      (errorData.stack ? `Stack: ${errorData.stack}\n` : '') +
+      `Suggestions: ${errorReport.suggestions.join(', ')}\n` +
+      `Context: ${JSON.stringify({ browser: errorReport.context.browser.userAgent, timing: errorReport.context.timing, state: errorReport.context.state }, null, 2)}`;
+    
+    // Use a single console.warn instead of multiple console.error calls to prevent cascade
+    console.warn(logMessage);
 
     return errorId;
   }

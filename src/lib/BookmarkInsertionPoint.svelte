@@ -25,15 +25,10 @@
 
   // Update drop zone state based on edit mode
   function updateDropZoneState() {
-    console.log('🎯 Updating drop zone state for insertion point:', {
-      parentId,
-      insertIndex,
-      insertionElement: !!insertionElement,
-      isEditMode
-    });
+    // PERFORMANCE FIX: Reduced logging to improve drag-drop performance
+    console.log('🎯 Updating drop zone state for insertion point:', parentId, insertIndex, isEditMode);
 
     if (!insertionElement) {
-      console.log('❌ No insertion element available yet');
       return;
     }
 
@@ -41,10 +36,7 @@
     DragDropManager.cleanup(insertionElement);
 
     if (isEditMode) {
-      console.log('✅ Initializing insertion drop zone');
       initializeInsertionDropZone();
-    } else {
-      console.log('⏸️ Edit mode not active, skipping drop zone initialization');
     }
   }
 
@@ -64,16 +56,10 @@
     DragManager.initializeDropZone(insertionElement, dropZoneData, {
       acceptTypes: ['bookmark'],
       onDragEnter: (dragData, dropZone) => {
-        console.log('🎯 Drag entering insertion point:', {
-          bookmarkTitle: dragData.title,
-          insertIndex,
-          parentId,
-          dropZone
-        });
-
+        // PERFORMANCE FIX: Reduced logging during drag operations
+        
         // Don't activate if dragging the same bookmark or adjacent bookmarks
         if (shouldIgnoreDrop(dragData, dropZone)) {
-          console.log('❌ Drop ignored by shouldIgnoreDrop logic');
           return;
         }
 
@@ -83,7 +69,7 @@
         showInsertionIndicator(dragData);
       },
       onDragLeave: (_dragData, _dropZone) => {
-        console.log('🚪 Drag leaving insertion point at index:', insertIndex);
+        // PERFORMANCE FIX: Reduced logging
         isActive = false;
         insertionElement.classList.remove('insertion-point-active');
         hideInsertionIndicator();
@@ -129,10 +115,7 @@
 
   // Check if we should ignore this drop (same bookmark or adjacent)
   function shouldIgnoreDrop(dragData: DragData, dropZone: DropZoneData): boolean {
-    console.log('Checking shouldIgnoreDrop:', {
-      dragData: { id: dragData.id, parentId: dragData.parentId, index: dragData.index },
-      dropZone: { parentId: dropZone.parentId, targetIndex: dropZone.targetIndex }
-    });
+    // PERFORMANCE FIX: Reduced logging during frequent operations
 
     // If dragging from the same parent
     if (dragData.parentId === dropZone.parentId) {
@@ -141,7 +124,6 @@
 
       // Only ignore if dropping at the exact same position
       if (dragIndex === targetIndex) {
-        console.log('Ignoring drop: same position');
         return true;
       }
 
@@ -151,7 +133,6 @@
       // We should allow all moves except dropping at the exact same position
     }
 
-    console.log('Drop allowed');
     return false;
   }
 
@@ -214,14 +195,26 @@
     }, 5000);
   }
 
-  // Refresh bookmarks after changes
+  // Debounced refresh to prevent cascade refreshes
+  let refreshTimeout: NodeJS.Timeout | null = null;
   async function refreshBookmarks() {
-    try {
-      const folders = await BookmarkManager.getOrganizedBookmarks();
-      bookmarkFolders.set(folders);
-    } catch (error) {
-      console.error('Failed to refresh bookmarks:', error);
+    // Cancel any pending refresh
+    if (refreshTimeout) {
+      clearTimeout(refreshTimeout);
     }
+    
+    // Debounce refresh calls to prevent performance issues
+    refreshTimeout = setTimeout(async () => {
+      try {
+        console.log('🔄 Performing debounced bookmark refresh');
+        const folders = await BookmarkManager.getOrganizedBookmarks();
+        bookmarkFolders.set(folders);
+        refreshTimeout = null;
+      } catch (error) {
+        console.error('Failed to refresh bookmarks:', error);
+        refreshTimeout = null;
+      }
+    }, 150); // 150ms debounce
   }
 
   // Setup on mount

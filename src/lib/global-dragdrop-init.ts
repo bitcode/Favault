@@ -18,8 +18,8 @@ async function refreshBookmarksSafe() {
   }
 }
 
-// Global mouse-based fallback for inter-folder bookmark moves in headless tests
-if (typeof document !== 'undefined') {
+// PERFORMANCE FIX: Temporarily disable global drag-drop system that's causing Chrome slowdown
+if (false && typeof document !== 'undefined') {
   // Skip if primary bridge already installed
   if ((window as any).__fav_globalDnDBridgeInstalled) {
     console.log('[Global DnD] Primary bridge already installed; skipping global fallback');
@@ -130,7 +130,7 @@ if (typeof document !== 'undefined') {
           if (result.success) {
             console.log('[Global DnD] moveBookmark success', { id: gc.id, destFolderId, index });
             try {
-              document.dispatchEvent(new CustomEvent('favault-bookmark-moved', { detail: { type: 'inter-folder', id: gc.id, fromParentId: gc.parentId, toParentId: destFolderId, index } }));
+              document?.dispatchEvent(new CustomEvent('favault-bookmark-moved', { detail: { type: 'inter-folder', id: gc.id, fromParentId: gc.parentId, toParentId: destFolderId, index } }));
             } catch {}
             BookmarkManager.clearCache();
             await refreshBookmarksSafe();
@@ -291,7 +291,7 @@ if (typeof document !== 'undefined') {
         if (result.success) {
           console.log('[Global DnD] moveBookmark success (drop)', { id: gc.id, toParentId, index });
           try {
-            document.dispatchEvent(new CustomEvent('favault-bookmark-moved', { detail: { type: 'inter-folder', id: gc.id, fromParentId: gc.parentId, toParentId, index } }));
+            document?.dispatchEvent(new CustomEvent('favault-bookmark-moved', { detail: { type: 'inter-folder', id: gc.id, fromParentId: gc.parentId, toParentId, index } }));
           } catch {}
           BookmarkManager.clearCache();
           await refreshBookmarksSafe();

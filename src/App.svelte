@@ -116,7 +116,7 @@
           const result = await BookmarkEditAPIModule.moveBookmark(fromId, { parentId: toParentId, index: toIndex });
           if (result?.success) {
             console.log('[Global DnD] moveBookmark success', { fromId, toParentId, toIndex });
-            try { document.dispatchEvent(new CustomEvent('favault-bookmark-moved', { detail: { type: 'inter-folder', fromId, fromParentId, toParentId, toIndex } })); } catch {}
+            try { document?.dispatchEvent(new CustomEvent('favault-bookmark-moved', { detail: { type: 'inter-folder', fromId, fromParentId, toParentId, toIndex } })); } catch {}
             await refreshAfterMove();
           } else {
             console.error('[Global DnD] moveBookmark failed', result?.error);
@@ -178,7 +178,7 @@
           const result = await BookmarkEditAPIModule.moveBookmark(fromId, { parentId: toParentId, index: toIndex });
           if (result?.success) {
             console.log('[Global DnD] moveBookmark success (drop)', { fromId, toParentId, toIndex });
-            try { document.dispatchEvent(new CustomEvent('favault-bookmark-moved', { detail: { type: 'inter-folder', fromId, fromParentId, toParentId, toIndex } })); } catch {}
+            try { document?.dispatchEvent(new CustomEvent('favault-bookmark-moved', { detail: { type: 'inter-folder', fromId, fromParentId, toParentId, toIndex } })); } catch {}
             await refreshAfterMove();
           } else {
             console.error('[Global DnD] moveBookmark failed (drop)', result?.error);
@@ -240,8 +240,8 @@
   // Import drag-and-drop animations CSS
   import './lib/drag-drop-animations.css';
 
-	// Install document-level mouse DnD bridge at module-scope for Playwright compatibility
-	if (typeof window !== 'undefined' && !((window as any).__fav_appGlobalDnDBridgeInstalled)) {
+	// PERFORMANCE FIX: Temporarily disable redundant drag-drop bridge
+	if (false && typeof window !== 'undefined' && !((window as any).__fav_appGlobalDnDBridgeInstalled)) {
 	  try {
 	    console.log('[Global DnD] Installing document-level mouse bridge (module-scope)');
 	    const onDocMouseDown = (e: MouseEvent | PointerEvent) => {
@@ -1293,7 +1293,7 @@
     if ((event.ctrlKey || event.metaKey) && (event.key === 's' || event.key === 'S') && $editMode) {
       event.preventDefault();
       // Trigger save event for any active editors
-      document.dispatchEvent(new CustomEvent('save-all-edits'));
+      document?.dispatchEvent(new CustomEvent('save-all-edits'));
     }
 
     // Ctrl/Cmd + R to refresh bookmarks

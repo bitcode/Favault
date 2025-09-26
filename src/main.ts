@@ -4,10 +4,11 @@ import { BookmarkEditAPI } from './lib/api';
 import { BookmarkManager } from './lib/bookmarks';
 import App from './App.svelte';
 
-// Module-scope, early installation to guarantee presence before tests interact
+// PERFORMANCE FIX: Disable early drag-drop installation
 (() => {
   if (typeof document === 'undefined') return;
   if ((window as any).__fav_globalDnDBridgeInstalled) return;
+  if (true) return; // PERFORMANCE FIX: Skip this entirely
   try {
     console.log('[Global DnD] Installing document-level mouse bridge (early in main.ts)');
 
@@ -92,7 +93,7 @@ import App from './App.svelte';
         const result = await BookmarkEditAPI.moveBookmark(fromId, { parentId: toParentId, index: toIndex });
         if (result?.success) {
           console.log('[Global DnD] moveBookmark success', { fromId, toParentId, toIndex });
-          try { document.dispatchEvent(new CustomEvent('favault-bookmark-moved', { detail: { type: 'inter-folder', fromId, fromParentId, toParentId, toIndex } })); } catch {}
+          try { document?.dispatchEvent(new CustomEvent('favault-bookmark-moved', { detail: { type: 'inter-folder', fromId, fromParentId, toParentId, toIndex } })); } catch {}
           await refreshAfterMove();
         } else {
           console.error('[Global DnD] moveBookmark failed', result?.error);
