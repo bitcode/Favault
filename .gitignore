@@ -44,9 +44,70 @@ pids
 
 # Coverage directory used by tools like istanbul
 coverage/
+*.lcov
 
 # nyc test coverage
 .nyc_output
+
+# Test results and artifacts
+test-results/
+test-results/*
+playwright-report/
+playwright-report/*
+test-output/
+test-output/*
+test-artifacts/
+test-artifacts/*
+
+# Jest
+jest/
+.jest/
+jest-test-results.json
+
+# Cypress
+cypress/videos/
+cypress/screenshots/
+cypress/downloads/
+cypress/fixtures/example.json
+
+# Playwright
+playwright/.cache/
+test-results/
+playwright-report/
+blob-report/
+playwright/.auth/
+
+# Mocha
+.mocha/
+mocha-test-results.xml
+
+# Testing framework outputs
+*.test.log
+*.spec.log
+test-*.log
+*-test-results.xml
+*-test-report.html
+*-coverage.html
+
+# Screenshots and videos from tests
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webm
+*.mp4
+!icons/*.png
+!icons/*.jpg
+!icons/*.jpeg
+!icons/*.gif
+
+# Temporary test files
+*.test.tmp
+*.spec.tmp
+test-*.tmp
+*-test.tmp
+.cache/
+.parcel-cache/
 
 # Dependency directories
 jspm_packages/

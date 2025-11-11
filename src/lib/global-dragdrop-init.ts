@@ -18,8 +18,8 @@ async function refreshBookmarksSafe() {
   }
 }
 
-// PERFORMANCE FIX: Temporarily disable global drag-drop system that's causing Chrome slowdown
-if (false && typeof document !== 'undefined') {
+// Re-enable global drag-drop system with enhanced logging for debugging
+if (typeof document !== 'undefined') {
   // Skip if primary bridge already installed
   if ((window as any).__fav_globalDnDBridgeInstalled) {
     console.log('[Global DnD] Primary bridge already installed; skipping global fallback');
@@ -108,10 +108,19 @@ if (false && typeof document !== 'undefined') {
           }
         }
         let destFolderId = dropEl?.getAttribute('data-folder-id') || undefined;
+        console.log('[DnD Fallback] Drop target analysis:', {
+          dropElement: dropEl?.className || 'none',
+          dataFolderId: dropEl?.getAttribute('data-folder-id') || 'empty',
+          destFolderId: destFolderId || 'EMPTY', // This is the critical issue
+          lastHoveredFolderId: (window as any).__fav_lastHoveredFolderId || 'none'
+        });
+        
         if (!destFolderId) {
           destFolderId = (window as any).__fav_lastHoveredFolderId;
           if (destFolderId) {
-            console.log('[Global DnD] Using last hovered folder as drop target:', destFolderId);
+            console.log('[DnD Fallback] Using last hovered folder as drop target:', destFolderId);
+          } else {
+            console.error('[DnD Fallback] CRITICAL: destFolderId is empty - no drop target found!');
           }
         }
         if (destFolderId && destFolderId !== gc.parentId) {
@@ -125,13 +134,27 @@ if (false && typeof document !== 'undefined') {
               body.removeAttribute('data-dnd-candidate');
             }
           } catch {}
+          console.log('[DnD Fallback] mouseup at Object');
+          console.log('bookmarkId:', gc.id || '');
+          console.log('bookmarkTitle:', gc.title || 'Unknown');
+          console.log('currentParent:', gc.parentId || '');
+          console.log('destFolderId:', destFolderId || ''); // This matches the user's console log format
+          console.log('dropHandled:', true);
+          console.log('overContainer:', !!dropEl);
+          console.log('overHeader:', !!dropEl?.classList.contains('folder-header'));
+          
           console.log('[Global DnD] mouseup detected drop', { fromId: gc.id, fromParentId: gc.parentId, toParentId: destFolderId, index });
           const result = await BookmarkEditAPI.moveBookmark(gc.id, { parentId: destFolderId, index });
           if (result.success) {
             console.log('[Global DnD] moveBookmark success', { id: gc.id, destFolderId, index });
             try {
-              document?.dispatchEvent(new CustomEvent('favault-bookmark-moved', { detail: { type: 'inter-folder', id: gc.id, fromParentId: gc.parentId, toParentId: destFolderId, index } }));
-            } catch {}
+              // CRITICAL FIX: Add null checking for dispatchEvent to prevent null reference errors
+              if (document && typeof document.dispatchEvent === 'function') {
+                document.dispatchEvent(new CustomEvent('favault-bookmark-moved', { detail: { type: 'inter-folder', id: gc.id, fromParentId: gc.parentId, toParentId: destFolderId, index } }));
+              }
+            } catch (err) {
+              console.error('[DnD Global] dispatchEvent error:', err);
+            }
             BookmarkManager.clearCache();
             await refreshBookmarksSafe();
           } else {
@@ -291,8 +314,13 @@ if (false && typeof document !== 'undefined') {
         if (result.success) {
           console.log('[Global DnD] moveBookmark success (drop)', { id: gc.id, toParentId, index });
           try {
-            document?.dispatchEvent(new CustomEvent('favault-bookmark-moved', { detail: { type: 'inter-folder', id: gc.id, fromParentId: gc.parentId, toParentId, index } }));
-          } catch {}
+            // CRITICAL FIX: Add null checking for dispatchEvent to prevent null reference errors
+            if (document && typeof document.dispatchEvent === 'function') {
+              document.dispatchEvent(new CustomEvent('favault-bookmark-moved', { detail: { type: 'inter-folder', id: gc.id, fromParentId: gc.parentId, toParentId, index } }));
+            }
+          } catch (err) {
+            console.error('[DnD Global] dispatchEvent error:', err);
+          }
           BookmarkManager.clearCache();
           await refreshBookmarksSafe();
         }

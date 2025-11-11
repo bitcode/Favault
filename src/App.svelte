@@ -40,14 +40,19 @@
         // Only process bookmark items for the global DnD bridge
         const t = e.target as HTMLElement | null;
         if (!t) return;
-        
+
         // Check if this is actually a bookmark item (not a folder)
         const itemEl = t.closest?.('.bookmark-item[data-bookmark-id], [data-testid="bookmark-item"][data-bookmark-id]') as HTMLElement | null;
         if (!itemEl) return; // Exit early if not a bookmark item
-        
+
+
         // Record last down position for potential salvage during mouseup
         (window as any).__fav_lastDownAt = { x: (e as MouseEvent).clientX, y: (e as MouseEvent).clientY };
-        
+
+        // SCROLL PREVENTION: Store scroll position before any potential scroll changes
+        const scrollBeforeX = window.scrollX;
+        const scrollBeforeY = window.scrollY;
+
         // Add helper class to mitigate scroll behaviors during drag
         document.querySelector('.app')?.classList.add('drag-active');
 
@@ -67,6 +72,16 @@
           }
           console.log('[Global DnD] mousedown captured bookmark:', { id, parentId });
         }
+
+        // SCROLL PREVENTION: Restore scroll position if it changed after mousedown
+        requestAnimationFrame(() => {
+          const scrollAfterX = window.scrollX;
+          const scrollAfterY = window.scrollY;
+          if (scrollAfterX !== scrollBeforeX || scrollAfterY !== scrollBeforeY) {
+            console.log('[Global DnD] Detected unwanted scroll on mousedown, restoring position:', { from: [scrollAfterX, scrollAfterY], to: [scrollBeforeX, scrollBeforeY] });
+            window.scrollTo(scrollBeforeX, scrollBeforeY);
+          }
+        });
       };
 
       const onDocMouseUp = async (e: MouseEvent | PointerEvent) => {
@@ -842,6 +857,8 @@
     console.log('🦁 onMount: Exposing enhanced drag-drop immediately...');
     exposeEnhancedDragDropGlobally();
 
+
+
 	// Install document-level mouse DnD bridge early for Playwright compatibility
 	if (typeof window !== 'undefined' && !(window as any).__fav_globalDnDBridgeInstalled) {
 	  console.log('[Global DnD] Installing document-level mouse bridge');
@@ -849,8 +866,15 @@
 	    const t = e.target as HTMLElement | null;
 	    const itemEl = t && (t.closest?.('.bookmark-item[data-bookmark-id]') as HTMLElement | null);
 	    if (!itemEl) return;
+
+	    // SCROLL PREVENTION: Store scroll position before any potential scroll changes
+	    const scrollBeforeX = window.scrollX;
+	    const scrollBeforeY = window.scrollY;
+
 	    const id = itemEl.getAttribute('data-bookmark-id') || itemEl.getAttribute('data-id') || '';
 	    const parentId = itemEl.getAttribute('data-parent-id') || (itemEl.closest('[data-folder-id]') as HTMLElement | null)?.getAttribute('data-folder-id') || '';
+
+
 	    if (id) {
 	      (window as any).__fav_dragCandidate = { id, parentId };
 	      console.log('[Global DnD] mousedown captured bookmark:', { id, parentId });
@@ -859,6 +883,16 @@
 	      itemEl.classList.add('dragging');
 	      setTimeout(() => itemEl.removeAttribute('data-dragging'), 2000);
 	    }
+
+	    // SCROLL PREVENTION: Restore scroll position if it changed after mousedown
+	    requestAnimationFrame(() => {
+	      const scrollAfterX = window.scrollX;
+	      const scrollAfterY = window.scrollY;
+	      if (scrollAfterX !== scrollBeforeX || scrollAfterY !== scrollBeforeY) {
+	        console.log('[Global DnD] Detected unwanted scroll on mousedown (fallback), restoring position:', { from: [scrollAfterX, scrollAfterY], to: [scrollBeforeX, scrollBeforeY] });
+	        window.scrollTo(scrollBeforeX, scrollBeforeY);
+	      }
+	    });
 	  };
 	  const onDocMouseUp = async (e: MouseEvent | PointerEvent) => {
 	    try {
@@ -1711,15 +1745,17 @@
     /* Stabilize layout during drag operations */
     contain: layout style;
   }
-  
+
   /* Prevent auto-scrolling in edit mode */
   .app.edit-mode {
     /* Disable smooth scrolling in edit mode */
     scroll-behavior: auto !important;
     /* Prevent automatic scroll adjustments */
     overflow-anchor: none;
+    /* Prevent scroll chaining and browser-initiated rubber-banding */
+    overscroll-behavior: contain;
   }
-  
+
   /* Prevent focus-based scrolling on draggable items */
   :global(.edit-mode .bookmark-item),
   :global(.edit-mode .folder-container) {
@@ -1728,6 +1764,8 @@
     /* Prevent focus from triggering scroll */
     scroll-margin: 0;
     scroll-padding: 0;
+    /* Prevent touch/pointer panning that can cause scroll-on-down */
+    touch-action: none;
   }
 
   /* Prevent auto-scrolling on the body during drag operations */

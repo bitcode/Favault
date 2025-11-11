@@ -188,7 +188,7 @@ export class EnhancedDragDropManager {
       if (!browserAPI || !browserAPI.bookmarks) {
         throw new Error('Bookmark API not available');
       }
-      
+
       const tree = await browserAPI.bookmarks.getTree();
       return { success: true, tree };
     } catch (error) {
@@ -201,17 +201,17 @@ export class EnhancedDragDropManager {
    */
   private static async restoreBookmarkMapping(): Promise<FolderMappingResult> {
     console.log('🦁 Restoring bookmark folder mappings...');
-    
+
     try {
       const apiCheck = await this.checkBookmarkAPI();
       if (!apiCheck.success) {
         throw new Error(`Bookmark API not accessible: ${apiCheck.error}`);
       }
-      
+
       const bookmarkTree = apiCheck.tree;
       this.folderBookmarkIds.clear();
       this.protectedFolderIds.clear();
-      
+
       const folders = document.querySelectorAll('.folder-container');
       let mappedCount = 0;
       let protectedCount = 0;
@@ -222,16 +222,16 @@ export class EnhancedDragDropManager {
       if (folders.length === 0) {
         console.log('🦁 No folder containers found yet - will retry when edit mode is enabled');
       }
-      
+
       folders.forEach((folder, index) => {
         const folderTitle = folder.querySelector('.folder-title, h3, .folder-name')?.textContent?.trim();
-        
+
         if (folderTitle) {
           const bookmarkFolder = this.findBookmarkFolderByTitle(bookmarkTree, folderTitle);
-          
+
           if (bookmarkFolder) {
             this.folderBookmarkIds.set(index, bookmarkFolder.id);
-            
+
             // Check if this is a protected folder
             if (this.isProtectedFolder(bookmarkFolder.id, folderTitle)) {
               console.log(`🔒 Protected: "${folderTitle}" (${index}) → ${bookmarkFolder.id} [PROTECTED]`);
@@ -249,15 +249,15 @@ export class EnhancedDragDropManager {
           this.folderBookmarkIds.set(index, `placeholder-${index}`);
         }
       });
-      
+
       console.log(`✅ Restored ${mappedCount} bookmark mappings (${protectedCount} protected) out of ${folders.length} folders`);
-      return { 
-        success: true, 
-        mappedCount, 
+      return {
+        success: true,
+        mappedCount,
         protectedCount,
-        totalFolders: folders.length 
+        totalFolders: folders.length
       };
-      
+
     } catch (error) {
       console.error('🦁 ERROR: Failed to restore bookmark mappings:', error);
       return { success: false, mappedCount: 0, protectedCount: 0, totalFolders: 0, error: error.message };
@@ -272,22 +272,22 @@ export class EnhancedDragDropManager {
       if (node.title === title && node.children && !node.url) {
         return node;
       }
-      
+
       if (node.children) {
         for (const child of node.children) {
           const result = searchNode(child);
           if (result) return result;
         }
       }
-      
+
       return null;
     };
-    
+
     for (const rootNode of bookmarkTree) {
       const result = searchNode(rootNode);
       if (result) return result;
     }
-    
+
     return null;
   }
 
@@ -298,12 +298,12 @@ export class EnhancedDragDropManager {
     // Root folder IDs are typically '1', '2', '3'
     const isRootId = bookmarkId && (bookmarkId === '1' || bookmarkId === '2' || bookmarkId === '3');
     const isProtectedTitle = this.PROTECTED_TITLES.includes(folderTitle);
-    
+
     if (isRootId || isProtectedTitle) {
       this.protectedFolderIds.add(bookmarkId);
       return true;
     }
-    
+
     return false;
   }
 
@@ -314,25 +314,25 @@ export class EnhancedDragDropManager {
     const fromBookmarkId = this.folderBookmarkIds.get(fromIndex);
     const fromFolder = document.querySelectorAll('.folder-container')[fromIndex];
     const fromTitle = fromFolder?.querySelector('.folder-title, h3, .folder-name')?.textContent?.trim();
-    
+
     if (fromTitle && fromBookmarkId && this.isProtectedFolder(fromBookmarkId, fromTitle)) {
       console.warn(`🔒 PROTECTED FOLDER: "${fromTitle}" (ID: ${fromBookmarkId}) cannot be moved`);
       this.showNotification(`Cannot move protected folder "${fromTitle}"`, 'error');
       return false;
     }
-    
+
     if (toIndex !== undefined) {
       const toBookmarkId = this.folderBookmarkIds.get(toIndex);
       const toFolder = document.querySelectorAll('.folder-container')[toIndex];
       const toTitle = toFolder?.querySelector('.folder-title, h3, .folder-name')?.textContent?.trim();
-      
+
       if (toTitle && toBookmarkId && this.isProtectedFolder(toBookmarkId, toTitle)) {
         console.warn(`🔒 PROTECTED TARGET: "${toTitle}" (ID: ${toBookmarkId}) cannot be used as target`);
         this.showNotification(`Cannot use protected folder "${toTitle}" as target`, 'error');
         return false;
       }
     }
-    
+
     return true;
   }
 
@@ -342,34 +342,34 @@ export class EnhancedDragDropManager {
   static handleOperationError(error: Error, operation: string, context: any = {}): { handled: boolean; recoverable: boolean } {
     this.systemState.lastError = error;
     this.systemState.failedOperations++;
-    
+
     console.error(`🦁 OPERATION ERROR [${operation}]:`, error);
     console.error('🦁 Context:', context);
-    
+
     // Specific error handling
     if (error.message.includes("Can't modify the root bookmark folders")) {
       const folderTitle = context.folderTitle || 'Unknown folder';
       this.showNotification(`Cannot move system folder "${folderTitle}" - it's protected by Chrome`, 'error');
-      
+
       // Mark as protected for future operations
       if (context.bookmarkId) {
         this.protectedFolderIds.add(context.bookmarkId);
       }
-      
+
       return { handled: true, recoverable: true };
     }
-    
+
     if (error.message.includes('Cannot read properties of null')) {
       console.warn('🦁 Null reference error - attempting recovery...');
-      
+
       // Attempt to refresh the system state
       setTimeout(() => {
         this.refreshSystemState();
       }, 1000);
-      
+
       return { handled: true, recoverable: true };
     }
-    
+
     // Generic error handling
     this.showNotification(`Operation failed: ${error.message}`, 'error');
     return { handled: false, recoverable: false };
@@ -541,7 +541,7 @@ export class EnhancedDragDropManager {
   static showNotification(message: string, type: 'success' | 'error' = 'success'): void {
     const bgColor = type === 'success' ? '#10b981' : '#ef4444';
     const icon = type === 'success' ? '✅' : '❌';
-    
+
     const notification = document.createElement('div');
     notification.style.cssText = `
       position: fixed;
@@ -559,7 +559,7 @@ export class EnhancedDragDropManager {
       animation: slideInRight 0.3s ease;
     `;
     notification.textContent = `${icon} ${message}`;
-    
+
     if (!document.getElementById('notification-styles')) {
       const style = document.createElement('style');
       style.id = 'notification-styles';
@@ -571,9 +571,9 @@ export class EnhancedDragDropManager {
       `;
       document.head.appendChild(style);
     }
-    
+
     document.body.appendChild(notification);
-    
+
     setTimeout(() => {
       if (notification.parentNode) {
         notification.remove();
@@ -662,6 +662,9 @@ export class EnhancedDragDropManager {
                              target.closest('.folder-container');
 
       if (isDraggableItem) {
+
+        // Note: Do not call preventDefault here; it breaks native dragstart.
+
         // Store the scroll position before the event
         const scrollBeforeX = window.scrollX;
         const scrollBeforeY = window.scrollY;
@@ -682,6 +685,10 @@ export class EnhancedDragDropManager {
 
     // Add mousedown listener to detect and correct unwanted scrolling
     document.addEventListener('mousedown', this.mousedownScrollPreventionHandler, { capture: true });
+
+	    // Also guard pointer events for broader device coverage
+	    document.addEventListener('pointerdown', this.mousedownScrollPreventionHandler as any, { capture: true } as any);
+
 
     this.isScrollPreventionActive = true;
   }
@@ -711,7 +718,8 @@ export class EnhancedDragDropManager {
     }
 
     if (this.mousedownScrollPreventionHandler) {
-      document.removeEventListener('mousedown', this.mousedownScrollPreventionHandler, { capture: true });
+      document.removeEventListener('mousedown', this.mousedownScrollPreventionHandler, { capture: true } as any);
+      document.removeEventListener('pointerdown', this.mousedownScrollPreventionHandler as any, { capture: true } as any);
     }
 
     // Clear stored data
@@ -763,7 +771,7 @@ export class EnhancedDragDropManager {
    * Check if edit mode is enabled
    */
   static isEditModeEnabled(): boolean {
-    return this.editModeEnabled || 
+    return this.editModeEnabled ||
            document.body.classList.contains('edit-mode') ||
            document.querySelector('.app.edit-mode') !== null;
   }
@@ -807,14 +815,17 @@ export class EnhancedDragDropManager {
       const parentId = bookmarkFolder.parentId;
       const parentChildren = await browserAPI.bookmarks.getChildren(parentId);
       console.log(`🦁 Parent folder has ${parentChildren.length} children`);
+      console.log(`🦁 DEBUG: Parent children details:`, parentChildren.map(child => ({ id: child.id, title: child.title, index: child.index })));
 
       const currentIndex = parentChildren.findIndex(child => child.id === folderBookmarkId);
       console.log(`🦁 Current index in bookmark system: ${currentIndex}`);
+      console.log(`🦁 DEBUG: Target bookmark ID ${folderBookmarkId} in parent ${parentId}`);
 
-      // Calculate target index with proper position mapping
+      // Calculate target index with proper position mapping and enhanced bounds checking
       let newIndex = toIndex;
-      console.log(`🦁 Position calculation: currentIndex=${currentIndex}, toIndex=${toIndex}`);
+      console.log(`🦁 Position calculation: currentIndex=${currentIndex}, toIndex=${toIndex}, parentChildren.length=${parentChildren.length}`);
 
+      // ENHANCED INDEX CALCULATION FIX
       if (currentIndex !== -1 && currentIndex < toIndex) {
         // Moving forward: adjust for removal of current position
         newIndex = toIndex - 1;
@@ -825,17 +836,138 @@ export class EnhancedDragDropManager {
         console.log(`🦁 Moving backward/same: newIndex remains ${newIndex}`);
       }
 
-      // Ensure index is within valid bounds
-      newIndex = Math.max(0, Math.min(newIndex, parentChildren.length - 1));
+      // CRITICAL FIX: Enhanced bounds validation with safer limits
+      const originalNewIndex = newIndex;
+      const maxAllowedIndex = Math.max(0, parentChildren.length - 1);
+      
+      // More conservative bounds checking to prevent Chrome API failures
+      if (newIndex < 0) {
+        newIndex = 0;
+        console.warn(`🦁 ⚠️ CRITICAL FIX: Negative index ${originalNewIndex} corrected to 0`);
+      } else if (newIndex >= parentChildren.length) {
+        // Use parentChildren.length - 1 for safer positioning, or 0 if empty
+        newIndex = parentChildren.length > 0 ? parentChildren.length - 1 : 0;
+        console.warn(`🦁 ⚠️ CRITICAL FIX: Index ${originalNewIndex} was beyond bounds! Corrected to ${newIndex}. Parent has ${parentChildren.length} children`);
+      }
+      
+      // Additional validation to ensure index is within Chrome API limits
+      if (newIndex !== originalNewIndex) {
+        console.warn(`🦁 ⚠️ CRITICAL: Index ${originalNewIndex} was out of bounds! Adjusted to ${newIndex}. Max allowed: ${maxAllowedIndex}`);
+      }
+      
+      // CRITICAL DEBUG: Validate the move operation parameters
+      console.log(`🦁 🚨 CRITICAL DEBUG - Chrome API move parameters:`);
+      console.log(`   - Bookmark ID: ${folderBookmarkId}`);
+      console.log(`   - Target Parent: ${parentId}`);
+      console.log(`   - Target Index: ${newIndex}`);
+      console.log(`   - Original toIndex: ${toIndex}`);
+      console.log(`   - Current bookmark index: ${currentIndex}`);
+      console.log(`   - Parent has ${parentChildren.length} children`);
+      console.log(`   - Is index valid? ${newIndex >= 0 && newIndex < parentChildren.length}`);
 
       console.log(`🦁 Moving to index ${newIndex} in parent ${parentId}`);
 
-      const result = await browserAPI.bookmarks.move(folderBookmarkId, {
-        parentId: parentId,
-        index: newIndex
-      });
+      // CRITICAL DEBUG: Capture Chrome API call with comprehensive error tracking and recovery
+      let result: any;
+      try {
+        console.log(`🦁 🚨 EXECUTING Chrome API move operation...`);
+        console.log(`🦁 🚨 Pre-move bookmark tree state check...`);
+        
+        // Verify bookmark still exists before moving
+        const preCheckBookmark = await browserAPI.bookmarks.get(folderBookmarkId);
+        console.log(`🦁 DEBUG: Pre-move bookmark check:`, preCheckBookmark);
+        
+        // Verify parent still exists and has expected children
+        const preCheckParent = await browserAPI.bookmarks.getChildren(parentId);
+        console.log(`🦁 DEBUG: Pre-move parent check: ${preCheckParent.length} children`);
+        
+        // ENHANCED ERROR HANDLING: Validate parameters before Chrome API call
+        if (!folderBookmarkId || typeof folderBookmarkId !== 'string') {
+          throw new Error(`Invalid bookmark ID: ${folderBookmarkId}`);
+        }
+        if (!parentId || typeof parentId !== 'string') {
+          throw new Error(`Invalid parent ID: ${parentId}`);
+        }
+        if (typeof newIndex !== 'number' || newIndex < 0) {
+          throw new Error(`Invalid index: ${newIndex}`);
+        }
+        
+        // Additional validation: ensure we're not trying to move beyond the actual parent size
+        if (newIndex >= preCheckParent.length && preCheckParent.length > 0) {
+          console.warn(`🦁 ⚠️ CRITICAL FIX: Index ${newIndex} exceeds parent size ${preCheckParent.length}, adjusting to ${preCheckParent.length - 1}`);
+          newIndex = Math.max(0, preCheckParent.length - 1);
+        }
+        
+        result = await browserAPI.bookmarks.move(folderBookmarkId, {
+          parentId: parentId,
+          index: newIndex
+        });
 
-      console.log('🦁 SUCCESS: Bookmark folder moved:', result);
+        // ENHANCED SUCCESS VALIDATION
+        if (!result || !result.id) {
+          throw new Error('Chrome API returned invalid result - bookmark may have been lost');
+        }
+
+        console.log('🦁 ✅ SUCCESS: Chrome API move completed:', result);
+        console.log(`🦁 DEBUG: Move result details:`, {
+          resultId: result.id,
+          resultParentId: result.parentId,
+          resultIndex: result.index,
+          resultTitle: result.title
+        });
+        
+        // CRITICAL DEBUG: Verify bookmark exists after move with enhanced error detection
+        setTimeout(async () => {
+          try {
+            console.log(`🦁 🚨 POST-MOVE VERIFICATION: Checking if bookmark ${result.id} still exists...`);
+            const postMoveCheck = await browserAPI.bookmarks.get(result.id);
+            console.log(`🦁 ✅ POST-MOVE: Bookmark verified existing:`, postMoveCheck);
+            
+            // Check if it's in the expected location
+            const postMoveParent = await browserAPI.bookmarks.getChildren(result.parentId);
+            const foundIndex = postMoveParent.findIndex((child: any) => child.id === result.id);
+            console.log(`🦁 DEBUG: Post-move position verification: expected index ${result.index}, found at index ${foundIndex}`);
+            
+            if (foundIndex === -1) {
+              console.error(`🦁 🚨 CRITICAL ERROR: Bookmark disappeared after move! ID: ${result.id}, Expected Parent: ${result.parentId}`);
+              console.error(`🦁 DEBUG: Parent children after move:`, postMoveParent.map((child: any) => ({ id: child.id, title: child.title, index: child.index })));
+              
+              // ENHANCED: Attempt to locate the bookmark elsewhere
+              try {
+                const fullTree = await browserAPI.bookmarks.getTree();
+                console.log('🦁 🚨 ATTEMPTING BOOKMARK RECOVERY: Searching entire bookmark tree...');
+                // This will help identify if the bookmark moved to an unexpected location
+              } catch (recoveryError) {
+                console.error('🦁 🚨 RECOVERY SEARCH FAILED:', recoveryError);
+              }
+            }
+          } catch (verifyError) {
+            console.error(`🦁 🚨 CRITICAL ERROR: Post-move verification failed - bookmark may have disappeared!`, verifyError);
+          }
+        }, 100);
+        
+      } catch (apiError: any) {
+        console.error(`🦁 🚨 CRITICAL ERROR: Chrome API move operation failed!`, apiError);
+        console.error(`🦁 DEBUG: Failed move parameters:`, {
+          bookmarkId: folderBookmarkId,
+          parentId,
+          index: newIndex,
+          originalToIndex: toIndex,
+          errorMessage: apiError?.message || 'Unknown error',
+          errorCode: apiError?.code || 'No code'
+        });
+        
+        // ENHANCED: Provide more specific error information
+        if (apiError?.message?.includes("Cannot read properties")) {
+          console.error(`🦁 🚨 LIKELY CAUSE: Bookmark or parent folder no longer exists`);
+        } else if (apiError?.message?.includes("index")) {
+          console.error(`🦁 🚨 LIKELY CAUSE: Invalid index position ${newIndex}`);
+        } else if (apiError?.message?.includes("root bookmark")) {
+          console.error(`🦁 🚨 LIKELY CAUSE: Attempting to modify protected system folder`);
+        }
+        
+        throw apiError;
+      }
 
       this.showNotification(`Folder "${bookmarkFolder.title}" moved to position ${toIndex + 1}`);
 
@@ -959,12 +1091,55 @@ export class EnhancedDragDropManager {
       console.log(`🦁 FINAL CALCULATION: Moving from currentIndex=${currentIndex} to targetIndex=${targetIndex}`);
       console.log(`🦁 POSITIONING FIX: User dropped at insertion point ${insertionIndex} -> folder should end up at position ${targetIndex}`);
 
-      const result = await browserAPI.bookmarks.move(fromBookmarkId, {
-        parentId: fromFolder.parentId,
-        index: targetIndex
-      });
+      // CRITICAL DEBUG: Capture Chrome API call with comprehensive error tracking
+      let result;
+      try {
+        console.log(`🦁 🚨 EXECUTING Chrome API move operation for moveFolderToPosition...`);
+        console.log(`🦁 🚨 Pre-move bookmark tree state check...`);
+        
+        // Verify bookmark still exists before moving
+        const preCheckBookmark = await browserAPI.bookmarks.get(fromBookmarkId);
+        console.log(`🦁 DEBUG: Pre-move bookmark check:`, preCheckBookmark);
+        
+        result = await browserAPI.bookmarks.move(fromBookmarkId, {
+          parentId: fromFolder.parentId,
+          index: targetIndex
+        });
 
-      console.log(`🦁 Moved folder ${fromBookmarkId} to position ${targetIndex}`);
+        console.log(`🦁 ✅ SUCCESS: Chrome API move completed for moveFolderToPosition:`, result);
+        console.log(`🦁 Moved folder ${fromBookmarkId} to position ${targetIndex}`);
+        
+        // CRITICAL DEBUG: Verify bookmark exists after move
+        setTimeout(async () => {
+          try {
+            console.log(`🦁 🚨 POST-MOVE VERIFICATION: Checking if bookmark ${result.id} still exists...`);
+            const postMoveCheck = await browserAPI.bookmarks.get(result.id);
+            console.log(`🦁 ✅ POST-MOVE: Bookmark verified existing:`, postMoveCheck);
+            
+            // Check if it's in the expected location
+            const postMoveParent = await browserAPI.bookmarks.getChildren(result.parentId);
+            const foundIndex = postMoveParent.findIndex((child: any) => child.id === result.id);
+            console.log(`🦁 DEBUG: Post-move position verification: expected index ${result.index}, found at index ${foundIndex}`);
+            
+            if (foundIndex === -1) {
+              console.error(`🦁 🚨 CRITICAL ERROR: Bookmark ${result.id} NOT FOUND in parent ${result.parentId} after move!`);
+              console.error(`🦁 DEBUG: Parent children after move:`, postMoveParent.map((child: any) => ({ id: child.id, title: child.title, index: child.index })));
+            }
+          } catch (verifyError) {
+            console.error(`🦁 🚨 CRITICAL ERROR: Post-move verification failed - bookmark may have disappeared!`, verifyError);
+          }
+        }, 100);
+        
+      } catch (apiError) {
+        console.error(`🦁 🚨 CRITICAL ERROR: Chrome API move operation failed in moveFolderToPosition!`, apiError);
+        console.error(`🦁 DEBUG: Failed move parameters:`, {
+          bookmarkId: fromBookmarkId,
+          parentId: fromFolder.parentId,
+          index: targetIndex,
+          originalInsertionIndex: insertionIndex
+        });
+        throw apiError;
+      }
 
       // Show accurate notification based on final position
       // targetIndex is 0-based, so add 1 for user-friendly 1-based display
@@ -987,7 +1162,7 @@ export class EnhancedDragDropManager {
         document.querySelectorAll('.insertion-point').forEach(point => {
           point.classList.remove('drag-over', 'drag-over-insertion');
         });
-        
+
         document.querySelectorAll('.folder-container').forEach(folder => {
           folder.classList.remove(
             'drop-zone-active',
@@ -998,12 +1173,12 @@ export class EnhancedDragDropManager {
           );
           folder.removeAttribute('data-drop-zone');
         });
-        
+
         // Clear any stuck green highlighting
         document.querySelectorAll('.drop-zone-active, .drop-zone, .drop-target').forEach(el => {
           el.classList.remove('drop-zone-active', 'drop-zone', 'drop-target');
         });
-        
+
         console.log('✅ Cleaned up all drop zone visual states after successful move');
       }, 150);
 
@@ -1596,6 +1771,14 @@ export class EnhancedDragDropManager {
           bookmarkId: bookmarkId
         };
 
+        // If the drag originated from a bookmark item inside this folder,
+        // do NOT treat it as a folder drag (avoid overwriting bookmark drag data)
+        const target = e.target as HTMLElement | null;
+        if (target && target.closest('.bookmark-item')) {
+          this.debugLog('🦁 FOLDER dragstart ignored (originated from bookmark item)');
+          return;
+        }
+
         console.log(`🦁 DRAG START: "${folderTitle}" (index: ${folderIndex}, bookmarkId: ${bookmarkId})`);
 
         // Set drag data with both formats for compatibility
@@ -1908,12 +2091,56 @@ export class EnhancedDragDropManager {
       const [bookmark] = await browserAPI.bookmarks.get(dragData.id);
       console.log('🦁 Current bookmark:', bookmark);
 
-      // Move the bookmark to the target folder
-      const result = await browserAPI.bookmarks.move(dragData.id, {
-        parentId: targetFolderId
-      });
+      // CRITICAL DEBUG: Capture Chrome API call for bookmark moves to folders
+      let result;
+      try {
+        console.log(`🦁 🚨 EXECUTING Chrome API move operation for moveBookmarkToFolder...`);
+        console.log(`🦁 🚨 Pre-move bookmark tree state check...`);
+        
+        // Verify bookmark still exists before moving
+        const preCheckBookmark = await browserAPI.bookmarks.get(dragData.id);
+        console.log(`🦁 DEBUG: Pre-move bookmark check:`, preCheckBookmark);
+        
+        // Verify target folder exists
+        const preCheckTargetFolder = await browserAPI.bookmarks.get(targetFolderId);
+        console.log(`🦁 DEBUG: Pre-move target folder check:`, preCheckTargetFolder);
+        
+        result = await browserAPI.bookmarks.move(dragData.id, {
+          parentId: targetFolderId
+        });
 
-      console.log('🦁 SUCCESS: Bookmark moved:', result);
+        console.log('🦁 ✅ SUCCESS: Chrome API move completed for moveBookmarkToFolder:', result);
+        
+        // CRITICAL DEBUG: Verify bookmark exists after move
+        setTimeout(async () => {
+          try {
+            console.log(`🦁 🚨 POST-MOVE VERIFICATION: Checking if bookmark ${result.id} still exists...`);
+            const postMoveCheck = await browserAPI.bookmarks.get(result.id);
+            console.log(`🦁 ✅ POST-MOVE: Bookmark verified existing:`, postMoveCheck);
+            
+            // Check if it's in the expected location
+            const postMoveParent = await browserAPI.bookmarks.getChildren(result.parentId);
+            const foundIndex = postMoveParent.findIndex((child: any) => child.id === result.id);
+            console.log(`🦁 DEBUG: Post-move position verification in target folder: found at index ${foundIndex}`);
+            
+            if (foundIndex === -1) {
+              console.error(`🦁 🚨 CRITICAL ERROR: Bookmark ${result.id} NOT FOUND in target folder ${result.parentId} after move!`);
+              console.error(`🦁 DEBUG: Target folder children after move:`, postMoveParent.map((child: any) => ({ id: child.id, title: child.title, index: child.index })));
+            }
+          } catch (verifyError) {
+            console.error(`🦁 🚨 CRITICAL ERROR: Post-move verification failed - bookmark may have disappeared!`, verifyError);
+          }
+        }, 100);
+        
+      } catch (apiError) {
+        console.error(`🦁 🚨 CRITICAL ERROR: Chrome API move operation failed in moveBookmarkToFolder!`, apiError);
+        console.error(`🦁 DEBUG: Failed move parameters:`, {
+          bookmarkId: dragData.id,
+          targetFolderId,
+          dragDataTitle: dragData.title
+        });
+        throw apiError;
+      }
       this.showNotification(`Bookmark "${dragData.title}" moved successfully`);
 
       return {
@@ -1997,12 +2224,12 @@ export class EnhancedDragDropManager {
    */
   static cleanupAllDropZones(): void {
     console.log('🧹 Cleaning up all drop zones globally');
-    
+
     // Clean up insertion points
     document.querySelectorAll('.insertion-point').forEach(point => {
       point.classList.remove('drag-over', 'drag-over-insertion');
     });
-    
+
     // Clean up folder containers
     document.querySelectorAll('.folder-container').forEach(folder => {
       folder.classList.remove(
@@ -2017,22 +2244,22 @@ export class EnhancedDragDropManager {
       folder.removeAttribute('data-drop-zone');
       folder.removeAttribute('data-dragging');
     });
-    
+
     // Clean up bookmark items
     document.querySelectorAll('.bookmark-item').forEach(item => {
       item.classList.remove('dragging');
       item.removeAttribute('data-dragging');
     });
-    
+
     // Clean up body classes
     document.body.classList.remove('dragging-folder-active', 'dragging-bookmark-active', 'drag-active');
-    
+
     // Clean up app container
     const appContainer = document.querySelector('.app');
     if (appContainer) {
       appContainer.classList.remove('drag-active');
     }
-    
+
     console.log('✅ All drop zones cleaned up');
   }
 

@@ -212,50 +212,40 @@
     height: 12px;
   }
 
-  /* Hover state */
+  /* Hover state - no layout shift */
   .insertion-point:hover {
-    height: 40px;
     opacity: 1;
-    margin: 1rem 0;
   }
 
-  /* Drag over state */
+  /* Drag over state - no layout shift */
   .insertion-point.drag-over {
-    height: 50px;
     opacity: 1;
-    margin: 1.5rem 0;
     z-index: 100;
   }
 
-  /* Global drag active state - all insertion points become visible */
+  /* Global drag active state - emphasize without layout shift */
   :global(.drag-active) .insertion-point {
-    height: 35px;
     opacity: 0.8;
-    margin: 1rem 0;
     /* Prevent layout shifts that could trigger auto-scroll */
     transform: translateZ(0);
-    will-change: opacity, height;
+    will-change: opacity;
   }
 
-  /* Enhanced drag active state for edit mode */
+  /* Enhanced drag active state for edit mode - no layout shift */
   :global(.app.edit-mode.drag-active) .insertion-point {
-    height: 45px;
     opacity: 0.9;
-    margin: 1.2rem 0;
     /* Prevent layout shifts that could trigger auto-scroll */
     transform: translateZ(0);
-    will-change: opacity, height;
+    will-change: opacity;
   }
 
-  /* Specific drag over state takes precedence */
+  /* Specific drag over state takes precedence - no layout shift */
   :global(.drag-active) .insertion-point.drag-over {
-    height: 60px;
     opacity: 1;
-    margin: 1.5rem 0;
     z-index: 200;
     /* Prevent layout shifts that could trigger auto-scroll */
     transform: translateZ(0);
-    will-change: opacity, height;
+    will-change: opacity;
   }
 
   .insertion-line {
@@ -344,10 +334,9 @@
     }
   }
 
-  /* Enhanced visual feedback for active drag operations */
+  /* Enhanced visual feedback for active drag operations - no layout shift */
   :global(.app.edit-mode) .insertion-point.drag-over {
-    height: 60px;
-    margin: 1.5rem 0;
+    opacity: 1;
   }
 
   :global(.app.edit-mode) .insertion-point.drag-over .insertion-line {
@@ -370,8 +359,7 @@
   @media (max-width: 768px) {
     .insertion-point:hover,
     .insertion-point.drag-over {
-      height: 32px;
-      margin: 0.75rem 0;
+      /* No layout change on small screens */
     }
 
     .insertion-indicator {

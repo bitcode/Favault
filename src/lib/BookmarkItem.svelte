@@ -247,6 +247,8 @@
 
   // Bridge for Playwright mouse-based drag to HTML5 DnD
   function handleMouseDownBridge(e: MouseEvent) {
+    // If global edit mode is enabled, prevent default to stop focus-induced auto-scroll
+    // Do not preventDefault here; it breaks native dragstart.
     // Allow fallback drag bridge even if edit mode isn't toggled (Playwright compatibility)
     if (isEditing) return;
     if (e.button !== 0) return; // left-click only
@@ -308,13 +310,50 @@
             if (gc && gc.id === bookmark.id && destFolderId && destFolderId !== currentParent) {
               // Append to end by default when dropping on container; insert at 0 for header
               const index = header ? 0 : undefined;
-              console.log('[DnD Fallback] Moving bookmark', bookmark.title, 'to folder', destFolderId, 'index', index);
+              console.log('🔥 [DnD Fallback] Moving bookmark', bookmark.title, 'to folder', destFolderId, 'index', index);
+              console.log('🔥 DEBUG: Bookmark move parameters:', {
+                bookmarkId: bookmark.id,
+                bookmarkTitle: bookmark.title,
+                currentParentId: bookmark.parentId,
+                targetParentId: destFolderId,
+                targetIndex: index,
+                bookmarkUrl: bookmark.url
+              });
+              
               const result = await BookmarkEditAPI.moveBookmark(bookmark.id, { parentId: destFolderId, index });
+              
+              console.log('🔥 DEBUG: Move API result:', result);
+              
               if (result.success) {
+                console.log('🔥 ✅ SUCCESS: Bookmark move completed successfully');
                 BookmarkManager.clearCache();
                 await refreshBookmarks();
+                
+                // CRITICAL DEBUG: Verify the bookmark still exists after the move
+                setTimeout(async () => {
+                  try {
+                    console.log('🔥 🚨 POST-MOVE VERIFICATION: Checking bookmark persistence...');
+                    const folders = await BookmarkManager.getOrganizedBookmarks();
+                    let foundBookmark = null;
+                    
+                    for (const folder of folders) {
+                      const found = folder.bookmarks.find(b => b.id === bookmark.id);
+                      if (found) {
+                        foundBookmark = found;
+                        console.log('🔥 ✅ POST-MOVE: Bookmark found in folder:', folder.title, 'at index:', folder.bookmarks.indexOf(found));
+                        break;
+                      }
+                    }
+                    
+                    if (!foundBookmark) {
+                      console.error('🔥 🚨 CRITICAL ERROR: Bookmark disappeared after move! ID:', bookmark.id, 'Title:', bookmark.title);
+                    }
+                  } catch (verifyError) {
+                    console.error('🔥 🚨 POST-MOVE VERIFICATION FAILED:', verifyError);
+                  }
+                }, 200);
               } else {
-                console.error('[DnD Fallback] Failed to move bookmark:', result.error);
+                console.error('🔥 ❌ FAILED: [DnD Fallback] Failed to move bookmark:', result.error);
               }
             }
           } catch (err) {
@@ -609,7 +648,7 @@
   on:click={handleClick}
   on:keydown={(e) => e.key === 'Enter' && handleClick()}
   on:mousedown={handleMouseDownBridge}
-  tabindex="0"
+  tabindex={isEditMode ? -1 : 0}
   role="button"
   draggable={true}
   on:dragstart={handleHtml5DragStart}
