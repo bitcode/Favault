@@ -126,7 +126,7 @@ export class BraveDragDropManager extends DragDropManager {
 
         // Visual feedback
         element.classList.add('brave-dragging');
-        element.style.opacity = '0.5';
+        element.style.backgroundColor = 'rgba(128, 128, 128, 0.5)';
         element.style.transform = 'rotate(2deg)';
 
         // Call original handler
@@ -370,7 +370,7 @@ export class BraveDragDropManager extends DragDropManager {
         }
         
         .brave-dragging {
-          opacity: 0.5 !important;
+          background-color: rgba(128, 128, 128, 0.5) !important;
           transform: rotate(2deg) !important;
           z-index: 1000 !important;
         }

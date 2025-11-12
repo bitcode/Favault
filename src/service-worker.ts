@@ -1,3 +1,11 @@
+import Logger from './lib/logging';
+
+declare let self: ServiceWorkerGlobalScope;
+
+// Initialize the logger as early as possible
+const logger = Logger.getInstance();
+logger.init();
+
 // Enhanced Service worker for handling background tasks and commands with comprehensive error handling
 // Note: Using direct browser API calls instead of imports for service worker compatibility
 
@@ -180,13 +188,13 @@ class ServiceWorkerLifecycleManager {
       console.log('🔄 Service worker activated');
       this.isActive = true;
       this.lastActivity = Date.now();
-      event.waitUntil(this.handleActivation());
+      (event as ExtendableEvent).waitUntil(this.handleActivation());
     });
 
     // Listen for service worker install
     self.addEventListener('install', (event) => {
       console.log('📦 Service worker installing');
-      event.waitUntil(this.handleInstall());
+      (event as ExtendableEvent).waitUntil(this.handleInstall());
     });
 
     // Monitor for potential termination
@@ -399,7 +407,7 @@ class ServiceWorker {
 
   private setupErrorHandlers(): void {
     // Global error handler for service worker
-    self.addEventListener('error', (event) => {
+    self.addEventListener('error', (event: ErrorEvent) => {
       errorTracker.logError('unknown', 'Unhandled service worker error', event.error, {
         filename: event.filename,
         lineno: event.lineno,
@@ -408,7 +416,7 @@ class ServiceWorker {
     });
 
     // Unhandled promise rejection handler
-    self.addEventListener('unhandledrejection', (event) => {
+    self.addEventListener('unhandledrejection', (event: PromiseRejectionEvent) => {
       errorTracker.logError('unknown', 'Unhandled promise rejection in service worker',
         event.reason instanceof Error ? event.reason : new Error(String(event.reason)),
         { reason: event.reason }
@@ -452,7 +460,7 @@ class ServiceWorker {
       }
 
     } catch (error) {
-      throw new Error(`Self-test failed: ${error.message}`);
+      throw new Error(`Self-test failed: ${(error as Error).message}`);
     }
   }
 

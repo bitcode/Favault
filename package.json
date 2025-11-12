@@ -62,6 +62,7 @@
   "devDependencies": {
     "@playwright/test": "^1.54.2",
     "@sveltejs/vite-plugin-svelte": "^3.0.0",
+    "@types/chrome": "^0.1.28",
     "@types/node": "^24.10.1",
     "@types/webextension-polyfill": "^0.10.0",
     "svelte": "^4.0.0",

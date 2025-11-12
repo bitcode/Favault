@@ -1,12 +1,17 @@
 import { chromium, FullConfig } from '@playwright/test';
 import path from 'path';
 import fs from 'fs';
+import Logger from '../../src/lib/logging';
 
 /**
  * Global setup for FaVault extension testing
  * Builds extension, validates files, and prepares test environment
  */
 async function globalSetup(config: FullConfig) {
+  // Initialize the logger
+  const logger = Logger.getInstance();
+  logger.init();
+
   console.log('🚀 Starting FaVault Extension Test Setup...');
 
   // 1. Build the extension for testing
@@ -98,7 +103,7 @@ async function validateExtensionBuild(): Promise<void> {
     
     console.log(`✅ Extension validated: ${manifest.name} v${manifest.version}`);
   } catch (error) {
-    throw new Error(`Invalid manifest.json: ${error.message}`);
+    throw new Error(`Invalid manifest.json: ${(error as Error).message}`);
   }
 }
 
@@ -150,7 +155,7 @@ async function warmupBrowser(): Promise<void> {
     await browser.close();
     console.log('✅ Browser warmed up successfully');
   } catch (error) {
-    console.warn('⚠️ Browser warmup failed:', error.message);
+    console.warn('⚠️ Browser warmup failed:', (error as Error).message);
     // Don't fail setup if warmup fails
   }
 }

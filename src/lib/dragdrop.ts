@@ -588,7 +588,7 @@ export class DragDropManager {
 
         /* Enhanced dragging state */
         .dragging {
-          opacity: 0.6;
+          background-color: rgba(128, 128, 128, 0.6);
           transform: rotate(2deg) scale(0.95);
           z-index: 1000;
           box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
