@@ -28,7 +28,7 @@
     try {
       diagnosticsReport = await runDiagnosticsAndGetReport();
     } catch (error) {
-      diagnosticsReport = `Error running diagnostics: ${error.message}`;
+      diagnosticsReport = `Error running diagnostics: ${(error as Error).message}`;
     } finally {
       isRunningDiagnostics = false;
     }
@@ -98,15 +98,18 @@
     return new Date(timestamp).toLocaleString();
   }
 
-  function close() {
+  function close(event?: Event) {
+    if (event && event.target !== event.currentTarget) {
+      return;
+    }
     visible = false;
     selectedError = null;
   }
 </script>
 
 {#if visible}
-  <div class="error-report-overlay" on:click={close}>
-    <div class="error-report-panel" on:click|stopPropagation>
+  <button class="error-report-overlay" on:click={close} on:keydown|self={(e) => e.key === 'Escape' && close()}>
+    <div class="error-report-panel" role="document">
       <div class="panel-header">
         <h2>🚨 FaVault Error Report</h2>
         <button class="close-button" on:click={close}>×</button>
@@ -199,6 +202,9 @@
                     class="error-item" 
                     class:selected={selectedError?.id === error.id}
                     on:click={() => selectError(error)}
+                    on:keydown={(e) => e.key === 'Enter' && selectError(error)}
+                    role="button"
+                    tabindex="0"
                   >
                     <div class="error-header">
                       <span class="error-severity" style="background-color: {getSeverityColor(error.severity)}">
@@ -305,7 +311,7 @@
         </div>
       </div>
     </div>
-  </div>
+  </button>
 {/if}
 
 <style>
@@ -321,6 +327,12 @@
     justify-content: center;
     z-index: 10000;
     backdrop-filter: blur(4px);
+    border: none;
+    padding: 0;
+    font: inherit;
+    text-align: inherit;
+    cursor: default;
+    width: 100%;
   }
 
   .error-report-panel {

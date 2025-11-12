@@ -2,7 +2,6 @@
 // This ensures the testing functions are available immediately
 
 import { EnhancedDragDropManager } from './dragdrop-enhanced';
-import { EnhancedDragDropTester } from './test-enhanced-dragdrop';
 
 import { BookmarkEditAPI } from './api';
 import { BookmarkManager } from './bookmarks';
@@ -348,32 +347,6 @@ if (typeof window !== 'undefined') {
 
   // Expose main classes
   (window as any).EnhancedDragDropManager = EnhancedDragDropManager;
-  (window as any).EnhancedDragDropTester = EnhancedDragDropTester;
-
-  // Expose convenient testing functions
-  (window as any).testEnhancedDragDrop = async () => {
-    try {
-      await EnhancedDragDropTester.testSystem();
-    } catch (error) {
-      console.error('❌ Test failed:', error);
-    }
-  };
-
-  (window as any).quickTestDragDrop = async () => {
-    try {
-      await EnhancedDragDropTester.quickTest();
-    } catch (error) {
-      console.error('❌ Quick test failed:', error);
-    }
-  };
-
-  (window as any).showDragDropDiagnostics = () => {
-    try {
-      EnhancedDragDropTester.showDiagnostics();
-    } catch (error) {
-      console.error('❌ Diagnostics failed:', error);
-    }
-  };
 
   // Additional debugging functions
   (window as any).initEnhancedDragDrop = async () => {
@@ -427,10 +400,7 @@ if (typeof window !== 'undefined') {
     }
   };
 
-  console.log('🧪 Enhanced Drag-Drop Testing Functions Available:');
-  console.log('  - testEnhancedDragDrop() - Full system test');
-  console.log('  - quickTestDragDrop() - Quick functionality test');
-  console.log('  - showDragDropDiagnostics() - System diagnostics');
+  console.log('✅ Enhanced drag-drop functions exposed to global scope:');
   console.log('  - initEnhancedDragDrop() - Manual initialization');
   console.log('  - enableEnhancedEditMode() - Enable edit mode');
   console.log('  - disableEnhancedEditMode() - Disable edit mode');
@@ -439,7 +409,6 @@ if (typeof window !== 'undefined') {
   console.log('');
   console.log('🦁 Enhanced Drag-Drop Classes Available:');
   console.log('  - EnhancedDragDropManager - Main manager class');
-  console.log('  - EnhancedDragDropTester - Testing utilities');
 }
 
 // Auto-initialize when DOM is ready (but only basic initialization, not edit mode)
@@ -479,4 +448,4 @@ if (typeof document !== 'undefined') {
   }
 }
 
-export { EnhancedDragDropManager, EnhancedDragDropTester };
+export { EnhancedDragDropManager };

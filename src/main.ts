@@ -135,10 +135,6 @@ const app = new App({
 
   const checkObjects = [
     'EnhancedDragDropManager',
-    'EnhancedDragDropTester',
-    'testEnhancedDragDrop',
-    'quickTestDragDrop',
-    'showDragDropDiagnostics',
     'initEnhancedDragDrop',
     'enableEnhancedEditMode',
     'disableEnhancedEditMode'

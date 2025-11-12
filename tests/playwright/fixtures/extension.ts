@@ -102,6 +102,16 @@ export const test = base.extend<ExtensionFixtures>({
     // Verify extension is loaded by checking for our app container
     await page.waitForSelector('[data-testid="favault-app"], .app-container, #app', { timeout: 10000 });
     
+    // Wait for critical test functions to be available on the window object
+    await page.waitForFunction(() =>
+      (window as any).testUtils &&
+      (window as any).settingsManager &&
+      (window as any).EnhancedDragDropManager,
+      { timeout: 10000 }
+    ).catch(() => {
+      console.warn('⚠️ Critical test functions not found on window object after timeout.');
+    });
+
     await use(page);
     await page.close();
   },
@@ -205,112 +215,23 @@ export class ExtensionTestUtils {
    */
   static async enableEditMode(page: Page): Promise<void> {
     console.log('🔧 Enabling edit mode...');
-
-    // Wait for the extension to fully load and settings to be initialized
-    // This is critical because loadSettings() in onMount resets editMode to false
-    console.log('⏳ Waiting for extension initialization to complete...');
-    await page.waitForTimeout(2000);
-
-    // Try to enable edit mode via the settings manager to ensure it persists
+    
+    // Directly enable edit mode via settingsManager
     await page.evaluate(async () => {
-      // Wait for settingsManager to be available
-      let attempts = 0;
-      while (!(window as any).settingsManager && attempts < 50) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-        attempts++;
-      }
-
       if ((window as any).settingsManager) {
-        console.log('🔧 Using settingsManager to enable edit mode...');
         await (window as any).settingsManager.updateEditMode({ enabled: true });
       } else {
-        console.log('⚠️ settingsManager not available, trying alternative approach...');
+        throw new Error('settingsManager not available on window object');
       }
     });
 
-    // Wait for the edit mode change to propagate
-    await page.waitForTimeout(1000);
-
-    // Try keyboard shortcut as backup
-    await page.keyboard.press('Control+E');
-    await page.waitForTimeout(500);
-
-    // If that doesn't work, try clicking the edit button
-    const editButton = page.locator('.edit-toggle, button:has-text("Edit")').first();
-    if (await editButton.isVisible()) {
-      await editButton.click();
-      await page.waitForTimeout(500);
-    }
-
-    // Verify edit mode is enabled using the actual selectors from the implementation
-    try {
-      await page.waitForSelector('.app.edit-mode, body.edit-mode, .edit-toggle.active', { timeout: 5000 });
-      console.log('✅ Edit mode selectors found');
-    } catch (error) {
-      console.log('Edit mode verification failed, trying alternative approach...');
-      // Try to enable via global function if available
-      await page.evaluate(() => {
-        if ((window as any).enableEnhancedEditMode) {
-          (window as any).enableEnhancedEditMode();
-        }
-      });
-      await page.waitForTimeout(500);
-    }
-
-    // Wait for enhanced drag-drop system to complete setup
-    // This is critical because the enhanced system uses setTimeout calls
-    console.log('⏳ Waiting for enhanced drag-drop system to complete setup...');
-
-    // Wait for the enhanced drag-drop system to finish its initialization
-    let setupComplete = false;
-    let attempts = 0;
-    const maxAttempts = 20; // 10 seconds total
-
-    while (!setupComplete && attempts < maxAttempts) {
-      try {
-        // Check the global flag set by the enhanced drag-drop system
-        const systemReady = await page.evaluate(() => {
-          return {
-            ready: (window as any).enhancedDragDropReady === true,
-            stats: (window as any).enhancedDragDropStats,
-            draggableCount: document.querySelectorAll('.folder-container[draggable="true"]').length
-          };
-        });
-
-        if (systemReady.ready && systemReady.draggableCount > 0) {
-          setupComplete = true;
-          console.log(`✅ Enhanced drag-drop setup complete: ${systemReady.draggableCount} draggable folders, ${systemReady.stats?.protected || 0} protected`);
-        } else {
-          await page.waitForTimeout(500);
-          attempts++;
-        }
-      } catch (error) {
-        await page.waitForTimeout(500);
-        attempts++;
-      }
-    }
-
-    if (!setupComplete) {
-      console.warn('⚠️ Enhanced drag-drop setup may not have completed within timeout');
-      // Log current state for debugging
-      const debugInfo = await page.evaluate(() => {
-        return {
-          editModeEnabled: document.body.classList.contains('edit-mode'),
-          appEditMode: document.querySelector('.app.edit-mode') !== null,
-          toggleActive: document.querySelector('.edit-toggle.active') !== null,
-          enhancedReady: (window as any).enhancedDragDropReady,
-          draggableCount: document.querySelectorAll('.folder-container[draggable="true"]').length,
-          totalFolders: document.querySelectorAll('.folder-container').length
-        };
-      });
-      console.log('🔍 Debug info:', debugInfo);
-    }
-
-    // Final verification that edit mode is fully active
-    const finalCheck = await page.locator('.app.edit-mode, body.edit-mode, .edit-toggle.active').count();
-    if (finalCheck === 0) {
-      throw new Error('Edit mode could not be enabled - no edit mode indicators found');
-    }
+    // Wait for the UI to update and for the drag-drop system to be ready
+    await page.waitForFunction(() => {
+      const isEditMode = document.body.classList.contains('edit-mode');
+      const dragDropReady = (window as any).enhancedDragDropReady === true;
+      const draggableFolders = document.querySelectorAll('.folder-container[draggable="true"]').length > 0;
+      return isEditMode && dragDropReady && draggableFolders;
+    }, { timeout: 15000 });
 
     console.log('✅ Edit mode fully enabled and ready for testing');
   }

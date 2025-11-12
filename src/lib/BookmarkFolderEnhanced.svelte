@@ -876,6 +876,7 @@
   });
 </script>
 
+<!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
 <div
   class="folder-container"
   data-testid="bookmark-folder"
@@ -888,6 +889,7 @@
   on:drop|preventDefault={onContainerDrop}
   on:dragleave={onContainerDragLeave}
   on:mouseup|capture|preventDefault={onContainerMouseUp}
+  role="group"
 >
   <div
     class="folder-header"
@@ -916,7 +918,6 @@
         on:blur={saveFolderName}
         on:keydown={handleRenameKeydown}
         on:click|stopPropagation
-        autofocus
       />
     {:else}
       <h3 class="folder-title" class:editable={isEditMode} on:dblclick={startRenaming}>
@@ -944,6 +945,7 @@
   </div>
 
   {#if isExpanded && isVisible}
+    <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
     <div
       class="bookmarks-grid"
       class:expanded={isExpanded}
@@ -954,6 +956,7 @@
       on:drop|preventDefault={onContainerDrop}
       on:dragleave={onContainerDragLeave}
       on:mouseup|capture|preventDefault={onContainerMouseUp}
+      role="group"
     >
       {#if $editMode}
         <!-- Insertion point at the beginning -->

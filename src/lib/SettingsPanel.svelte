@@ -7,7 +7,10 @@
   let activeTab = 'general';
   
   // Close settings panel
-  function closeSettings() {
+  function closeSettings(event?: Event) {
+    if (event && event.target !== event.currentTarget) {
+      return;
+    }
     settingsVisible.set(false);
   }
   
@@ -51,8 +54,8 @@
 <svelte:window on:keydown={handleKeydown} />
 
 {#if $settingsVisible}
-  <div class="settings-overlay" on:click={closeSettings}>
-    <div class="settings-panel" on:click|stopPropagation>
+  <button class="settings-overlay" on:click={closeSettings} on:keydown|self={handleKeydown}>
+    <div class="settings-panel" role="document">
       <div class="settings-header">
         <h2>Settings</h2>
         <button class="close-button" on:click={closeSettings} title="Close settings">
@@ -194,7 +197,7 @@
         </button>
       </div>
     </div>
-  </div>
+  </button>
 {/if}
 
 <style>
@@ -211,6 +214,12 @@
     align-items: center;
     justify-content: center;
     animation: fadeIn 0.2s ease-out;
+    border: none;
+    padding: 0;
+    font: inherit;
+    text-align: inherit;
+    cursor: default;
+    width: 100%;
   }
   
   .settings-panel {

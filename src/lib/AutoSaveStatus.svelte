@@ -25,10 +25,16 @@
       autoSaveManager.forceSave();
     }
   }
+
+  function handleKeydown(event: KeyboardEvent) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      handleClick();
+    }
+  }
 </script>
 
-<div 
-  class="autosave-status" 
+<div
+  class="autosave-status"
   class:compact
   class:clickable={statusData.state.isDirty && !statusData.state.isSaving}
   class:saving={statusData.statusClass === 'saving'}
@@ -36,6 +42,9 @@
   class:dirty={statusData.statusClass === 'dirty'}
   class:saved={statusData.statusClass === 'saved'}
   on:click={handleClick}
+  on:keydown={handleKeydown}
+  role="button"
+  tabindex={statusData.state.isDirty && !statusData.state.isSaving ? 0 : -1}
   title={statusData.state.isDirty && !statusData.state.isSaving ? 'Click to save now' : statusData.statusText}
 >
   <!-- Status icon -->
@@ -156,11 +165,6 @@
     background: rgba(16, 185, 129, 0.1);
   }
   
-  .autosave-status.not-saved {
-    color: #6b7280;
-    border-color: rgba(107, 114, 128, 0.3);
-    background: rgba(107, 114, 128, 0.1);
-  }
   
   @media (max-width: 768px) {
     .autosave-status {
@@ -208,8 +212,5 @@
       background: rgba(16, 185, 129, 0.15);
     }
     
-    .autosave-status.not-saved {
-      background: rgba(107, 114, 128, 0.15);
-    }
   }
 </style>

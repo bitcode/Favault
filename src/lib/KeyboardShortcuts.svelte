@@ -4,7 +4,10 @@
   let showHelp = false;
   
   // Toggle help visibility
-  function toggleHelp() {
+  function toggleHelp(event?: MouseEvent) {
+    if (event && event.target !== event.currentTarget) {
+      return;
+    }
     showHelp = !showHelp;
   }
   
@@ -27,8 +30,8 @@
 <svelte:window on:keydown={handleKeydown} />
 
 {#if showHelp}
-  <div class="shortcuts-overlay" on:click={toggleHelp}>
-    <div class="shortcuts-panel" on:click|stopPropagation>
+  <button class="shortcuts-overlay" on:click={toggleHelp} on:keydown|self={handleKeydown}>
+    <div class="shortcuts-panel" role="document">
       <div class="shortcuts-header">
         <h3>Keyboard Shortcuts</h3>
         <button class="close-button" on:click={toggleHelp}>
@@ -91,7 +94,7 @@
         </div>
       </div>
     </div>
-  </div>
+  </button>
 {/if}
 
 <style>
@@ -107,6 +110,12 @@
     justify-content: center;
     z-index: 10000;
     backdrop-filter: blur(4px);
+    border: none;
+    padding: 0;
+    font: inherit;
+    text-align: inherit;
+    cursor: default;
+    width: 100%;
   }
   
   .shortcuts-panel {

@@ -77,6 +77,13 @@
       onDrop: async (dragData, dropZone) => {
         console.log('Dropping bookmark at insertion point:', dragData.title, 'at index:', insertIndex);
         
+        // Clean up visual indicators immediately to prevent race conditions
+        isActive = false;
+        if (insertionElement) {
+          insertionElement.classList.remove('insertion-point-active');
+        }
+        hideInsertionIndicator();
+
         try {
           // Perform the bookmark move operation
           const result = await BookmarkEditAPI.moveBookmark(dragData.id, {
@@ -102,11 +109,6 @@
           console.error('Error during insertion point drop:', error);
           showInsertionError('An error occurred while moving the bookmark');
         }
-
-        // Clean up visual indicators
-        isActive = false;
-        insertionElement.classList.remove('insertion-point-active');
-        hideInsertionIndicator();
         
         return true; // Indicate we handled the drop
       }

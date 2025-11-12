@@ -132,7 +132,7 @@
           if (result?.success) {
             console.log('[Global DnD] moveBookmark success', { fromId, toParentId, toIndex });
             try { document?.dispatchEvent(new CustomEvent('favault-bookmark-moved', { detail: { type: 'inter-folder', fromId, fromParentId, toParentId, toIndex } })); } catch {}
-            await refreshAfterMove();
+            // await refreshAfterMove(); // Redundant refresh removed to prevent race condition
           } else {
             console.error('[Global DnD] moveBookmark failed', result?.error);
           }
@@ -194,7 +194,7 @@
           if (result?.success) {
             console.log('[Global DnD] moveBookmark success (drop)', { fromId, toParentId, toIndex });
             try { document?.dispatchEvent(new CustomEvent('favault-bookmark-moved', { detail: { type: 'inter-folder', fromId, fromParentId, toParentId, toIndex } })); } catch {}
-            await refreshAfterMove();
+            // await refreshAfterMove(); // Redundant refresh removed to prevent race condition
           } else {
             console.error('[Global DnD] moveBookmark failed (drop)', result?.error);
           }
@@ -243,9 +243,6 @@
   import { BraveDebugger } from './lib/brave-debug';
   import { BookmarkManager } from './lib/bookmarks';
   import { EnhancedDragDropManager } from './lib/dragdrop-enhanced';
-  import { EnhancedDragDropTester } from './lib/test-enhanced-dragdrop';
-  import { DragDropTestSuite } from './lib/drag-drop-test-suite';
-  import { ServiceWorkerDragDropTester } from './lib/drag-drop-service-worker-test';
   import { serviceWorkerManager } from './lib/service-worker-manager';
   import { errorReporter, reportLoadingError, reportInitializationError } from './lib/error-reporter';
   import { ExtensionLoadingDiagnostics } from './lib/extension-loading-diagnostics';
@@ -527,24 +524,6 @@
     // Expose refreshBookmarks function globally
     (window as any).refreshBookmarks = refreshBookmarks;
 
-    // Comprehensive drag-drop test suite
-    (window as any).testDragDropSuite = async () => {
-      console.log('🧪 Running comprehensive drag-drop test suite...');
-      try {
-        const suite = await DragDropTestSuite.runAllTests();
-        console.log('🧪 Test suite results:', suite);
-
-        // Generate and log report
-        const report = DragDropTestSuite.generateReport(suite);
-        console.log('📊 Test Report:\n' + report);
-
-        return suite;
-      } catch (error) {
-        console.error('🧪 Test suite failed:', error);
-        return { success: false, error: error instanceof Error ? error.message : String(error) };
-      }
-    };
-
     // Service worker management functions
     (window as any).getServiceWorkerStatus = () => {
       const status = serviceWorkerManager.getStatus();
@@ -784,24 +763,6 @@
         totalPoints: insertionPoints.length,
         visiblePoints: workingPoints
       };
-    };
-
-    // Service worker drag-drop test suite
-    (window as any).testServiceWorkerDragDrop = async () => {
-      console.log('🧪 Running service worker drag-drop test suite...');
-      try {
-        const suite = await ServiceWorkerDragDropTester.runServiceWorkerDragDropTests();
-        console.log('🧪 Service worker drag-drop test results:', suite);
-
-        // Generate and log report
-        const report = ServiceWorkerDragDropTester.generateReport(suite);
-        console.log('📊 Service Worker Drag-Drop Test Report:\n' + report);
-
-        return suite;
-      } catch (error) {
-        console.error('🧪 Service worker drag-drop tests failed:', error);
-        return { success: false, error: error instanceof Error ? error.message : String(error) };
-      }
     };
 
     // Setup service worker status monitoring
@@ -1135,36 +1096,8 @@
     if (typeof window !== 'undefined') {
       // Expose main classes
       (window as any).EnhancedDragDropManager = EnhancedDragDropManager;
-      (window as any).EnhancedDragDropTester = EnhancedDragDropTester;
 
-      // Expose testing functions with error handling
-      (window as any).testEnhancedDragDrop = async () => {
-        try {
-          console.log('🧪 Running full enhanced drag-drop test...');
-          await EnhancedDragDropTester.testSystem();
-        } catch (error) {
-          console.error('❌ Test failed:', error);
-        }
-      };
-
-      (window as any).quickTestDragDrop = async () => {
-        try {
-          console.log('🧪 Running quick enhanced drag-drop test...');
-          await EnhancedDragDropTester.quickTest();
-        } catch (error) {
-          console.error('❌ Quick test failed:', error);
-        }
-      };
-
-      (window as any).showDragDropDiagnostics = () => {
-        try {
-          console.log('🧪 Showing enhanced drag-drop diagnostics...');
-          EnhancedDragDropTester.showDiagnostics();
-        } catch (error) {
-          console.error('❌ Diagnostics failed:', error);
-        }
-      };
-
+      // Expose initialization function
       (window as any).initEnhancedDragDrop = async () => {
         try {
           console.log('🧪 Manual enhanced drag-drop initialization...');
@@ -1241,15 +1174,11 @@
       (window as any).settingsManager = settingsManager;
 
       console.log('✅ Enhanced drag-drop functions exposed to global scope:');
-      console.log('  - testEnhancedDragDrop() - Full system test');
-      console.log('  - quickTestDragDrop() - Quick functionality test');
-      console.log('  - showDragDropDiagnostics() - System diagnostics');
       console.log('  - initEnhancedDragDrop() - Manual initialization');
       console.log('  - enableEnhancedEditMode() - Enable edit mode');
       console.log('  - disableEnhancedEditMode() - Disable edit mode');
       console.log('  - settingsManager - Settings management for testing');
       console.log('  - EnhancedDragDropManager - Main manager class');
-      console.log('  - EnhancedDragDropTester - Testing utilities');
     }
   }
 
@@ -1736,15 +1665,6 @@
     }
   }
 
-  /* Prevent auto-scrolling during drag operations */
-  .app.drag-active {
-    /* Disable smooth scrolling during drag operations */
-    scroll-behavior: auto !important;
-    /* Prevent scroll position changes */
-    overflow-anchor: none;
-    /* Stabilize layout during drag operations */
-    contain: layout style;
-  }
 
   /* Prevent auto-scrolling in edit mode */
   .app.edit-mode {

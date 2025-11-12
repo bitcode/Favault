@@ -457,7 +457,7 @@
   */
 
   // Debounced refresh to prevent cascade refreshes
-  let refreshTimeout: NodeJS.Timeout | null = null;
+  let refreshTimeout: any | null = null;
   async function refreshBookmarks() {
     // Cancel any pending refresh
     if (refreshTimeout) {
@@ -726,7 +726,7 @@
       </div>
     {:else}
       <!-- Normal display mode -->
-      <div class="bookmark-title" class:editable={isEditMode} title={bookmark.title} on:dblclick={startEditing}>
+      <div class="bookmark-title" class:editable={isEditMode} title={bookmark.title} on:dblclick={startEditing} role="button" tabindex="0">
         {bookmark.title}
       </div>
       {#if bookmark.url}
@@ -961,14 +961,6 @@
     white-space: nowrap;
   }
 
-  /* Enhanced drag styles - for dragging state */
-  .bookmark-item.dragging-bookmark {
-    opacity: 0.6;
-    transform: rotate(2deg) scale(0.95);
-    z-index: 1000;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
-    transition: all 0.2s ease;
-  }
 
   .bookmark-item.draggable-item {
     cursor: grab;
