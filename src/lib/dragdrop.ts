@@ -55,6 +55,10 @@ export class DragDropManager {
       onDragEnd?: (data: DragData) => void;
     } = {}
   ): void {
+    // CRITICAL FIX: Always cleanup existing listeners first to prevent accumulation
+    // This prevents event listener leaks when components re-initialize after drag operations
+    this.cleanup(element);
+
     const dragHandle = options.dragHandle || element;
 
     console.log('Initializing draggable for:', dragData.title, 'Edit mode enabled:', this.isEditModeEnabled());
@@ -164,8 +168,12 @@ export class DragDropManager {
       acceptTypes?: ('bookmark' | 'folder')[];
     } = {}
   ): void {
+    // CRITICAL FIX: Always cleanup existing listeners first to prevent accumulation
+    // This prevents event listener leaks when components re-initialize after drag operations
+    this.cleanup(element);
+
     const acceptTypes = options.acceptTypes || ['bookmark', 'folder'];
-    
+
     let dragEnterCounter = 0;
 
     // Drag enter handler
@@ -312,17 +320,32 @@ export class DragDropManager {
 
   /**
    * Clean up drag and drop functionality
+   * Enhanced to prevent event listener leaks during re-initialization
    */
   static cleanup(element: HTMLElement): void {
+    // Call stored cleanup functions if they exist
     if ((element as any)._dragCleanup) {
       (element as any)._dragCleanup();
       delete (element as any)._dragCleanup;
     }
-    
+
     if ((element as any)._dropCleanup) {
       (element as any)._dropCleanup();
       delete (element as any)._dropCleanup;
     }
+
+    // CRITICAL FIX: Additional cleanup to remove any orphaned listeners
+    // This handles cases where cleanup functions weren't stored properly
+    // Remove drag-related attributes and classes
+    element.removeAttribute('draggable');
+    element.classList.remove('dragging', 'drag-over', 'draggable-item', 'dragging-bookmark');
+
+    // Clear any stored drag data
+    delete (element as any)._dragData;
+    delete (element as any)._dropZoneData;
+
+    // Note: We cannot remove event listeners without references to the original handler functions
+    // The stored cleanup functions above handle this. This additional cleanup is for visual state only.
   }
 
   /**

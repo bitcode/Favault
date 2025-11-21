@@ -55,6 +55,9 @@ export class BraveDragDropManager extends DragDropManager {
       onDragEnd?: (data: DragData) => void;
     } = {}
   ): void {
+    // CRITICAL FIX: Always cleanup existing listeners first
+    this.cleanup(element);
+
     if (this.isBraveBrowser()) {
       console.log('🦁 Brave browser detected - applying workarounds for:', dragData.title);
       this.initializeBraveDraggable(element, dragData, options);
@@ -212,6 +215,9 @@ export class BraveDragDropManager extends DragDropManager {
       acceptTypes?: ('bookmark' | 'folder')[];
     } = {}
   ): void {
+    // CRITICAL FIX: Always cleanup existing listeners first
+    this.cleanup(element);
+
     if (this.isBraveBrowser()) {
       console.log('🦁 Brave browser detected - applying drop zone workarounds');
       this.initializeBraveDropZone(element, dropZoneData, options);

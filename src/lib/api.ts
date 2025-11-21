@@ -236,10 +236,7 @@ export class BookmarkEditAPI extends ExtensionAPI {
           dateGroupModified: currentBookmark.dateGroupModified
         };
 
-        // For same-parent moves, treat destination.index as the intended final
-        // position. The UI (insertion points + global-dragdrop-init fallback)
-        // already computes the correct insertion index, so we should not apply
-        // any additional +/- 1 adjustments here.
+        // Start with the destination index from the UI (bookmark-only index)
         let adjustedIndex = destination.index;
 
         console.log('📐 INDEX ADJUSTMENT - INPUT:', {
@@ -250,19 +247,90 @@ export class BookmarkEditAPI extends ExtensionAPI {
           destinationParentId: destination.parentId
         });
 
-        if (isSameParent && currentBookmark.index !== undefined && destination.index !== undefined) {
-          const movingDown = currentBookmark.index < destination.index;
+        // STEP 1: Convert bookmark-only index to Chrome children array index
+        // The UI uses "bookmark-only" indices (0, 1, 2, ... for N bookmarks),
+        // but Chrome's API expects indices in the full children array (which may include subfolders).
+        let isAppendingToEnd = false; // Track if we're appending to the end
 
-          console.log('📐 SAME-PARENT MOVE (no index adjustment applied):', {
-            requestedIndex: destination.index,
-            currentIndex: currentBookmark.index,
-            movingDown
+        if (destination.parentId && destination.index !== undefined) {
+          const children = await browserAPI.bookmarks.getChildren(destination.parentId);
+          const bookmarks = children.filter(child => child.url && child.url.trim() !== '');
+
+          console.log('📊 INDEX SPACE CONVERSION:', {
+            bookmarkOnlyIndex: destination.index,
+            totalChildren: children.length,
+            totalBookmarks: bookmarks.length,
+            childrenTypes: children.map(c => ({ id: c.id, title: c.title, isBookmark: !!c.url }))
           });
 
-          // IMPORTANT: Do not modify adjustedIndex here. The insertion index from
-          // the UI is already the desired final position for both up and down moves.
+          // Map bookmark-only index to actual children array index
+          if (destination.index < bookmarks.length) {
+            // Inserting before an existing bookmark
+            const targetBookmark = bookmarks[destination.index];
+            adjustedIndex = children.findIndex(child => child.id === targetBookmark.id);
+            isAppendingToEnd = false;
+
+            console.log('📍 MAPPED TO EXISTING BOOKMARK:', {
+              bookmarkOnlyIndex: destination.index,
+              targetBookmarkId: targetBookmark.id,
+              targetBookmarkTitle: targetBookmark.title,
+              childrenArrayIndex: adjustedIndex
+            });
+          } else {
+            // Appending to the end of the folder
+            adjustedIndex = children.length;
+            isAppendingToEnd = true;
+
+            console.log('📍 APPENDING TO END:', {
+              bookmarkOnlyIndex: destination.index,
+              childrenArrayIndex: adjustedIndex,
+              isAppendingToEnd: true
+            });
+          }
+        }
+
+        // STEP 2: Apply same-parent forward-move correction
+        // Chrome's bookmarks.move() uses "remove then insert" semantics:
+        // 1. Remove bookmark from current position (shifts subsequent indices left by 1)
+        // 2. Insert at target index in the post-removal array
+        // For forward moves (source < target), we need to subtract 1 from the target index.
+        // EXCEPTION: When appending to the very end (destination.index >= bookmarks.length),
+        // we should NOT apply the correction because we're already at the maximum position.
+        if (isSameParent && currentBookmark.index !== undefined && adjustedIndex !== undefined) {
+          const movingForward = currentBookmark.index < adjustedIndex;
+
+          if (movingForward && !isAppendingToEnd) {
+            // Apply forward-move correction (but NOT when appending to end)
+            const beforeCorrection = adjustedIndex;
+            adjustedIndex = adjustedIndex - 1;
+
+            console.log('📐 FORWARD MOVE CORRECTION APPLIED:', {
+              requestedIndex: destination.index,
+              currentIndex: currentBookmark.index,
+              beforeCorrection,
+              afterCorrection: adjustedIndex,
+              isAppendingToEnd: false,
+              reason: 'Chrome removes bookmark first, shifting subsequent indices left by 1'
+            });
+          } else if (movingForward && isAppendingToEnd) {
+            console.log('📐 FORWARD MOVE TO END (no correction needed):', {
+              requestedIndex: destination.index,
+              currentIndex: currentBookmark.index,
+              adjustedIndex,
+              isAppendingToEnd: true,
+              reason: 'Appending to end - already at maximum position, no -1 correction needed'
+            });
+          } else {
+            console.log('📐 BACKWARD MOVE (no correction needed):', {
+              requestedIndex: destination.index,
+              currentIndex: currentBookmark.index,
+              adjustedIndex,
+              isAppendingToEnd: false,
+              reason: 'Removal does not affect earlier indices'
+            });
+          }
         } else {
-          console.log('📐 INDEX ADJUSTMENT (different parent or missing indices):', {
+          console.log('📐 CROSS-PARENT MOVE (no same-parent correction):', {
             originalIndex: destination.index,
             adjustedIndex,
             isSameParent,

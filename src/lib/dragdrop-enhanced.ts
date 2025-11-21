@@ -1491,6 +1491,13 @@ export class EnhancedDragDropManager {
     let draggableCount = 0;
 
     bookmarks.forEach((bookmark, bookmarkIndex) => {
+      // CRITICAL FIX: Skip bookmarks already managed by Svelte components
+      // This prevents duplicate event listener registration
+      if (bookmark.hasAttribute('data-svelte-managed-drag')) {
+        this.debugLog(`Skipping bookmark ${bookmarkIndex} - already managed by Svelte component`);
+        return;
+      }
+
       // Clear existing handlers
       ['dragstart', 'dragend'].forEach(event => {
         const handler = (bookmark as any)[`_${event}Handler`];

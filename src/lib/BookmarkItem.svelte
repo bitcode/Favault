@@ -24,6 +24,10 @@
   let validationResult: ValidationResult | null = null;
   let realTimeValidator: ReturnType<typeof createRealTimeValidator> | null = null;
 
+  // CRITICAL FIX: Track drag-drop initialization state to prevent duplicate registrations
+  let dragDropInitialized = false;
+  let lastInitializedBookmarkId = '';
+
   // Global drag candidate for mouse-based fallback (no HTML5 DnD in headless)
   // Stored on window to coordinate across component instances
   if (typeof window !== 'undefined' && !(window as any).__fav_dragCandidate) {
@@ -381,6 +385,21 @@
       return;
     }
 
+    // CRITICAL FIX: Prevent unnecessary re-initialization if already initialized for this bookmark
+    // Only re-initialize if:
+    // 1. Edit mode state changed (enabled/disabled)
+    // 2. Bookmark ID changed (different bookmark)
+    // 3. Never been initialized before
+    const needsReinitialization =
+      !dragDropInitialized ||
+      lastInitializedBookmarkId !== bookmark.id ||
+      (dragDropInitialized && !isEditMode); // Always cleanup when disabling edit mode
+
+    if (!needsReinitialization && isEditMode) {
+      console.log('Skipping drag-drop re-initialization for bookmark:', bookmark.title, '(already initialized)');
+      return;
+    }
+
     // Clean up any existing drag/drop functionality first
     DragDropManager.cleanup(bookmarkElement);
 
@@ -439,9 +458,18 @@
       //   initializeBookmarkDropZone();
       // }, 100); // Small delay to ensure DOM is ready
 
+      // Mark as initialized
+      dragDropInitialized = true;
+      lastInitializedBookmarkId = bookmark.id;
+
+      // CRITICAL FIX: Mark element as managed by Svelte to prevent EnhancedDragDropManager interference
+      bookmarkElement.setAttribute('data-svelte-managed-drag', 'true');
+
       console.log('Enhanced drag-drop initialized for bookmark:', bookmark.title);
     } else {
       console.log('Disabling drag-drop for bookmark:', bookmark.title);
+      dragDropInitialized = false;
+      lastInitializedBookmarkId = '';
     }
   }
 

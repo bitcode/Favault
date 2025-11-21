@@ -14,6 +14,10 @@
   let isEditMode = false;
   let isActive = false;
 
+  // CRITICAL FIX: Track initialization state to prevent duplicate registrations
+  let dropZoneInitialized = false;
+  let lastInitializedKey = '';
+
   // Subscribe to edit mode changes
   const unsubscribeEditMode = editMode.subscribe(value => {
     isEditMode = value;
@@ -31,11 +35,33 @@
       return;
     }
 
+    // CRITICAL FIX: Prevent unnecessary re-initialization
+    // Create a unique key for this insertion point
+    const currentKey = `${parentId}-${insertIndex}`;
+    const needsReinitialization =
+      !dropZoneInitialized ||
+      lastInitializedKey !== currentKey ||
+      (dropZoneInitialized && !isEditMode); // Always cleanup when disabling edit mode
+
+    if (!needsReinitialization && isEditMode) {
+      console.log('Skipping drop zone re-initialization for insertion point:', currentKey, '(already initialized)');
+      return;
+    }
+
     // Clean up any existing drop zone functionality
     DragDropManager.cleanup(insertionElement);
 
     if (isEditMode) {
       initializeInsertionDropZone();
+      dropZoneInitialized = true;
+      lastInitializedKey = currentKey;
+
+      // CRITICAL FIX: Mark element as managed by Svelte to prevent EnhancedDragDropManager interference
+      insertionElement.setAttribute('data-svelte-managed-drop', 'true');
+    } else {
+      dropZoneInitialized = false;
+      lastInitializedKey = '';
+      insertionElement.removeAttribute('data-svelte-managed-drop');
     }
   }
 
