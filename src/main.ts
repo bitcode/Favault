@@ -1,8 +1,17 @@
+// Initialize logging first
+import Logger from './lib/logging';
+import * as LogQueryUtils from './lib/logging/log-query-utils';
+
 // Ensure global drag-drop fallback handlers are registered AS EARLY AS POSSIBLE
 import './lib/global-dragdrop-init';
 import { BookmarkEditAPI } from './lib/api';
 import { BookmarkManager } from './lib/bookmarks';
+import { serviceWorkerManager } from './lib/service-worker-manager';
 import App from './App.svelte';
+
+// Initialize logger for the newtab page
+const logger = Logger.getInstance();
+logger.init().catch(err => console.error('[Logging] Failed to initialize logger:', err));
 
 // PERFORMANCE FIX: Disable early drag-drop installation
 (() => {
@@ -128,6 +137,140 @@ console.log('🦁 FaVault extension starting with enhanced drag-drop...');
 const app = new App({
   target: document.getElementById('app')!,
 });
+
+// Import drag-drop logger
+import DragDropLogger from './lib/logging/drag-drop-logger';
+
+// Drag-Drop Diagnostic Utilities
+const DnDDiagnostics = {
+  /**
+   * Check all folder elements for data-folder-id attributes
+   */
+  checkFolderAttributes: () => {
+    const folders = document.querySelectorAll('.folder-container, [data-testid="bookmark-folder"]');
+    console.log(`📊 Found ${folders.length} folder elements`);
+
+    const results: any[] = [];
+    folders.forEach((folder, index) => {
+      const folderId = folder.getAttribute('data-folder-id');
+      const folderTitle = folder.querySelector('.folder-title, h3')?.textContent?.trim();
+      const hasAttribute = folder.hasAttribute('data-folder-id');
+
+      const result = {
+        index,
+        title: folderTitle || 'Unknown',
+        folderId: folderId || '❌ MISSING',
+        hasAttribute,
+        className: folder.className,
+        testId: folder.getAttribute('data-testid')
+      };
+
+      results.push(result);
+
+      if (!folderId) {
+        console.error(`❌ Folder ${index} (${folderTitle}) is MISSING data-folder-id!`);
+      } else {
+        console.log(`✅ Folder ${index} (${folderTitle}): ${folderId}`);
+      }
+    });
+
+    return results;
+  },
+
+  /**
+   * Test drop target detection at specific coordinates
+   */
+  testDropDetection: (x: number, y: number) => {
+    console.log(`🎯 Testing drop detection at (${x}, ${y})`);
+
+    const atPoint = document.elementFromPoint(x, y);
+    console.log('Element at point:', atPoint?.className, atPoint?.tagName);
+
+    // Try different selector strategies
+    const strategies = [
+      {
+        name: 'Combined selector',
+        element: atPoint?.closest('[data-testid="bookmark-folder"][data-folder-id], .folder-header[data-folder-id], .bookmarks-grid[data-folder-id], .folder-container[data-folder-id]')
+      },
+      {
+        name: 'Folder container only',
+        element: atPoint?.closest('.folder-container, [data-testid="bookmark-folder"]')
+      },
+      {
+        name: 'Folder header',
+        element: atPoint?.closest('.folder-header')
+      },
+      {
+        name: 'Bookmarks grid',
+        element: atPoint?.closest('.bookmarks-grid')
+      }
+    ];
+
+    strategies.forEach(({ name, element }) => {
+      if (element) {
+        const folderId = element.getAttribute('data-folder-id');
+        console.log(`  ${name}:`, {
+          found: true,
+          className: element.className,
+          folderId: folderId || '❌ MISSING',
+          hasAttribute: element.hasAttribute('data-folder-id')
+        });
+      } else {
+        console.log(`  ${name}: ❌ Not found`);
+      }
+    });
+
+    // Try elementsFromPoint
+    if (document.elementsFromPoint) {
+      const stack = document.elementsFromPoint(x, y);
+      console.log(`📚 Elements stack (${stack.length} elements):`);
+      stack.slice(0, 10).forEach((el, i) => {
+        const folderId = el.getAttribute('data-folder-id');
+        console.log(`  ${i}: ${el.tagName}.${el.className}`, folderId ? `[folder-id: ${folderId}]` : '');
+      });
+    }
+
+    return {
+      elementAtPoint: atPoint,
+      strategies: strategies.map(s => ({ name: s.name, found: !!s.element }))
+    };
+  }
+};
+
+// Expose logger and utilities to global scope for easy access from console
+(window as any).FavaultLogger = Logger;
+(window as any).LogQuery = LogQueryUtils;
+(window as any).DragDropLogger = DragDropLogger;
+(window as any).DnDDiagnostics = DnDDiagnostics;
+(window as any).serviceWorkerManager = serviceWorkerManager;
+console.log('📝 Logger available globally as: FavaultLogger');
+console.log('   - FavaultLogger.getStatus() - Check logger status');
+console.log('   - FavaultLogger.retrieveLogs() - Get all logs');
+console.log('   - FavaultLogger.downloadLogs() - Download logs as JSON');
+console.log('   - FavaultLogger.setLogLevel("DEBUG"|"INFO"|"WARN"|"ERROR") - Change log level');
+console.log('   - FavaultLogger.setContext("drag-drop"|"bookmark"|"folder"|null) - Set logging context');
+console.log('');
+console.log('🔍 Log query utilities available as: LogQuery');
+console.log('   - await LogQuery.searchLogs("drag") - Search logs');
+console.log('   - await LogQuery.filterByLevel("ERROR") - Filter by level');
+console.log('   - await LogQuery.getRecentLogs(5) - Get logs from last 5 minutes');
+console.log('   - LogQuery.displayLogs(logs) - Pretty print logs');
+console.log('   - await LogQuery.getLogStats() - Get log statistics');
+console.log('');
+console.log('🎯 Drag & Drop Logger available as: DragDropLogger');
+console.log('   - await DragDropLogger.getDragDropLogs() - Get all drag-drop logs');
+console.log('   - await DragDropLogger.exportDragDropLogs() - Export drag-drop logs to file');
+console.log('   - await DragDropLogger.getDragDropStats() - Get drag-drop statistics');
+console.log('   - DragDropLogger.getActiveDragSession() - Get current drag session info');
+console.log('');
+console.log('🔧 Service Worker Manager available as: serviceWorkerManager');
+console.log('   - serviceWorkerManager.getStatus() - Check service worker status');
+console.log('   - serviceWorkerManager.stopMonitoring() - Stop monitoring (emergency fix)');
+console.log('');
+console.log('🔍 Drag-Drop Diagnostics available as: DnDDiagnostics');
+console.log('   - DnDDiagnostics.checkFolderAttributes() - Check all folder data-folder-id attributes');
+console.log('   - DnDDiagnostics.testDropDetection(x, y) - Test drop target detection at coordinates');
+console.log('   - serviceWorkerManager.restartMonitoring(300000) - Restart with 5min interval');
 
 // Expose debug function immediately
 (window as any).debugGlobalScope = () => {

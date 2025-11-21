@@ -1,5 +1,6 @@
 // Brave browser-specific drag-and-drop implementation
 import { DragDropManager, type DragData, type DropZoneData } from './dragdrop';
+import DragDropLogger from './logging/drag-drop-logger';
 
 export class BraveDragDropManager extends DragDropManager {
   private static braveWorkarounds = {
@@ -105,17 +106,32 @@ export class BraveDragDropManager extends DragDropManager {
         if (!this.isEditModeEnabled()) {
           console.log('🦁 Brave: Edit mode not enabled, preventing drag');
           e.preventDefault();
+          // Log a short-lived drag session that was rejected before it really started
+          const dragId = DragDropLogger.startDragSession({ ...dragData, reason: 'edit-mode-disabled' }, 'brave');
+          DragDropLogger.logDropError('Drop rejected - edit mode not enabled', {
+            id: dragData.id,
+            type: 'bookmark',
+          });
+          DragDropLogger.endDragSession(true);
+          console.log('🦁 Brave: Drag session aborted (edit mode disabled), id =', dragId);
           return false;
         }
 
         if (!userHasInteracted) {
           console.log('🦁 Brave: No user interaction detected, preventing drag');
           e.preventDefault();
+          const dragId = DragDropLogger.startDragSession({ ...dragData, reason: 'no-user-interaction' }, 'brave');
+          DragDropLogger.logDropError('Drop rejected - no prior user interaction', {
+            id: dragData.id,
+            type: 'bookmark',
+          });
+          DragDropLogger.endDragSession(true);
+          console.log('🦁 Brave: Drag session aborted (no user interaction), id =', dragId);
           return false;
         }
 
         console.log('🦁 Brave: Drag started for:', dragData.title);
-        
+
         // Brave workaround: Set data transfer with explicit MIME type
         if (e.dataTransfer) {
           e.dataTransfer.effectAllowed = 'move';
@@ -129,21 +145,29 @@ export class BraveDragDropManager extends DragDropManager {
         element.style.backgroundColor = 'rgba(128, 128, 128, 0.5)';
         element.style.transform = 'rotate(2deg)';
 
+        // Start structured drag session logging and record the drag start
+        const dragId = DragDropLogger.startDragSession(dragData, 'brave');
+        DragDropLogger.logDragStart(dragData, { x: e.clientX, y: e.clientY });
+        console.log('🦁 Brave: Drag session started with id', dragId);
+
         // Call original handler
         options.onDragStart?.(dragData);
-        
+
         return true;
       };
 
       // Brave-specific drag end handler
       const handleDragEnd = (e: DragEvent) => {
         console.log('🦁 Brave: Drag ended for:', dragData.title);
-        
+
         // Reset visual state
         element.classList.remove('brave-dragging');
         element.style.opacity = '';
         element.style.transform = '';
         element.style.cursor = 'grab';
+
+        // End drag session logging (if any)
+        DragDropLogger.endDragSession(false);
 
         // Call original handler
         options.onDragEnd?.(dragData);
@@ -228,16 +252,19 @@ export class BraveDragDropManager extends DragDropManager {
     const handleDragEnter = (e: DragEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      
+
       dragEnterCounter++;
-      
+
       if (dragEnterCounter === 1) {
         console.log('🦁 Brave: Drag entered drop zone');
         element.classList.add('brave-drag-over');
         element.style.backgroundColor = 'rgba(59, 130, 246, 0.1)';
         element.style.border = '2px dashed #3b82f6';
+
+        // Structured logging for drop-zone entry
+        DragDropLogger.logDragEnter(dropZoneData);
       }
-      
+
       return false;
     };
 
@@ -245,16 +272,19 @@ export class BraveDragDropManager extends DragDropManager {
     const handleDragLeave = (e: DragEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      
+
       dragEnterCounter--;
-      
+
       if (dragEnterCounter === 0) {
         console.log('🦁 Brave: Drag left drop zone');
         element.classList.remove('brave-drag-over');
         element.style.backgroundColor = '';
         element.style.border = '';
+
+        // Structured logging for drop-zone leave
+        DragDropLogger.logDragLeave(dropZoneData);
       }
-      
+
       return false;
     };
 
@@ -262,24 +292,24 @@ export class BraveDragDropManager extends DragDropManager {
     const handleDrop = async (e: DragEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      
+
       dragEnterCounter = 0;
       element.classList.remove('brave-drag-over');
       element.style.backgroundColor = '';
       element.style.border = '';
 
-      console.log('🦁 Brave: Drop event triggered');
+      console.log('🦁 Brave: Drop event triggered', { dropZoneData });
 
       // Get drag data from multiple sources
       let dragData: DragData | null = null;
-      
+
       if (e.dataTransfer) {
         try {
           // Try multiple MIME types
           const jsonData = e.dataTransfer.getData('application/json') ||
                           e.dataTransfer.getData('application/x-favault-bookmark') ||
                           e.dataTransfer.getData('text/plain');
-          
+
           if (jsonData) {
             dragData = JSON.parse(jsonData);
             console.log('🦁 Brave: Retrieved drag data:', dragData);
@@ -290,13 +320,26 @@ export class BraveDragDropManager extends DragDropManager {
       }
 
       if (!dragData) {
-        console.error('🦁 Brave: No drag data available');
+        const errorMsg = 'Brave: No drag data available';
+        console.error('🦁', errorMsg);
+        await DragDropLogger.logDropError(errorMsg, dropZoneData);
         return false;
       }
 
-      // Validate drop
+      // Validate drop type
       if (!acceptTypes.includes(dragData.type)) {
-        console.log('🦁 Brave: Drop rejected - invalid type:', dragData.type);
+        const errorMsg = `Brave: Drop rejected - invalid type: ${dragData.type}`;
+        console.log('🦁', errorMsg);
+        await DragDropLogger.logDropError(errorMsg, dropZoneData);
+        return false;
+      }
+
+      // Validate drop location using the same rules as the standard manager
+      if (!this.validateDrop(dragData, dropZoneData)) {
+        const errorMsg = 'Brave: Invalid drop location';
+        console.log('🦁', errorMsg);
+        this.showDropError(errorMsg);
+        await DragDropLogger.logDropError(errorMsg, dropZoneData);
         return false;
       }
 
@@ -304,9 +347,23 @@ export class BraveDragDropManager extends DragDropManager {
         // Call custom drop handler
         const handled = await options.onDrop?.(dragData, dropZoneData);
         console.log('🦁 Brave: Drop handled:', handled);
-        return handled || false;
+
+        if (!handled) {
+          console.log('🦁 Brave: Performing default drop behavior');
+          await this.performDrop(dragData, dropZoneData);
+        }
+
+        console.log('🦁 Brave: Logging successful drop via DragDropLogger', {
+          targetIndex: dropZoneData.targetIndex,
+        });
+        await DragDropLogger.logDrop(dropZoneData, dropZoneData.targetIndex);
+
+        this.notifyEventListeners('drop', { dragData, dropZone: dropZoneData, element });
+
+        return true;
       } catch (error) {
         console.error('🦁 Brave: Drop handler failed:', error);
+        await DragDropLogger.logDropError('Brave drop handler failed', dropZoneData);
         return false;
       }
     };

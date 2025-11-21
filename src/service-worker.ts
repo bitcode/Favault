@@ -2,9 +2,17 @@ import Logger from './lib/logging';
 
 declare let self: ServiceWorkerGlobalScope;
 
-// Initialize the logger as early as possible
-const logger = Logger.getInstance();
-logger.init();
+// Initialize the logger in the background (non-blocking)
+// This ensures the service worker can respond to health checks immediately
+const loggerInitPromise = (async () => {
+  try {
+    const logger = Logger.getInstance();
+    await logger.init();
+    console.log('[Service Worker] Logger initialized successfully');
+  } catch (err) {
+    console.error('[Service Worker] Failed to initialize logger:', err);
+  }
+})();
 
 // Enhanced Service worker for handling background tasks and commands with comprehensive error handling
 // Note: Using direct browser API calls instead of imports for service worker compatibility
@@ -656,11 +664,18 @@ class ServiceWorker {
 try {
   const serviceWorker = new ServiceWorker();
 
-  // Expose service worker for debugging
+  // Expose service worker and logger for debugging
   (self as any).favaultServiceWorker = serviceWorker;
+  (self as any).FavaultLogger = Logger;
 
   // Log successful initialization
   console.log('🚀 FaVault service worker startup completed');
+  console.log('📝 Logger available globally as: FavaultLogger');
+
+  // Wait for logger to be ready in the background (non-blocking)
+  loggerInitPromise.then(() => {
+    console.log('📝 Logger is now ready for use');
+  });
 
 } catch (error) {
   console.error('💥 Critical error during service worker startup:', error);

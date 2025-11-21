@@ -1014,9 +1014,14 @@ export class EnhancedDragDropManager {
   /**
    * Move folder to specific insertion position (for insertion point drops)
    */
-  static async moveFolderToPosition(fromIndex: number, insertionIndex: number): Promise<{ success: boolean; error?: string; [key: string]: any }> {
-    const operationId = `moveFolderToPosition-${fromIndex}-${insertionIndex}`;
-    console.log(`🦁 API: moveFolderToPosition(${fromIndex}, ${insertionIndex})`);
+  static async moveFolderToPosition(
+    fromIndex: number,
+    positionOrInsertionIndex: number,
+    options?: { mode?: 'final-index' | 'insertion-index' }
+  ): Promise<{ success: boolean; error?: string; [key: string]: any }> {
+    const mode = options?.mode ?? 'final-index';
+    const operationId = `moveFolderToPosition-${fromIndex}-${positionOrInsertionIndex}-${mode}`;
+    console.log(`🦁 API: moveFolderToPosition(${fromIndex}, ${positionOrInsertionIndex}, mode=${mode})`);
 
     // Check if operation can be started (debouncing and race condition prevention)
     if (!this.canStartOperation(operationId)) {
@@ -1026,10 +1031,17 @@ export class EnhancedDragDropManager {
     this.startOperation(operationId);
     this.systemState.operationCount++;
 
+    const insertionIndex = positionOrInsertionIndex;
+
     try {
       // Check for protected folders
       if (this.protectedFolderIds.has(this.folderBookmarkIds.get(fromIndex) || '')) {
-        return { success: false, error: 'Protected folder cannot be moved', fromIndex, insertionIndex };
+        return {
+          success: false,
+          error: 'Protected folder cannot be moved',
+          fromIndex,
+          insertionIndex
+        };
       }
 
       let fromBookmarkId = this.folderBookmarkIds.get(fromIndex);
@@ -1054,44 +1066,49 @@ export class EnhancedDragDropManager {
       const [fromFolder] = await browserAPI.bookmarks.get(fromBookmarkId);
       const parentChildren = await browserAPI.bookmarks.getChildren(fromFolder.parentId);
 
-      // Calculate the actual target index in the bookmark system
-      // CRITICAL POSITIONING FIX: Handle Chrome bookmarks API move behavior correctly
-      // When moving within the same parent, Chrome API removes the item first, then inserts it
-      // This affects the target index calculation for moves within the same parent
       const currentIndex = parentChildren.findIndex((child: any) => child.id === fromBookmarkId);
-      let targetIndex = insertionIndex;
+      const childCount = parentChildren.length;
+      let targetIndex: number;
 
-      console.log(`🦁 Position calculation: currentIndex=${currentIndex}, insertionIndex=${insertionIndex}`);
-      console.log(`🦁 USER EXPECTATION: Drop at insertion point ${insertionIndex} = final position ${insertionIndex + 1} (1-based)`);
+      if (mode === 'insertion-index') {
+        // Map insertionIndex from UI insertion points [0..n] to final bookmark index.
+        if (childCount === 0) {
+          targetIndex = 0;
+        } else if (insertionIndex <= 0) {
+          targetIndex = 0;
+        } else if (insertionIndex >= childCount) {
+          targetIndex = Math.max(0, childCount - 1);
+        } else {
+          targetIndex = insertionIndex - 1;
+        }
 
-      if (currentIndex !== -1) {
-        // For moves within the same parent, we need to account for the removal effect
-        // When Chrome removes the item first, indices shift:
-        // - If moving to a position AFTER the current position, no adjustment needed
-        // - If moving to a position BEFORE the current position, no adjustment needed
-        // The insertionIndex represents where the user wants the item to end up
-        targetIndex = insertionIndex;
-
-        console.log(`🦁 Move within same parent: currentIndex=${currentIndex} -> targetIndex=${targetIndex}`);
-        console.log(`🦁 Chrome API will handle removal/insertion automatically`);
-        console.log(`🦁 Expected final position: ${targetIndex + 1} (1-based display)`);
+        console.log(
+          `🦁 Position calculation (insertion-index semantics): currentIndex=${currentIndex}, insertionIndex=${insertionIndex}, childCount=${childCount}, targetIndex=${targetIndex}`
+        );
       } else {
-        // Folder not found in current parent (shouldn't happen, but handle gracefully)
-        targetIndex = insertionIndex;
-        console.log(`🦁 Folder not found in parent, using insertionIndex=${insertionIndex} as targetIndex`);
+        // FINAL INDEX semantics: positionOrInsertionIndex is the desired final index.
+        let requestedTargetIndex = insertionIndex;
+
+        console.log(
+          `🦁 Position calculation (final index semantics): currentIndex=${currentIndex}, requestedTargetIndex=${requestedTargetIndex}, childCount=${childCount}`
+        );
+
+        if (childCount > 0) {
+          if (requestedTargetIndex < 0) {
+            requestedTargetIndex = 0;
+          } else if (requestedTargetIndex >= childCount) {
+            requestedTargetIndex = childCount - 1;
+          }
+        } else {
+          requestedTargetIndex = 0;
+        }
+
+        targetIndex = requestedTargetIndex;
+
+        console.log(
+          `🦁 FINAL TARGET INDEX (clamped): targetIndex=${targetIndex} (0-based, ${targetIndex + 1} in 1-based UI)`
+        );
       }
-
-      // Ensure target index is within bounds
-      const maxIndex = parentChildren.length - 1;
-      const boundedTargetIndex = Math.max(0, Math.min(targetIndex, maxIndex));
-
-      if (boundedTargetIndex !== targetIndex) {
-        console.log(`🦁 Target index ${targetIndex} was out of bounds, adjusted to ${boundedTargetIndex} (max: ${maxIndex})`);
-      }
-      targetIndex = boundedTargetIndex;
-
-      console.log(`🦁 FINAL CALCULATION: Moving from currentIndex=${currentIndex} to targetIndex=${targetIndex}`);
-      console.log(`🦁 POSITIONING FIX: User dropped at insertion point ${insertionIndex} -> folder should end up at position ${targetIndex}`);
 
       // CRITICAL DEBUG: Capture Chrome API call with comprehensive error tracking
       let result: any;
@@ -1890,7 +1907,8 @@ export class EnhancedDragDropManager {
 
         const folderId = `folder-${folderIndex}`;
         this.dragEnterCounters.set(folderId, 0);
-        // Remove all drop zone classes
+
+        // Clear any drop-zone state on this folder
         folder.classList.remove(
           'drop-zone-folder-reorder',
           'drop-zone-bookmark-target',
@@ -1899,10 +1917,99 @@ export class EnhancedDragDropManager {
         );
         folder.removeAttribute('data-drop-zone');
 
-        // Folder reordering is now handled by insertion points, not folder drops
-        // Only handle bookmark drops into folders
+        // --- Folder-on-folder drop: use moveFolderToPosition so drag gestures reorder folders ---
+        if (this.currentDragData?.type === 'folder') {
+          try {
+            // Determine the current set of visible folders and indices
+            const allFolders = Array.from(document.querySelectorAll('.folder-container')) as HTMLElement[];
+            const domTargetIndex = allFolders.indexOf(folder as HTMLElement);
+
+            // Prefer the index captured at drag start, but fall back to DOM lookup if needed
+            let fromIndex =
+              typeof this.currentDragData.index === 'number'
+                ? this.currentDragData.index
+                : allFolders.findIndex(el => el.getAttribute('data-dragging') === 'true');
+
+            if (fromIndex === -1) {
+              // As a final fallback, derive from folderBookmarkIds mapping if possible
+              const fromBookmarkId = this.currentDragData.bookmarkId;
+              if (fromBookmarkId) {
+                for (const [idx, id] of this.folderBookmarkIds.entries()) {
+                  if (id === fromBookmarkId) {
+                    fromIndex = idx;
+                    break;
+                  }
+                }
+              }
+            }
+
+            const childCount = allFolders.length;
+
+            console.log('🦁 FOLDER DROP (container)', {
+              title: this.currentDragData.title,
+              fromIndex,
+              domTargetIndex,
+              childCount
+            });
+
+            if (fromIndex === -1 || domTargetIndex === -1) {
+              console.warn('🦁 FOLDER DROP: Unable to resolve fromIndex or targetIndex; aborting move', {
+                fromIndex,
+                domTargetIndex
+              });
+              return;
+            }
+
+            if (fromIndex === domTargetIndex) {
+              console.log('🦁 FOLDER DROP: Source and target are the same index; no move performed');
+              return;
+            }
+
+            // We want the final folder index to equal domTargetIndex (what the tests expect).
+            const targetIndex = domTargetIndex;
+
+            console.log('🦁 FOLDER DROP → moveFolderToPosition mapping (final-index semantics)', {
+              fromIndex,
+              domTargetIndex,
+              childCount,
+              targetIndex
+            });
+
+            const moveResult = await this.moveFolderToPosition(fromIndex, targetIndex, { mode: 'final-index' });
+
+            if (!moveResult.success) {
+              console.error('❌ FOLDER DROP MOVE FAILED:', moveResult);
+              this.handleOperationError(
+                new Error(moveResult.error || 'Folder drop move failed'),
+                'folderDrop',
+                {
+                  fromIndex,
+                  domTargetIndex,
+                  folderTitle,
+                  bookmarkId
+                }
+              );
+            }
+          } catch (err) {
+            const error = err instanceof Error ? err : new Error(String(err));
+            console.error('🦁 FOLDER DROP ERROR:', error);
+            this.handleOperationError(error, 'folderDrop', {
+              sourceIndex: this.currentDragData?.index,
+              targetFolderIndex: folderIndex,
+              targetFolderTitle: folderTitle
+            });
+          } finally {
+            // Ensure all drop zone visuals are cleaned up shortly after the drop
+            setTimeout(() => {
+              this.cleanupAllDropZones();
+            }, 200);
+          }
+          return;
+        }
+
+        // --- Bookmark-on-folder drop: existing behavior (move bookmark into folder) ---
         if (this.currentDragData?.type === 'bookmark' &&
-                 bookmarkId && !this.protectedFolderIds.has(bookmarkId)) {
+            bookmarkId && !this.protectedFolderIds.has(bookmarkId)) {
 
           console.log(`🦁 BOOKMARK DROP: "${this.currentDragData.title}" → "${folderTitle}"`);
 

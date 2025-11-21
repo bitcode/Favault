@@ -2,6 +2,70 @@
 
 This document outlines the architecture for a logging utility designed to work in both Node.js (for Playwright tests) and browser environments (service worker, content scripts).
 
+## Quick Start - Accessing Logs
+
+### In Browser Extension (Chrome/Brave/etc.)
+
+Logs are stored in **IndexedDB**, not in files. To access logs:
+
+1. Open the extension (new tab page)
+2. Open Chrome DevTools (F12)
+3. In the Console, use these commands:
+   ```javascript
+   // Check logger status
+   FavaultLogger.getStatus()
+
+   // View all logs
+   await FavaultLogger.retrieveLogs()
+
+   // Download logs as JSON file
+   await FavaultLogger.downloadLogs()
+
+   // Change log level
+   FavaultLogger.setLogLevel('DEBUG')  // or 'INFO', 'WARN', 'ERROR'
+   ```
+
+4. Or inspect IndexedDB directly:
+   - Go to DevTools → Application → Storage → IndexedDB
+   - Look for database: `FavaultLogDB`
+   - Store name: `logs`
+
+### In Node.js (Playwright Tests)
+
+Logs are written to the file system:
+- Location: `logs/playwright.log`
+- Format: JSON lines (one log entry per line)
+
+## Troubleshooting
+
+### No logs appearing?
+
+1. **Check if logging is enabled:**
+   ```javascript
+   FavaultLogger.getStatus()
+   // Should show: { initialized: true, enabled: true, level: 'INFO' }
+   ```
+
+2. **Check for initialization errors:**
+   - Look for `[Logging]` prefixed messages in the console
+   - Common messages:
+     - `[Logging] IndexedDB initialized successfully` ✅
+     - `[Logging] Failed to open IndexedDB` ❌
+
+3. **Verify IndexedDB is accessible:**
+   - DevTools → Application → IndexedDB
+   - Should see `FavaultLogDB` database
+
+4. **Check log level:**
+   - If set to `ERROR`, only errors will be logged
+   - Use `FavaultLogger.setLogLevel('DEBUG')` to see all logs
+
+### Common Issues
+
+- **"No log folder created"**: This is expected! Browser extensions use IndexedDB, not files.
+- **"Logger not initialized"**: The logger initialization is async. Wait a moment after page load.
+- **"Can't access FavaultLogger"**: Make sure you're in the newtab page or service worker context.
+
 ## 1. File Structure
 
 The new logging utility will be located in `src/lib/logging/`. This co-locates the logging module with other shared library code.

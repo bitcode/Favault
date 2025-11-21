@@ -617,7 +617,7 @@
   </div>
 
   {#if isExpanded && isVisible}
-    <div class="bookmarks-grid" class:expanded={isExpanded}>
+    <div class="bookmarks-grid" class:expanded={isExpanded} data-folder-id={folder.id}>
       {#if $editMode}
         <!-- Debug: Simple test element -->
         <div class="debug-insertion-test" style="background: red; height: 20px; width: 100%; margin: 5px 0;">

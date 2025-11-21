@@ -37,21 +37,21 @@ export class ServiceWorkerManager {
   /**
    * Start monitoring the service worker
    */
-  private startMonitoring(): void {
+  private startMonitoring(intervalMs: number = 30000): void {
     // Clear any existing interval
     if (this.pingInterval) {
       clearInterval(this.pingInterval);
     }
 
-    // Ping every 30 seconds to check service worker status
+    // Ping at specified interval to check service worker status
     this.pingInterval = setInterval(() => {
       this.checkServiceWorkerStatus();
-    }, 30000) as unknown as number;
+    }, intervalMs) as unknown as number;
 
     // Initial check
     this.checkServiceWorkerStatus();
-    
-    console.log('🔍 Service worker monitoring started');
+
+    console.log(`🔍 Service worker monitoring started (interval: ${intervalMs}ms)`);
   }
 
   /**
@@ -313,14 +313,29 @@ export class ServiceWorkerManager {
   }
 
   /**
-   * Cleanup resources
+   * Stop monitoring the service worker
    */
-  public cleanup(): void {
+  public stopMonitoring(): void {
     if (this.pingInterval) {
       clearInterval(this.pingInterval);
       this.pingInterval = null;
+      console.log('🛑 Service worker monitoring stopped');
     }
-    
+  }
+
+  /**
+   * Restart monitoring with optional custom interval
+   */
+  public restartMonitoring(intervalMs: number = 30000): void {
+    this.stopMonitoring();
+    this.startMonitoring(intervalMs);
+  }
+
+  /**
+   * Cleanup resources
+   */
+  public cleanup(): void {
+    this.stopMonitoring();
     this.listeners = [];
     console.log('🧹 Service worker manager cleanup completed');
   }

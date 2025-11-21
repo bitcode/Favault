@@ -240,6 +240,7 @@
   import KeyboardShortcuts from './lib/KeyboardShortcuts.svelte';
   import ErrorReportButton from './lib/ErrorReportButton.svelte';
   import ServiceWorkerDiagnostics from './lib/ServiceWorkerDiagnostics.svelte';
+  import LogViewer from './lib/LogViewer.svelte';
   import { BraveDebugger } from './lib/brave-debug';
   import { BookmarkManager } from './lib/bookmarks';
   import { EnhancedDragDropManager } from './lib/dragdrop-enhanced';
@@ -763,6 +764,192 @@
         totalPoints: insertionPoints.length,
         visiblePoints: workingPoints
       };
+    };
+
+    /**
+     * Comprehensive drag-drop test suite used by Playwright and manual testing.
+     * Returns a summary object with { total, passed, success } and detailed test results.
+     */
+    (window as any).testDragDropSuite = async () => {
+      console.log('🚀 Starting drag-drop test suite...');
+
+      type DragDropSubTest = {
+        name: string;
+        run: () => Promise<any> | any;
+      };
+
+      const tests: DragDropSubTest[] = [
+        {
+          name: 'Edit mode active',
+          run: async () => {
+            let editModeActive =
+              document.body.classList.contains('edit-mode') ||
+              document.querySelector('.app.edit-mode') !== null;
+
+            if (
+              !editModeActive &&
+              typeof (window as any).enableEnhancedEditMode === 'function'
+            ) {
+              console.log(
+                '🧪 Enabling enhanced edit mode from testDragDropSuite...'
+              );
+              await (window as any).enableEnhancedEditMode();
+              // Give the DOM a moment to settle
+              await new Promise(resolve => setTimeout(resolve, 1000));
+              editModeActive =
+                document.body.classList.contains('edit-mode') ||
+                document.querySelector('.app.edit-mode') !== null;
+            }
+
+            if (!editModeActive) {
+              throw new Error(
+                'Edit mode is not active after enableEnhancedEditMode()'
+              );
+            }
+
+            return { editModeActive };
+          }
+        },
+        {
+          name: 'Enhanced drag-drop readiness',
+          run: async () => {
+            // If the manager is available, make sure initialization has run
+            if (
+              typeof (window as any).EnhancedDragDropManager?.initialize ===
+              'function'
+            ) {
+              console.log(
+                '🧪 Ensuring EnhancedDragDropManager is initialized...'
+              );
+              await (window as any).EnhancedDragDropManager.initialize();
+            }
+
+            const ready = !!(window as any).enhancedDragDropReady;
+            const stats = (window as any).enhancedDragDropStats || null;
+
+            if (!ready) {
+              throw new Error('enhancedDragDropReady flag is false');
+            }
+
+            return { ready, stats };
+          }
+        },
+        {
+          name: 'Drag-drop functionality smoke test',
+          run: () => {
+            if (
+              typeof (window as any).testDragDropFunctionality !== 'function'
+            ) {
+              throw new Error('testDragDropFunctionality is not available');
+            }
+
+            const result = (window as any).testDragDropFunctionality();
+            if (!result || result.success === false) {
+              const errorMessage =
+                result?.error || 'testDragDropFunctionality reported failure';
+              throw new Error(errorMessage);
+            }
+
+            return result;
+          }
+        },
+        {
+          name: 'Insertion point smoke test',
+          run: () => {
+            if (typeof (window as any).testInsertionPoints !== 'function') {
+              throw new Error('testInsertionPoints is not available');
+            }
+
+            const result = (window as any).testInsertionPoints();
+            if (!result || result.success === false) {
+              const errorMessage =
+                result?.error || 'testInsertionPoints reported failure';
+              throw new Error(errorMessage);
+            }
+
+            return result;
+          }
+        }
+      ];
+
+      const results: any[] = [];
+      let passed = 0;
+
+      for (const subTest of tests) {
+        const startTime = Date.now();
+        try {
+          console.log(`🧪 [DragDropSuite] Running: ${subTest.name}...`);
+          const data = await subTest.run();
+          const duration = Date.now() - startTime;
+          console.log(
+            `✅ [DragDropSuite] ${subTest.name} passed (${duration}ms)`
+          );
+          results.push({ name: subTest.name, success: true, duration, data });
+          passed++;
+        } catch (error: any) {
+          const duration = Date.now() - startTime;
+          const message =
+            error && typeof error === 'object' && 'message' in error
+              ? (error as any).message
+              : String(error);
+          console.error(
+            `❌ [DragDropSuite] ${subTest.name} failed (${duration}ms):`,
+            error
+          );
+          results.push({
+            name: subTest.name,
+            success: false,
+            duration,
+            error: message
+          });
+        }
+      }
+
+      const summary = {
+        total: tests.length,
+        passed,
+        success: passed === tests.length
+      };
+
+      console.log('📊 Drag-drop suite summary:', summary);
+      return { summary, results };
+    };
+
+    /**
+     * Simple harness to exercise drag-drop under basic service worker conditions.
+     * Primarily used as a smoke test; it delegates to testDragDropSuite.
+     */
+    (window as any).testServiceWorkerDragDrop = async () => {
+      console.log('🧪 Starting service worker drag-drop test...');
+
+      const statusBefore =
+        typeof (window as any).getServiceWorkerStatus === 'function'
+          ? (window as any).getServiceWorkerStatus()
+          : null;
+
+      let dragDropResult: any = null;
+      if (typeof (window as any).testDragDropSuite === 'function') {
+        dragDropResult = await (window as any).testDragDropSuite();
+      } else {
+        console.warn(
+          '⚠️ testDragDropSuite is not available; skipping drag-drop portion of service worker test'
+        );
+      }
+
+      const statusAfter =
+        typeof (window as any).getServiceWorkerStatus === 'function'
+          ? (window as any).getServiceWorkerStatus()
+          : null;
+
+      const summary = {
+        success: !!dragDropResult?.summary?.success,
+        dragDropSummary: dragDropResult?.summary || null,
+        serviceWorkerBefore: statusBefore,
+        serviceWorkerAfter: statusAfter
+      };
+
+      console.log('📊 Service worker drag-drop test summary:', summary);
+      return summary;
     };
 
     // Setup service worker status monitoring
@@ -1328,6 +1515,14 @@
     }
   }
 
+  // CRITICAL FIX: Debounce automatic refreshes to prevent race conditions
+  let refreshDebounceTimer: any = null;
+  let refreshInProgress = false;
+  const REFRESH_DEBOUNCE_MS = 300; // Wait 300ms before refreshing
+
+  // Log viewer state
+  let showLogViewer = false;
+
   // Set up bookmark event listeners for automatic cache invalidation
   function setupBookmarkEventListeners() {
     console.log('🔄 Setting up bookmark event listeners for automatic cache invalidation...');
@@ -1335,45 +1530,76 @@
     // Set up the Chrome bookmark API event listeners
     BookmarkEditAPI.setupEventListeners();
 
-    // Add our cache invalidation listeners
+    // Add our cache invalidation listeners with debouncing
     BookmarkEditAPI.addEventListener('moved', (data: any) => {
       console.log('📍 Bookmark moved detected, clearing cache:', data);
       BookmarkManager.clearCache();
-      // Automatically refresh the UI
-      refreshBookmarks();
+      // Debounced refresh to prevent multiple rapid refreshes
+      debouncedRefreshBookmarks('moved');
     });
 
     BookmarkEditAPI.addEventListener('created', (data: any) => {
       console.log('➕ Bookmark created detected, clearing cache:', data);
       BookmarkManager.clearCache();
-      refreshBookmarks();
+      debouncedRefreshBookmarks('created');
     });
 
     BookmarkEditAPI.addEventListener('changed', (data: any) => {
       console.log('✏️ Bookmark changed detected, clearing cache:', data);
       BookmarkManager.clearCache();
-      refreshBookmarks();
+      debouncedRefreshBookmarks('changed');
     });
 
     BookmarkEditAPI.addEventListener('removed', (data: any) => {
       console.log('🗑️ Bookmark removed detected, clearing cache:', data);
       BookmarkManager.clearCache();
-      refreshBookmarks();
+      debouncedRefreshBookmarks('removed');
     });
 
     BookmarkEditAPI.addEventListener('reordered', (data: any) => {
       console.log('🔄 Bookmark reordered detected, clearing cache:', data);
       BookmarkManager.clearCache();
-      refreshBookmarks();
+      debouncedRefreshBookmarks('reordered');
     });
 
     console.log('✅ Bookmark event listeners set up successfully');
   }
 
+  // Debounced refresh to prevent multiple rapid refreshes
+  function debouncedRefreshBookmarks(source: string) {
+    // Clear any pending refresh
+    if (refreshDebounceTimer) {
+      console.log(`🔄 Cancelling pending refresh, new source: ${source}`);
+      clearTimeout(refreshDebounceTimer);
+    }
+
+    // Schedule new refresh
+    refreshDebounceTimer = setTimeout(() => {
+      console.log(`🔄 Executing debounced refresh from source: ${source}`);
+      // Use silent refresh for automatic updates to prevent UI flickering
+      refreshBookmarks({ silent: true });
+      refreshDebounceTimer = null;
+    }, REFRESH_DEBOUNCE_MS);
+  }
+
   // Refresh bookmarks
-  async function refreshBookmarks() {
+  async function refreshBookmarks(options: { silent?: boolean } | any = {}) {
+    // Prevent concurrent refreshes
+    if (refreshInProgress) {
+      console.log('🔄 Refresh already in progress, skipping...');
+      return;
+    }
+
     try {
-      isLoading.set(true);
+      refreshInProgress = true;
+      // Only show loading spinner if not a silent refresh
+      // Handle both explicit options object and event objects (from click handlers)
+      const isSilent = options && typeof options === 'object' && options.silent === true;
+      
+      if (!isSilent) {
+        isLoading.set(true);
+      }
+      
       error.set(null);
       BookmarkManager.clearCache();
 
@@ -1384,6 +1610,7 @@
       error.set('Failed to refresh bookmarks.');
     } finally {
       isLoading.set(false);
+      refreshInProgress = false;
     }
   }
 </script>
@@ -1397,6 +1624,16 @@
     <!-- Error Report Button -->
     <ErrorReportButton />
 
+    <!-- Log Viewer Button -->
+    <button
+      class="log-viewer-toggle"
+      on:click={() => showLogViewer = !showLogViewer}
+      title="View Console Logs"
+      aria-label="Toggle log viewer"
+    >
+      📝
+    </button>
+
     <!-- Edit Mode Controls -->
     <EditModeToggle />
   </div>
@@ -1406,6 +1643,9 @@
 
   <!-- Keyboard Shortcuts Help -->
   <KeyboardShortcuts />
+
+  <!-- Log Viewer -->
+  <LogViewer bind:visible={showLogViewer} />
 
   <div class="container">
     <header class="header">
@@ -1567,6 +1807,30 @@
     gap: 0.75rem;
     z-index: 1000;
     align-items: flex-end;
+  }
+
+  .log-viewer-toggle {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1.2rem;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  }
+
+  .log-viewer-toggle:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+
+  .log-viewer-toggle:active {
+    transform: translateY(0);
   }
 
   .error {

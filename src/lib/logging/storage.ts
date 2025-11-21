@@ -1,4 +1,5 @@
 import type { LogEntry } from './types';
+import { storage as browserStorage } from './storage.browser';
 
 export interface IStorageAdapter {
   store(entry: LogEntry): Promise<void>;
@@ -13,15 +14,31 @@ export const getStorageAdapter = async (): Promise<IStorageAdapter> => {
     return storageAdapter;
   }
 
-  // Using import.meta.env.SSR to allow Vite to tree-shake.
-  // The `as any` cast is to avoid a TypeScript error if `vite/client`
-  // types are not in tsconfig.json.
-  if ((import.meta as any).env.SSR) {
-    const { storage } = await import('./storage.node');
-    storageAdapter = storage;
+  // Detect environment: Node.js vs Browser
+  // Check for Node.js-specific globals first
+  const isNode = typeof process !== 'undefined' &&
+                 process.versions != null &&
+                 process.versions.node != null;
+
+  // Also check for browser-specific globals to be extra sure
+  const isBrowser = typeof window !== 'undefined' ||
+                    typeof self !== 'undefined';
+
+  if (isNode && !isBrowser) {
+    // Node.js environment (Playwright tests)
+    // Wrap dynamic import to prevent Vite's preload helper from breaking service workers
+    try {
+      const { storage } = await import('./storage.node');
+      storageAdapter = storage;
+    } catch (error) {
+      console.error('[Logging] Failed to load Node.js storage adapter:', error);
+      // Fallback to browser storage
+      storageAdapter = browserStorage;
+    }
   } else {
-    const { storage } = await import('./storage.browser');
-    storageAdapter = storage;
+    // Browser environment (Chrome extension, service worker, etc.)
+    // Use static import to avoid Vite's dynamic import helper (which uses window)
+    storageAdapter = browserStorage;
   }
   return storageAdapter;
 };

@@ -3,6 +3,7 @@ import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { resolve } from 'path';
 import { copyFileSync, mkdirSync, existsSync, readFileSync, writeFileSync } from 'fs';
 import { fileURLToPath, URL } from 'node:url';
+import { fixServiceWorkerPlugin } from './vite-plugin-fix-service-worker.js';
 
 // Plugin to copy manifest, icons, and fix HTML location
 function copyExtensionAssets(mode) {
@@ -100,11 +101,13 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [
       svelte(),
+      fixServiceWorkerPlugin(),
       copyExtensionAssets(mode)
     ],
     build: {
       outDir: `dist/${mode || 'chrome'}`,
       emptyOutDir: true,
+      modulePreload: false, // Disable module preload polyfill (uses window, breaks service workers)
       rollupOptions: {
         input: {
           newtab: fileURLToPath(new URL('./src/newtab.html', import.meta.url)),
@@ -125,6 +128,13 @@ export default defineConfig(({ mode }) => {
               return '[name].[ext]';
             }
             return '[name].[ext]';
+          },
+          // Inline all dependencies for service worker to avoid dynamic imports
+          manualChunks: (id) => {
+            // Don't create separate chunks for service worker dependencies
+            if (id.includes('service-worker') || id.includes('logging')) {
+              return undefined; // Will be inlined
+            }
           }
         }
       }

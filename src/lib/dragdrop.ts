@@ -1,5 +1,6 @@
 import { BookmarkEditAPI, type BookmarkItem, type BookmarkFolder } from './api';
 import { bookmarkFolders } from './stores';
+import DragDropLogger from './logging/drag-drop-logger';
 
 // Drag and drop data types
 export interface DragData {
@@ -93,6 +94,9 @@ export class DragDropManager {
 
       console.log('Drag started for:', dragData.title);
 
+      // Start drag session logging
+      DragDropLogger.startDragSession(dragData, 'standard');
+
       this.dragStartPosition = { x: e.clientX, y: e.clientY };
 
       // Set drag data
@@ -119,6 +123,9 @@ export class DragDropManager {
     // Drag end handler
     const handleDragEnd = (e: DragEvent) => {
       console.log('Drag ended for:', dragData.title);
+
+      // End drag session logging
+      DragDropLogger.endDragSession(false);
 
       // Clean up
       this.endDrag();
@@ -167,13 +174,17 @@ export class DragDropManager {
 
       dragEnterCounter++;
       e.preventDefault();
-      
+
       const dragData = this.getDragData(e);
       if (!dragData || !acceptTypes.includes(dragData.type)) return;
-      
+
       if (dragEnterCounter === 1) {
         element.classList.add('drag-over');
         dragState.dropZone = dropZoneData;
+
+        // Log drag enter
+        DragDropLogger.logDragEnter(dropZoneData);
+
         options.onDragEnter?.(dragData, dropZoneData);
         this.notifyEventListeners('dragenter', { dragData, dropZone: dropZoneData, element });
       }
@@ -190,18 +201,21 @@ export class DragDropManager {
     // Drag leave handler
     const handleDragLeave = (e: DragEvent) => {
       if (!this.isEditModeEnabled() && !(dropZoneData.type === 'folder' && acceptTypes.includes('bookmark'))) return;
-      
+
       dragEnterCounter--;
-      
+
       if (dragEnterCounter === 0) {
         element.classList.remove('drag-over');
-        
+
         const dragData = this.getDragData(e);
         if (dragData) {
+          // Log drag leave
+          DragDropLogger.logDragLeave(dropZoneData);
+
           options.onDragLeave?.(dragData, dropZoneData);
           this.notifyEventListeners('dragleave', { dragData, dropZone: dropZoneData, element });
         }
-        
+
         if (dragState.dropZone === dropZoneData) {
           dragState.dropZone = null;
         }
@@ -211,7 +225,15 @@ export class DragDropManager {
     // Drop handler
     const handleDrop = async (e: DragEvent) => {
       const allowed = this.isEditModeEnabled() || (dropZoneData.type === 'folder' && acceptTypes.includes('bookmark'));
-      if (!allowed) return;
+      if (!allowed) {
+        console.warn('[DragDropManager] Drop ignored - not allowed for this drop zone', {
+          dropZoneType: dropZoneData.type,
+          acceptTypes,
+          isEditModeEnabled: this.isEditModeEnabled()
+        });
+        await DragDropLogger.logDropError('Drop rejected - not allowed for this drop zone', dropZoneData);
+        return;
+      }
 
       console.log('[DragDropManager] drop received on element:', element.className, 'zone:', dropZoneData);
 
@@ -225,27 +247,50 @@ export class DragDropManager {
         dragData = this.getFallbackDragDataFromDOM();
       }
       console.log('[DragDropManager] parsed dragData:', dragData);
-      if (!dragData || !acceptTypes.includes(dragData.type)) return;
+      if (!dragData) {
+        const errorMsg = 'Drop rejected - no drag data available';
+        console.warn('[DragDropManager]', errorMsg, { dropZoneData });
+        await DragDropLogger.logDropError(errorMsg, dropZoneData);
+        return;
+      }
+      if (!acceptTypes.includes(dragData.type)) {
+        const errorMsg = `Drop rejected - unsupported drag type: ${dragData.type}`;
+        console.warn('[DragDropManager]', errorMsg, { acceptTypes, dropZoneData });
+        await DragDropLogger.logDropError(errorMsg, dropZoneData);
+        return;
+      }
 
       // Validate drop
       if (!this.validateDrop(dragData, dropZoneData)) {
-        this.showDropError('Invalid drop location');
+        const errorMsg = 'Invalid drop location';
+        this.showDropError(errorMsg);
+        await DragDropLogger.logDropError(errorMsg, dropZoneData);
         return;
       }
-      
+
       try {
         // Call custom drop handler if provided
         const handled = await options.onDrop?.(dragData, dropZoneData);
-        
+        console.log('[DragDropManager] Drop handler completed. handled =', handled);
+
         if (!handled) {
+          console.log('[DragDropManager] Performing default drop behavior');
           // Default drop behavior
           await this.performDrop(dragData, dropZoneData);
         }
-        
+
+        console.log('[DragDropManager] Logging successful drop via DragDropLogger', {
+          targetIndex: dropZoneData.targetIndex
+        });
+        // Log successful drop
+        await DragDropLogger.logDrop(dropZoneData, dropZoneData.targetIndex);
+
         this.notifyEventListeners('drop', { dragData, dropZone: dropZoneData, element });
       } catch (error) {
         console.error('Drop operation failed:', error);
-        this.showDropError('Failed to move bookmark');
+        const errorMsg = 'Failed to move bookmark';
+        this.showDropError(errorMsg);
+        await DragDropLogger.logDropError(errorMsg, dropZoneData);
       }
     };
 

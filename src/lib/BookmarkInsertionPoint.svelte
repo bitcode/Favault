@@ -4,8 +4,7 @@
   import { BraveDragDropManager } from './dragdrop-brave';
   import { editMode } from './stores';
   import { BookmarkEditAPI } from './api';
-  import { BookmarkManager } from './bookmarks';
-  import { bookmarkFolders } from './stores';
+  import DragDropLogger from './logging/drag-drop-logger';
 
   export let parentId: string;
   export let insertIndex: number;
@@ -75,38 +74,79 @@
         hideInsertionIndicator();
       },
       onDrop: async (dragData, dropZone) => {
-        console.log('Dropping bookmark at insertion point:', dragData.title, 'at index:', insertIndex);
-        
+        const isSameParent = dragData.parentId === dropZone.parentId;
+ 
+        console.log('🎯 DROP EVENT at insertion point:', {
+          bookmarkTitle: dragData.title,
+          bookmarkId: dragData.id,
+          currentIndex: dragData.index,
+          currentParentId: dragData.parentId,
+          targetIndex: dropZone.targetIndex,
+          targetParentId: dropZone.parentId,
+          isSameParent,
+          insertionPointIndex: insertIndex
+        });
+ 
         // Clean up visual indicators immediately to prevent race conditions
         isActive = false;
         if (insertionElement) {
           insertionElement.classList.remove('insertion-point-active');
         }
         hideInsertionIndicator();
-
+ 
+        const targetIndex = dropZone.targetIndex;
+ 
         try {
+          // Log the drop event through the structured drag-drop logger so that
+          // standard/brave handler paths emit operation: "drop" with the
+          // requested insertion index.
+          try {
+            await DragDropLogger.logDrop(dropZone, targetIndex);
+          } catch (logErr) {
+            console.warn('[InsertionPoint] Failed to log drop event', logErr);
+          }
+ 
           // Perform the bookmark move operation
           const result = await BookmarkEditAPI.moveBookmark(dragData.id, {
             parentId: dropZone.parentId,
-            index: dropZone.targetIndex
+            index: targetIndex
           });
-
+ 
           if (result.success) {
-            console.log('Successfully moved bookmark to insertion point:', dragData.title);
-
-            // Clear cache immediately to ensure fresh data
-            BookmarkManager.clearCache();
-
-            // Refresh bookmarks to reflect the new order
-            await refreshBookmarks();
-
+            console.log('✅ MOVE SUCCESS at insertion point:', {
+              bookmarkTitle: dragData.title,
+              bookmarkId: dragData.id,
+              from: { parentId: dragData.parentId, index: dragData.index },
+              to: { parentId: dropZone.parentId, index: targetIndex },
+              actualResult: result.bookmark,
+              indexMatch: result.bookmark?.index === targetIndex
+            });
+ 
+            // CRITICAL FIX: Don't manually refresh here!
+            // The Chrome bookmarks.onMoved event will trigger an automatic debounced refresh
+            // Manual refresh here causes race conditions and incorrect positioning
+            console.log('🔄 Skipping manual refresh - relying on automatic onMoved event refresh');
+ 
             showInsertionSuccess(dragData.title, insertIndex);
           } else {
             console.error('Failed to move bookmark to insertion point:', result.error);
+            try {
+              await DragDropLogger.logDropError(
+                result.error || 'Failed to move bookmark via insertion point',
+                dropZone
+              );
+            } catch (logErr) {
+              console.warn('[InsertionPoint] Failed to log drop error', logErr);
+            }
             showInsertionError(result.error || 'Failed to move bookmark');
           }
         } catch (error) {
           console.error('Error during insertion point drop:', error);
+          try {
+            await DragDropLogger.logDropError('Exception during insertion point drop', dropZone);
+          } catch (logErr) {
+            console.warn('[InsertionPoint] Failed to log drop exception', logErr);
+          }
           showInsertionError('An error occurred while moving the bookmark');
         }
         
@@ -197,27 +237,9 @@
     }, 5000);
   }
 
-  // Debounced refresh to prevent cascade refreshes
-  let refreshTimeout: NodeJS.Timeout | null = null;
-  async function refreshBookmarks() {
-    // Cancel any pending refresh
-    if (refreshTimeout) {
-      clearTimeout(refreshTimeout);
-    }
-    
-    // Debounce refresh calls to prevent performance issues
-    refreshTimeout = setTimeout(async () => {
-      try {
-        console.log('🔄 Performing debounced bookmark refresh');
-        const folders = await BookmarkManager.getOrganizedBookmarks();
-        bookmarkFolders.set(folders);
-        refreshTimeout = null;
-      } catch (error) {
-        console.error('Failed to refresh bookmarks:', error);
-        refreshTimeout = null;
-      }
-    }, 150); // 150ms debounce
-  }
+  // REMOVED: Manual refresh function no longer needed
+  // The Chrome bookmarks.onMoved event triggers automatic debounced refresh in App.svelte
+  // This prevents race conditions and ensures consistent bookmark positioning
 
   // Setup on mount
   onMount(() => {

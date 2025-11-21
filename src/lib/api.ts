@@ -1,9 +1,11 @@
+import DragDropLogger from './logging/drag-drop-logger';
+
+
 // Cross-browser API abstraction layer
 // Use global browser object for better compatibility
-declare global {
-  const chrome: any;
-  const browser: any;
-}
+// Rely on existing global declarations for `chrome` (from extension libs) and
+// declare `browser` only if not already present to avoid redeclaration issues.
+declare const browser: any;
 
 // Unified browser API interface - use global objects
 export const browserAPI = (typeof browser !== 'undefined') ? browser : chrome;
@@ -202,13 +204,23 @@ export class BookmarkEditAPI extends ExtensionAPI {
     // Serialize move operations to prevent race conditions
     return this.moveQueue = this.moveQueue.then(async () => {
       try {
-        console.log('Moving bookmark:', id, 'to destination:', destination);
-
         // Get current bookmark data before move
         const [currentBookmark] = await browserAPI.bookmarks.get(id);
         if (!currentBookmark) {
           return { success: false, error: 'Bookmark not found' };
         }
+
+        const isSameParent = currentBookmark.parentId === destination.parentId;
+
+        console.log('📦 MOVE OPERATION:', {
+          bookmarkId: id,
+          bookmarkTitle: currentBookmark.title,
+          currentParentId: currentBookmark.parentId,
+          currentIndex: currentBookmark.index,
+          targetParentId: destination.parentId,
+          targetIndex: destination.index,
+          isSameParent
+        });
 
         // Validate the move operation
         const validation = await this.validateMove(id, destination);
@@ -224,8 +236,57 @@ export class BookmarkEditAPI extends ExtensionAPI {
           dateGroupModified: currentBookmark.dateGroupModified
         };
 
-        // Perform the move operation (serialized)
-        const result = await browserAPI.bookmarks.move(id, destination);
+        // For same-parent moves, treat destination.index as the intended final
+        // position. The UI (insertion points + global-dragdrop-init fallback)
+        // already computes the correct insertion index, so we should not apply
+        // any additional +/- 1 adjustments here.
+        let adjustedIndex = destination.index;
+
+        console.log('📐 INDEX ADJUSTMENT - INPUT:', {
+          destinationIndex: destination.index,
+          currentBookmarkIndex: currentBookmark.index,
+          isSameParent,
+          currentParentId: currentBookmark.parentId,
+          destinationParentId: destination.parentId
+        });
+
+        if (isSameParent && currentBookmark.index !== undefined && destination.index !== undefined) {
+          const movingDown = currentBookmark.index < destination.index;
+
+          console.log('📐 SAME-PARENT MOVE (no index adjustment applied):', {
+            requestedIndex: destination.index,
+            currentIndex: currentBookmark.index,
+            movingDown
+          });
+
+          // IMPORTANT: Do not modify adjustedIndex here. The insertion index from
+          // the UI is already the desired final position for both up and down moves.
+        } else {
+          console.log('📐 INDEX ADJUSTMENT (different parent or missing indices):', {
+            originalIndex: destination.index,
+            adjustedIndex,
+            isSameParent,
+            hasCurrentIndex: currentBookmark.index !== undefined
+          });
+        }
+
+        console.log('📐 FINAL INDEX CALCULATION:', {
+          requestedIndex: destination.index,
+          currentIndex: currentBookmark.index,
+          adjustedIndex,
+          isSameParent,
+          movingDown:
+            currentBookmark.index !== undefined &&
+            destination.index !== undefined &&
+            currentBookmark.index < destination.index,
+          willPassToChrome: adjustedIndex
+        });
+
+        // Perform the move operation (serialized) with adjusted index
+        const result = await browserAPI.bookmarks.move(id, {
+          parentId: destination.parentId,
+          index: adjustedIndex
+        });
 
       // Verify the move was successful and data is preserved
       const [movedBookmark] = await browserAPI.bookmarks.get(id);
@@ -250,11 +311,34 @@ export class BookmarkEditAPI extends ExtensionAPI {
         });
       }
 
-      console.log('Successfully moved bookmark:', {
-        id,
+      console.log('✅ MOVE COMPLETED:', {
+        bookmarkId: id,
+        bookmarkTitle: currentBookmark.title,
         from: { parentId: currentBookmark.parentId, index: currentBookmark.index },
         to: { parentId: result.parentId, index: result.index },
+        requestedIndex: destination.index,
+        adjustedIndex: adjustedIndex,
+        actualIndex: result.index,
+        indexMatch: adjustedIndex === result.index,
+        userExpectedPosition: destination.index,
+        actualPosition: result.index,
         metadataPreserved
+      });
+
+      // If this bookmark move was triggered by a drag-and-drop operation,
+      // record the relationship between the visual insertion-point index
+      // (destination.index) and the actual index passed to the bookmarks API
+      // and reported back by the browser.
+      DragDropLogger.logDropIndexMapping({
+        bookmarkId: id,
+        bookmarkTitle: currentBookmark.title,
+        currentParentId: currentBookmark.parentId,
+        currentIndex: currentBookmark.index,
+        targetParentId: destination.parentId,
+        requestedIndex: destination.index,
+        adjustedIndex,
+        finalIndex: result.index,
+        isSameParent,
       });
 
         return {
