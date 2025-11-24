@@ -132,3 +132,7 @@ jspm_packages/
 # Temporary files
 *.tmp
 *.temp
+
+# Development tools and infrastructure
+# Qdrant vector database storage for RooCode codebase indexing
+qdrant_storage/
