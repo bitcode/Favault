@@ -1,16 +1,24 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
-  import type { BookmarkItem } from './api';
-  import { DragDropManager, type DragData, type DropZoneData } from './dragdrop';
-  import { BraveDragDropManager } from './dragdrop-brave';
-  import { editMode, bookmarkFolders } from './stores';
-  import { BookmarkEditAPI } from './api';
-  import { BookmarkManager } from './bookmarks';
-  import { AutoSaveManager, createDebouncedInput } from './autosave';
-  import AutoSaveStatus from './AutoSaveStatus.svelte';
-  import { BookmarkValidator, createRealTimeValidator, type ValidationResult } from './validation';
-  import ValidationStatus from './ValidationStatus.svelte';
-  import { FaviconManager } from './favicon-utils';
+  import { onMount, onDestroy } from "svelte";
+  import type { BookmarkItem } from "./api";
+  import {
+    DragDropManager,
+    type DragData,
+    type DropZoneData,
+  } from "./dragdrop";
+  import { BraveDragDropManager } from "./dragdrop-brave";
+  import { editMode, bookmarkFolders } from "./stores";
+  import { BookmarkEditAPI } from "./api";
+  import { BookmarkManager } from "./bookmarks";
+  import { AutoSaveManager, createDebouncedInput } from "./autosave";
+  import AutoSaveStatus from "./AutoSaveStatus.svelte";
+  import {
+    BookmarkValidator,
+    createRealTimeValidator,
+    type ValidationResult,
+  } from "./validation";
+  import ValidationStatus from "./ValidationStatus.svelte";
+  import { FaviconManager } from "./favicon-utils";
   // import { DragDropValidator } from './drag-drop-validation'; // Disabled with on-bookmark drop zones
 
   export let bookmark: BookmarkItem;
@@ -18,26 +26,32 @@
   let bookmarkElement: HTMLElement;
   let isEditMode = false;
   let isEditing = false;
-  let newTitle = '';
-  let newUrl = '';
+  let newTitle = "";
+  let newUrl = "";
   let autoSaveManager: AutoSaveManager | null = null;
   let validationResult: ValidationResult | null = null;
-  let realTimeValidator: ReturnType<typeof createRealTimeValidator> | null = null;
+  let realTimeValidator: ReturnType<typeof createRealTimeValidator> | null =
+    null;
 
   // CRITICAL FIX: Track drag-drop initialization state to prevent duplicate registrations
   let dragDropInitialized = false;
-  let lastInitializedBookmarkId = '';
+  let lastInitializedBookmarkId = "";
 
   // Global drag candidate for mouse-based fallback (no HTML5 DnD in headless)
   // Stored on window to coordinate across component instances
-  if (typeof window !== 'undefined' && !(window as any).__fav_dragCandidate) {
+  if (typeof window !== "undefined" && !(window as any).__fav_dragCandidate) {
     (window as any).__fav_dragCandidate = null;
   }
 
   // Subscribe to edit mode changes
-  const unsubscribeEditMode = editMode.subscribe(value => {
+  const unsubscribeEditMode = editMode.subscribe((value) => {
     isEditMode = value;
-    console.log('Edit mode changed to:', value, 'for bookmark:', bookmark.title);
+    console.log(
+      "Edit mode changed to:",
+      value,
+      "for bookmark:",
+      bookmark.title,
+    );
     // Use setTimeout to ensure DOM updates are complete
     setTimeout(() => {
       updateDragDropState();
@@ -45,7 +59,7 @@
   });
 
   // Reactive statement to update drag-drop when edit mode changes
-  $: if (bookmarkElement && typeof isEditMode !== 'undefined') {
+  $: if (bookmarkElement && typeof isEditMode !== "undefined") {
     setTimeout(() => {
       updateDragDropState();
     }, 50);
@@ -78,7 +92,7 @@
       faviconUrlCache = FaviconManager.getFaviconUrl(url, {
         size: 32,
         skipLocalUrls: true,
-        skipSpecialUrls: true
+        skipSpecialUrls: true,
       });
     }
     return faviconUrlCache;
@@ -88,14 +102,14 @@
   function handleFaviconError(event: Event) {
     const img = event.target as HTMLImageElement;
     // Simple fallback to prevent excessive processing during refreshes
-    img.style.display = 'none';
+    img.style.display = "none";
   }
 
   // Handle bookmark click
   function handleClick() {
     if (isEditMode || isEditing) return; // Don't navigate in edit mode
     if (bookmark.url) {
-      window.open(bookmark.url, '_blank');
+      window.open(bookmark.url, "_blank");
     }
   }
 
@@ -104,7 +118,7 @@
     if (!isEditMode) return;
     isEditing = true;
     newTitle = bookmark.title;
-    newUrl = bookmark.url || '';
+    newUrl = bookmark.url || "";
 
     // Initialize validation
     validationResult = BookmarkValidator.validateBookmark(newTitle, newUrl);
@@ -122,15 +136,15 @@
         }
       },
       onSaveStart: () => {
-        console.log('Auto-saving bookmark:', bookmark.title);
+        console.log("Auto-saving bookmark:", bookmark.title);
       },
       onSaveComplete: (success, error) => {
         if (success) {
-          console.log('Auto-save completed for:', bookmark.title);
+          console.log("Auto-save completed for:", bookmark.title);
         } else {
-          console.error('Auto-save failed for:', bookmark.title, error);
+          console.error("Auto-save failed for:", bookmark.title, error);
         }
-      }
+      },
     });
   }
 
@@ -145,8 +159,8 @@
       realTimeValidator = null;
     }
     isEditing = false;
-    newTitle = '';
-    newUrl = '';
+    newTitle = "";
+    newUrl = "";
     validationResult = null;
   }
 
@@ -198,15 +212,15 @@
           realTimeValidator = null;
         }
         isEditing = false;
-        newTitle = '';
-        newUrl = '';
+        newTitle = "";
+        newUrl = "";
         validationResult = null;
       } else {
-        console.error('Failed to update bookmark:', result.error);
-        throw new Error(result.error || 'Failed to update bookmark');
+        console.error("Failed to update bookmark:", result.error);
+        throw new Error(result.error || "Failed to update bookmark");
       }
     } catch (error) {
-      console.error('Failed to save bookmark:', error);
+      console.error("Failed to save bookmark:", error);
       // Don't cancel editing on save error, let user try again
       throw error;
     }
@@ -214,10 +228,10 @@
 
   // Handle edit key events
   function handleEditKeydown(e: KeyboardEvent) {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       e.preventDefault();
       saveBookmark();
-    } else if (e.key === 'Escape') {
+    } else if (e.key === "Escape") {
       e.preventDefault();
       cancelEditing();
     }
@@ -225,28 +239,31 @@
 
   // Minimal HTML5 drag handlers to satisfy tests and ensure dataTransfer
   function handleHtml5DragStart(e: DragEvent) {
-    console.log('[BookmarkItem] dragstart for:', bookmark.title, bookmark.id);
+    console.log("[BookmarkItem] dragstart for:", bookmark.title, bookmark.id);
     const data = {
-      type: 'bookmark',
+      type: "bookmark",
       id: bookmark.id,
       title: bookmark.title,
-      url: bookmark.url || '',
-      parentId: bookmark.parentId || '',
-      index: bookmark.index ?? 0
+      url: bookmark.url || "",
+      parentId: bookmark.parentId || "",
+      index: bookmark.index ?? 0,
     };
     try {
-      e.dataTransfer?.setData('application/x-favault-bookmark', JSON.stringify(data));
-      e.dataTransfer?.setData('text/plain', JSON.stringify(data));
-      if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer?.setData(
+        "application/x-favault-bookmark",
+        JSON.stringify(data),
+      );
+      e.dataTransfer?.setData("text/plain", JSON.stringify(data));
+      if (e.dataTransfer) e.dataTransfer.effectAllowed = "move";
     } catch {}
     // Visual feedback (generic selectors used by tests)
-    bookmarkElement.classList.add('dragging');
-    document.body.classList.add('drag-active');
+    bookmarkElement.classList.add("dragging");
+    document.body.classList.add("drag-active");
   }
 
   function handleHtml5DragEnd(_e: DragEvent) {
-    bookmarkElement.classList.remove('dragging');
-    document.body.classList.remove('drag-active');
+    bookmarkElement.classList.remove("dragging");
+    document.body.classList.remove("drag-active");
   }
 
   // Bridge for Playwright mouse-based drag to HTML5 DnD
@@ -257,131 +274,199 @@
     if (isEditing) return;
     if (e.button !== 0) return; // left-click only
     try {
-      console.log('[BookmarkItem] mousedown bridge for:', bookmark.title, bookmark.id);
+      console.log(
+        "[BookmarkItem] mousedown bridge for:",
+        bookmark.title,
+        bookmark.id,
+      );
       // Mark global candidate at drag start
-      if (typeof window !== 'undefined') {
+      if (typeof window !== "undefined") {
         (window as any).__fav_dragCandidate = {
           id: bookmark.id,
           parentId: bookmark.parentId,
           title: bookmark.title,
-          startedAt: Date.now()
+          startedAt: Date.now(),
         };
       }
 
       const dt = new DataTransfer();
       const payload = {
-        type: 'bookmark',
+        type: "bookmark",
         id: bookmark.id,
         title: bookmark.title,
-        url: bookmark.url || '',
-        parentId: bookmark.parentId || '',
-        index: bookmark.index ?? 0
+        url: bookmark.url || "",
+        parentId: bookmark.parentId || "",
+        index: bookmark.index ?? 0,
       };
-      dt.setData('application/x-favault-bookmark', JSON.stringify(payload));
-      dt.setData('text/plain', JSON.stringify(payload));
+      dt.setData("application/x-favault-bookmark", JSON.stringify(payload));
+      dt.setData("text/plain", JSON.stringify(payload));
 
-      const dragStart = new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer: dt });
+      const dragStart = new DragEvent("dragstart", {
+        bubbles: true,
+        cancelable: true,
+        dataTransfer: dt,
+      });
       // Ensure visual dragging state even if native dragstart isn't honored in headless
-      bookmarkElement.classList.add('dragging');
-      document.body.classList.add('drag-active');
+      bookmarkElement.classList.add("dragging");
+      document.body.classList.add("drag-active");
       bookmarkElement.dispatchEvent(dragStart);
 
       const handleMouseUp = async (upEvt: MouseEvent) => {
-        const target = document.elementFromPoint(upEvt.clientX, upEvt.clientY) as HTMLElement | null;
+        const target = document.elementFromPoint(
+          upEvt.clientX,
+          upEvt.clientY,
+        ) as HTMLElement | null;
         if (target) {
-          const dragOver = new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dt });
+          const dragOver = new DragEvent("dragover", {
+            bubbles: true,
+            cancelable: true,
+            dataTransfer: dt,
+          });
           target.dispatchEvent(dragOver);
-          const drop = new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt });
+          const drop = new DragEvent("drop", {
+            bubbles: true,
+            cancelable: true,
+            dataTransfer: dt,
+          });
           const dropHandled = target.dispatchEvent(drop);
 
           // Fallback: if HTML5 drop handlers didn't execute, perform manual move based on DOM target
           try {
-            const gc = (typeof window !== 'undefined' ? (window as any).__fav_dragCandidate : null);
-            const currentParent = bookmark.parentId || '';
-            const container = target.closest('.folder-container') as HTMLElement | null;
-            const header = target.closest('.folder-header') as HTMLElement | null;
+            const gc =
+              typeof window !== "undefined"
+                ? (window as any).__fav_dragCandidate
+                : null;
+            const currentParent = bookmark.parentId || "";
+            const container = target.closest(
+              ".folder-container",
+            ) as HTMLElement | null;
+            const header = target.closest(
+              ".folder-header",
+            ) as HTMLElement | null;
             const dropEl = container || header;
-            const destFolderId = dropEl?.getAttribute('data-folder-id') || '';
-            console.log('[DnD Fallback] mouseup at', {
+            const destFolderId = dropEl?.getAttribute("data-folder-id") || "";
+            console.log("[DnD Fallback] mouseup at", {
               bookmarkId: bookmark.id,
               bookmarkTitle: bookmark.title,
               currentParent,
               destFolderId,
               overHeader: !!header,
               overContainer: !!container,
-              dropHandled
+              dropHandled,
             });
-            if (gc && gc.id === bookmark.id && destFolderId && destFolderId !== currentParent) {
+            if (
+              gc &&
+              gc.id === bookmark.id &&
+              destFolderId &&
+              destFolderId !== currentParent
+            ) {
               // Append to end by default when dropping on container; insert at 0 for header
               const index = header ? 0 : undefined;
-              console.log('🔥 [DnD Fallback] Moving bookmark', bookmark.title, 'to folder', destFolderId, 'index', index);
-              console.log('🔥 DEBUG: Bookmark move parameters:', {
+              console.log(
+                "🔥 [DnD Fallback] Moving bookmark",
+                bookmark.title,
+                "to folder",
+                destFolderId,
+                "index",
+                index,
+              );
+              console.log("🔥 DEBUG: Bookmark move parameters:", {
                 bookmarkId: bookmark.id,
                 bookmarkTitle: bookmark.title,
                 currentParentId: bookmark.parentId,
                 targetParentId: destFolderId,
                 targetIndex: index,
-                bookmarkUrl: bookmark.url
+                bookmarkUrl: bookmark.url,
               });
-              
-              const result = await BookmarkEditAPI.moveBookmark(bookmark.id, { parentId: destFolderId, index });
-              
-              console.log('🔥 DEBUG: Move API result:', result);
-              
+
+              const result = await BookmarkEditAPI.moveBookmark(bookmark.id, {
+                parentId: destFolderId,
+                index,
+              });
+
+              console.log("🔥 DEBUG: Move API result:", result);
+
               if (result.success) {
-                console.log('🔥 ✅ SUCCESS: Bookmark move completed successfully');
+                console.log(
+                  "🔥 ✅ SUCCESS: Bookmark move completed successfully",
+                );
                 BookmarkManager.clearCache();
                 await refreshBookmarks();
-                
+
                 // CRITICAL DEBUG: Verify the bookmark still exists after the move
                 setTimeout(async () => {
                   try {
-                    console.log('🔥 🚨 POST-MOVE VERIFICATION: Checking bookmark persistence...');
-                    const folders = await BookmarkManager.getOrganizedBookmarks();
+                    console.log(
+                      "🔥 🚨 POST-MOVE VERIFICATION: Checking bookmark persistence...",
+                    );
+                    const folders =
+                      await BookmarkManager.getOrganizedBookmarks();
                     let foundBookmark = null;
-                    
+
                     for (const folder of folders) {
-                      const found = folder.bookmarks.find(b => b.id === bookmark.id);
+                      const found = folder.bookmarks.find(
+                        (b) => b.id === bookmark.id,
+                      );
                       if (found) {
                         foundBookmark = found;
-                        console.log('🔥 ✅ POST-MOVE: Bookmark found in folder:', folder.title, 'at index:', folder.bookmarks.indexOf(found));
+                        console.log(
+                          "🔥 ✅ POST-MOVE: Bookmark found in folder:",
+                          folder.title,
+                          "at index:",
+                          folder.bookmarks.indexOf(found),
+                        );
                         break;
                       }
                     }
-                    
+
                     if (!foundBookmark) {
-                      console.error('🔥 🚨 CRITICAL ERROR: Bookmark disappeared after move! ID:', bookmark.id, 'Title:', bookmark.title);
+                      console.error(
+                        "🔥 🚨 CRITICAL ERROR: Bookmark disappeared after move! ID:",
+                        bookmark.id,
+                        "Title:",
+                        bookmark.title,
+                      );
                     }
                   } catch (verifyError) {
-                    console.error('🔥 🚨 POST-MOVE VERIFICATION FAILED:', verifyError);
+                    console.error(
+                      "🔥 🚨 POST-MOVE VERIFICATION FAILED:",
+                      verifyError,
+                    );
                   }
                 }, 200);
               } else {
-                console.error('🔥 ❌ FAILED: [DnD Fallback] Failed to move bookmark:', result.error);
+                console.error(
+                  "🔥 ❌ FAILED: [DnD Fallback] Failed to move bookmark:",
+                  result.error,
+                );
               }
             }
           } catch (err) {
-            console.error('[DnD Fallback] Error during manual move:', err);
+            console.error("[DnD Fallback] Error during manual move:", err);
           } finally {
-            if (typeof window !== 'undefined') (window as any).__fav_dragCandidate = null;
+            if (typeof window !== "undefined")
+              (window as any).__fav_dragCandidate = null;
           }
         }
-        const dragEnd = new DragEvent('dragend', { bubbles: true, cancelable: true, dataTransfer: dt });
+        const dragEnd = new DragEvent("dragend", {
+          bubbles: true,
+          cancelable: true,
+          dataTransfer: dt,
+        });
         bookmarkElement.dispatchEvent(dragEnd);
-        document.removeEventListener('mouseup', handleMouseUp, false);
+        document.removeEventListener("mouseup", handleMouseUp, false);
       };
       // Use non-capturing so folder/header mouseup|capture can process first
-      document.addEventListener('mouseup', handleMouseUp, false);
+      document.addEventListener("mouseup", handleMouseUp, false);
     } catch (err) {
-      console.warn('Mouse-to-HTML5 DnD bridge failed:', err);
+      console.warn("Mouse-to-HTML5 DnD bridge failed:", err);
     }
   }
-
 
   // Update drag and drop state
   function updateDragDropState() {
     if (!bookmarkElement) {
-      console.log('Bookmark element not available yet for:', bookmark.title);
+      console.log("Bookmark element not available yet for:", bookmark.title);
       return;
     }
 
@@ -396,7 +481,11 @@
       (dragDropInitialized && !isEditMode); // Always cleanup when disabling edit mode
 
     if (!needsReinitialization && isEditMode) {
-      console.log('Skipping drag-drop re-initialization for bookmark:', bookmark.title, '(already initialized)');
+      console.log(
+        "Skipping drag-drop re-initialization for bookmark:",
+        bookmark.title,
+        "(already initialized)",
+      );
       return;
     }
 
@@ -404,52 +493,57 @@
     DragDropManager.cleanup(bookmarkElement);
 
     if (isEditMode) {
-      console.log('Initializing enhanced drag-drop for bookmark:', bookmark.title);
+      console.log(
+        "Initializing enhanced drag-drop for bookmark:",
+        bookmark.title,
+      );
 
       const dragData: DragData = {
-        type: 'bookmark',
+        type: "bookmark",
         id: bookmark.id,
         title: bookmark.title,
         url: bookmark.url,
         parentId: bookmark.parentId,
-        index: bookmark.index
+        index: bookmark.index,
       };
 
       // Use Brave-specific manager if in Brave browser
-      const DragManager = BraveDragDropManager.isBraveBrowser() ? BraveDragDropManager : DragDropManager;
+      const DragManager = BraveDragDropManager.isBraveBrowser()
+        ? BraveDragDropManager
+        : DragDropManager;
 
       DragManager.initializeDraggable(bookmarkElement, dragData, {
         onDragStart: (data) => {
-          console.log('🚀 Started dragging bookmark:', data.title, {
+          console.log("🚀 Started dragging bookmark:", data.title, {
             id: data.id,
             parentId: data.parentId,
             index: data.index,
-            type: data.type
+            type: data.type,
           });
 
           // Add visual feedback for drag start
-          bookmarkElement.classList.add('dragging-bookmark');
-          document.body.classList.add('bookmark-drag-active');
+          bookmarkElement.classList.add("dragging-bookmark");
+          document.body.classList.add("bookmark-drag-active");
 
           // Store original position for potential revert
-          bookmarkElement.dataset.originalParent = data.parentId || '';
+          bookmarkElement.dataset.originalParent = data.parentId || "";
           bookmarkElement.dataset.originalIndex = String(data.index || 0);
         },
         onDragEnd: (data) => {
-          console.log('Finished dragging bookmark:', data.title);
+          console.log("Finished dragging bookmark:", data.title);
           // Clean up visual feedback
-          bookmarkElement.classList.remove('dragging-bookmark');
-          document.body.classList.remove('bookmark-drag-active');
+          bookmarkElement.classList.remove("dragging-bookmark");
+          document.body.classList.remove("bookmark-drag-active");
 
           // Clean up temporary data
           delete bookmarkElement.dataset.originalParent;
           delete bookmarkElement.dataset.originalIndex;
 
           // Remove any lingering insertion point indicators
-          document.querySelectorAll('.insertion-point-active').forEach(el => {
-            el.classList.remove('insertion-point-active');
+          document.querySelectorAll(".insertion-point-active").forEach((el) => {
+            el.classList.remove("insertion-point-active");
           });
-        }
+        },
       });
 
       // DISABLED: On-bookmark drop zones to prevent conflicts with insertion points
@@ -463,13 +557,16 @@
       lastInitializedBookmarkId = bookmark.id;
 
       // CRITICAL FIX: Mark element as managed by Svelte to prevent EnhancedDragDropManager interference
-      bookmarkElement.setAttribute('data-svelte-managed-drag', 'true');
+      bookmarkElement.setAttribute("data-svelte-managed-drag", "true");
 
-      console.log('Enhanced drag-drop initialized for bookmark:', bookmark.title);
+      console.log(
+        "Enhanced drag-drop initialized for bookmark:",
+        bookmark.title,
+      );
     } else {
-      console.log('Disabling drag-drop for bookmark:', bookmark.title);
+      console.log("Disabling drag-drop for bookmark:", bookmark.title);
       dragDropInitialized = false;
-      lastInitializedBookmarkId = '';
+      lastInitializedBookmarkId = "";
     }
   }
 
@@ -491,16 +588,16 @@
     if (refreshTimeout) {
       clearTimeout(refreshTimeout);
     }
-    
+
     // Debounce refresh calls to prevent performance issues
     refreshTimeout = setTimeout(async () => {
       try {
-        console.log('🔄 Performing debounced bookmark refresh (BookmarkItem)');
+        console.log("🔄 Performing debounced bookmark refresh (BookmarkItem)");
         const folders = await BookmarkManager.getOrganizedBookmarks();
         bookmarkFolders.set(folders);
         refreshTimeout = null;
       } catch (error) {
-        console.error('Failed to refresh bookmarks:', error);
+        console.error("Failed to refresh bookmarks:", error);
         refreshTimeout = null;
       }
     }, 150); // 150ms debounce
@@ -518,13 +615,13 @@
     updateDragDropState();
 
     // Listen for save-all-edits event
-    document.addEventListener('save-all-edits', handleSaveAllEdits);
+    document.addEventListener("save-all-edits", handleSaveAllEdits);
 
     return () => {
       if (bookmarkElement) {
         DragDropManager.cleanup(bookmarkElement);
       }
-      document.removeEventListener('save-all-edits', handleSaveAllEdits);
+      document.removeEventListener("save-all-edits", handleSaveAllEdits);
     };
   });
 
@@ -539,7 +636,7 @@
   // Get domain from URL for display
   function getDomain(url: string): string {
     try {
-      return new URL(url).hostname.replace('www.', '');
+      return new URL(url).hostname.replace("www.", "");
     } catch {
       return url;
     }
@@ -548,11 +645,13 @@
   // Visual feedback functions for drag-and-drop
   function showInsertionIndicator(dragData: DragData, dropZone: DropZoneData) {
     // Create or update insertion point indicator
-    let indicator = document.querySelector('.bookmark-insertion-indicator') as HTMLElement;
+    let indicator = document.querySelector(
+      ".bookmark-insertion-indicator",
+    ) as HTMLElement;
 
     if (!indicator) {
-      indicator = document.createElement('div');
-      indicator.className = 'bookmark-insertion-indicator';
+      indicator = document.createElement("div");
+      indicator.className = "bookmark-insertion-indicator";
       indicator.innerHTML = `
         <div class="insertion-line"></div>
         <div class="insertion-text">Drop here to insert ${dragData.title}</div>
@@ -564,10 +663,10 @@
     const rect = bookmarkElement.getBoundingClientRect();
     const insertBefore = (dropZone.targetIndex || 0) <= (bookmark.index || 0);
 
-    indicator.style.position = 'fixed';
+    indicator.style.position = "fixed";
     indicator.style.left = `${rect.left}px`;
     indicator.style.width = `${rect.width}px`;
-    indicator.style.zIndex = '10001';
+    indicator.style.zIndex = "10001";
 
     if (insertBefore) {
       indicator.style.top = `${rect.top - 2}px`;
@@ -575,13 +674,13 @@
       indicator.style.top = `${rect.bottom - 2}px`;
     }
 
-    indicator.classList.add('active');
+    indicator.classList.add("active");
   }
 
   function hideInsertionIndicator() {
-    const indicator = document.querySelector('.bookmark-insertion-indicator');
+    const indicator = document.querySelector(".bookmark-insertion-indicator");
     if (indicator) {
-      indicator.classList.remove('active');
+      indicator.classList.remove("active");
       setTimeout(() => {
         if (indicator.parentNode) {
           indicator.parentNode.removeChild(indicator);
@@ -591,8 +690,8 @@
   }
 
   function showMoveSuccessIndicator(bookmarkTitle: string) {
-    const toast = document.createElement('div');
-    toast.className = 'bookmark-move-success-toast';
+    const toast = document.createElement("div");
+    toast.className = "bookmark-move-success-toast";
     toast.innerHTML = `
       <div class="toast-icon">✅</div>
       <div class="toast-message">Moved "${bookmarkTitle}" successfully</div>
@@ -619,7 +718,7 @@
     document.body.appendChild(toast);
 
     setTimeout(() => {
-      toast.style.animation = 'slideOutRight 0.3s ease';
+      toast.style.animation = "slideOutRight 0.3s ease";
       setTimeout(() => {
         if (toast.parentNode) {
           toast.parentNode.removeChild(toast);
@@ -629,8 +728,8 @@
   }
 
   function showMoveErrorIndicator(errorMessage: string) {
-    const toast = document.createElement('div');
-    toast.className = 'bookmark-move-error-toast';
+    const toast = document.createElement("div");
+    toast.className = "bookmark-move-error-toast";
     toast.innerHTML = `
       <div class="toast-icon">❌</div>
       <div class="toast-message">${errorMessage}</div>
@@ -657,7 +756,7 @@
     document.body.appendChild(toast);
 
     setTimeout(() => {
-      toast.style.animation = 'slideOutRight 0.3s ease';
+      toast.style.animation = "slideOutRight 0.3s ease";
       setTimeout(() => {
         if (toast.parentNode) {
           toast.parentNode.removeChild(toast);
@@ -674,20 +773,36 @@
   class:editing={isEditing}
   bind:this={bookmarkElement}
   on:click={handleClick}
-  on:keydown={(e) => e.key === 'Enter' && handleClick()}
+  on:keydown={(e) => e.key === "Enter" && handleClick()}
   on:mousedown={handleMouseDownBridge}
   tabindex={isEditMode ? -1 : 0}
   role="button"
-  draggable={true}
+  draggable={!isEditMode}
   on:dragstart={handleHtml5DragStart}
   on:dragend={handleHtml5DragEnd}
   data-bookmark-id={bookmark.id}
   data-id={bookmark.id}
-  data-url={bookmark.url || ''}
+  data-url={bookmark.url || ""}
   data-title={bookmark.title}
-  data-parent-id={bookmark.parentId || ''}
+  data-parent-id={bookmark.parentId || ""}
   data-index={bookmark.index || 0}
 >
+  {#if isEditMode}
+    <div
+      class="delete-badge"
+      on:click|stopPropagation={() => dispatch("delete", bookmark.id)}
+      title="Delete bookmark"
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <path
+          d="M18 6L6 18M6 6l12 12"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+    </div>
+  {/if}
   <div class="favicon-container">
     {#if bookmark.url && getFaviconUrl(bookmark.url)}
       <img
@@ -700,8 +815,10 @@
     {/if}
     <div class="favicon-fallback">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
+        ></path>
+        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
+        ></path>
       </svg>
     </div>
   </div>
@@ -744,7 +861,10 @@
               <polyline points="20,6 9,17 4,12"></polyline>
             </svg>
           </button>
-          <button class="cancel-button" on:click|stopPropagation={cancelEditing}>
+          <button
+            class="cancel-button"
+            on:click|stopPropagation={cancelEditing}
+          >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -754,7 +874,14 @@
       </div>
     {:else}
       <!-- Normal display mode -->
-      <div class="bookmark-title" class:editable={isEditMode} title={bookmark.title} on:dblclick={startEditing} role="button" tabindex="0">
+      <div
+        class="bookmark-title"
+        class:editable={isEditMode}
+        title={bookmark.title}
+        on:dblclick={startEditing}
+        role="button"
+        tabindex="0"
+      >
         {bookmark.title}
       </div>
       {#if bookmark.url}
@@ -767,9 +894,14 @@
 
   <!-- Edit button (only visible in edit mode) -->
   {#if isEditMode && !isEditing}
-    <button class="edit-button" on:click|stopPropagation={startEditing} title="Edit bookmark">
+    <button
+      class="edit-button"
+      on:click|stopPropagation={startEditing}
+      title="Edit bookmark"
+    >
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
+        ></path>
         <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
       </svg>
     </button>
@@ -796,6 +928,65 @@
 
   .bookmark-item.draggable-item:active {
     cursor: grabbing;
+  }
+
+  /* Edit Mode Visuals */
+  :global(.app.edit-mode) .bookmark-item {
+    animation: jiggle 0.3s ease-in-out infinite alternate;
+  }
+
+  :global(.app.edit-mode) .bookmark-item:nth-child(even) {
+    animation-delay: 0.1s;
+  }
+
+  :global(.app.edit-mode) .bookmark-item:hover {
+    animation: none;
+    transform: scale(1.02);
+    z-index: 10;
+  }
+
+  @keyframes jiggle {
+    from {
+      transform: rotate(-0.5deg);
+    }
+    to {
+      transform: rotate(0.5deg);
+    }
+  }
+
+  .delete-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 20px;
+    height: 20px;
+    background: #ef4444;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    transform: scale(0.8);
+    transition: all 0.2s ease;
+    z-index: 20;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+
+  :global(.app.edit-mode) .bookmark-item .delete-badge {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  .delete-badge:hover {
+    transform: scale(1.1);
+    background: #dc2626;
+  }
+
+  .delete-badge svg {
+    width: 12px;
+    height: 12px;
   }
 
   .bookmark-item.editing {
@@ -989,10 +1180,11 @@
     white-space: nowrap;
   }
 
-
   .bookmark-item.draggable-item {
     cursor: grab;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    transition:
+      transform 0.2s ease,
+      box-shadow 0.2s ease;
     position: relative;
   }
 
@@ -1054,7 +1246,8 @@
     transition: all 0.2s ease;
   }
 
-  :global(body.bookmark-drag-active) .bookmark-item:not(.dragging-bookmark):hover {
+  :global(body.bookmark-drag-active)
+    .bookmark-item:not(.dragging-bookmark):hover {
     background: rgba(59, 130, 246, 0.05);
     border-color: rgba(59, 130, 246, 0.2);
   }

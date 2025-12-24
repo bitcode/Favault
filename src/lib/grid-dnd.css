@@ -1,0 +1,38 @@
+/* Grid Drag and Drop Styles */
+
+.bookmark-wrapper {
+  position: relative;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+  height: 100%;
+}
+
+.bookmark-wrapper.is-dragging {
+  opacity: 0.4;
+  transform: scale(0.95);
+}
+
+.drop-indicator {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background-color: #3b82f6;
+  border-radius: 2px;
+  pointer-events: none;
+  z-index: 10;
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.5);
+}
+
+.drop-indicator.left {
+  left: -6px;
+}
+
+.drop-indicator.right {
+  right: -6px;
+}
+
+/* Ensure the grid doesn't collapse */
+.bookmarks-grid {
+    display: grid;
+    /* Maintain the grid layout defined in component */
+}

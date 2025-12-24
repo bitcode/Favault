@@ -1,18 +1,136 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
-  import BookmarkItem from './BookmarkItem.svelte';
-  import BookmarkInsertionPoint from './BookmarkInsertionPoint.svelte';
-  import type { BookmarkFolder } from './api';
-  import { EnhancedDragDropManager } from './dragdrop-enhanced';
-  import { editMode, bookmarkFolders } from './stores';
-  import { initFolderExpansionState, getFolderExpanded, setFolderExpanded } from './folder-state';
-  import { DragDropManager } from './dragdrop';
-  import { BraveDragDropManager } from './dragdrop-brave';
-  import { BookmarkEditAPI } from './api';
-  import { BookmarkManager } from './bookmarks';
+  import { onMount, onDestroy } from "svelte";
+  import BookmarkItem from "./BookmarkItem.svelte";
+  import BookmarkInsertionPoint from "./BookmarkInsertionPoint.svelte";
+  import type { BookmarkFolder } from "./api";
+  import { EnhancedDragDropManager } from "./dragdrop-enhanced";
+  import { editMode, bookmarkFolders } from "./stores";
+  import {
+    initFolderExpansionState,
+    getFolderExpanded,
+    setFolderExpanded,
+  } from "./folder-state";
+  import { DragDropManager } from "./dragdrop";
+  import { BraveDragDropManager } from "./dragdrop-brave";
+  import { BookmarkEditAPI } from "./api";
+  import { BookmarkManager } from "./bookmarks";
 
   export let folder: BookmarkFolder;
   export let isVisible = true;
+
+  // Grid Drag & Drop State
+  let draggingBookmarkId: string | null = null;
+  let dropTargetIndex: number | null = null;
+  let dropPosition: "left" | "right" | null = null;
+
+  function onGridDragStart(e: DragEvent, bookmark: any, index: number) {
+    if (!isEditMode) {
+      e.preventDefault();
+      return;
+    }
+    draggingBookmarkId = bookmark.id;
+
+    // Set drag data
+    const dragData = {
+      type: "bookmark",
+      id: bookmark.id,
+      title: bookmark.title,
+      parentId: folder.id,
+      index: index,
+      url: bookmark.url,
+    };
+
+    e.dataTransfer!.setData("application/json", JSON.stringify(dragData));
+    e.dataTransfer!.setData(
+      "application/x-favault-bookmark",
+      JSON.stringify(dragData),
+    );
+    e.dataTransfer!.effectAllowed = "move";
+
+    // Custom drag image could go here
+  }
+
+  function onGridDragOver(e: DragEvent, index: number) {
+    // Check if we are dragging a bookmark (either internal or external)
+    const hasBookmarkData =
+      e.dataTransfer?.types.includes("application/x-favault-bookmark") ||
+      !!draggingBookmarkId;
+
+    if (!hasBookmarkData) return;
+
+    e.preventDefault();
+    e.dataTransfer!.dropEffect = "move";
+
+    const target = e.currentTarget as HTMLElement;
+    const rect = target.getBoundingClientRect();
+    const offsetX = e.clientX - rect.left;
+
+    // Determine if we are on the left or right half
+    const isRight = offsetX > rect.width / 2;
+
+    const newDropPosition = isRight ? "right" : "left";
+
+    // Log drag over sparingly if needed, or just update state
+    if (dropTargetIndex !== index || dropPosition !== newDropPosition) {
+      dropTargetIndex = index;
+      dropPosition = newDropPosition;
+    }
+  }
+
+  function onGridDragLeave(e: DragEvent) {
+    // Optional: Logic to clear drop target if leaving the grid entirely
+  }
+
+  async function onGridDrop(e: DragEvent, index: number) {
+    e.preventDefault();
+    e.stopPropagation(); // Stop bubbling to container/folder handlers
+
+    if (dropTargetIndex === null || !dropPosition) return;
+
+    let bookmarkId = draggingBookmarkId;
+
+    // If not local drag, try to get from dataTransfer
+    if (!bookmarkId) {
+      try {
+        const data = e.dataTransfer?.getData("application/x-favault-bookmark");
+        if (data) {
+          const parsed = JSON.parse(data);
+          bookmarkId = parsed.id;
+        }
+      } catch (err) {
+        console.error("Failed to parse drag data", err);
+      }
+    }
+
+    if (!bookmarkId) return;
+
+    // Calculate insertion index
+    let targetIndex = index + (dropPosition === "right" ? 1 : 0);
+
+    console.log(
+      `Grid Drop: Moving ${bookmarkId} to index ${targetIndex} in folder ${folder.id}`,
+    );
+
+    try {
+      const result = await BookmarkEditAPI.moveBookmark(bookmarkId, {
+        parentId: folder.id,
+        index: targetIndex,
+      });
+      if (result.success) {
+        BookmarkManager.clearCache();
+        await refreshBookmarks();
+      } else {
+        console.error("Move failed:", result.error);
+      }
+    } catch (err) {
+      console.error("Grid drop failed", err);
+    }
+
+    // Reset state
+    draggingBookmarkId = null;
+    dropTargetIndex = null;
+    dropPosition = null;
+  }
 
   let isExpanded = true;
   let folderElement: HTMLElement;
@@ -20,12 +138,17 @@
   let bookmarksGridEl: HTMLElement;
   let isEditMode = false;
   let isRenaming = false;
-  let newFolderName = '';
+  let newFolderName = "";
 
   // Subscribe to edit mode changes
-  const unsubscribeEditMode = editMode.subscribe(value => {
+  const unsubscribeEditMode = editMode.subscribe((value) => {
     isEditMode = value;
-    console.log('Enhanced edit mode changed to:', value, 'for folder:', folder.title);
+    console.log(
+      "Enhanced edit mode changed to:",
+      value,
+      "for folder:",
+      folder.title,
+    );
 
     // Update drag-drop state when edit mode changes
     setTimeout(() => {
@@ -34,7 +157,7 @@
   });
 
   // Reactive statement to update drag-drop when edit mode changes
-  $: if (folderElement && typeof isEditMode !== 'undefined') {
+  $: if (folderElement && typeof isEditMode !== "undefined") {
     setTimeout(() => {
       updateEnhancedDragDropState();
     }, 50);
@@ -62,7 +185,7 @@
   // Cancel renaming
   function cancelRenaming() {
     isRenaming = false;
-    newFolderName = '';
+    newFolderName = "";
   }
 
   // Save folder name
@@ -80,19 +203,19 @@
       // }
       folder.title = newFolderName.trim(); // Temporary until API is connected
       isRenaming = false;
-      newFolderName = '';
+      newFolderName = "";
     } catch (error) {
-      console.error('Failed to rename folder:', error);
+      console.error("Failed to rename folder:", error);
       cancelRenaming();
     }
   }
 
   // Handle rename key events
   function handleRenameKeydown(e: KeyboardEvent) {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       e.preventDefault();
       saveFolderName();
-    } else if (e.key === 'Escape') {
+    } else if (e.key === "Escape") {
       e.preventDefault();
       cancelRenaming();
     }
@@ -102,14 +225,24 @@
   function getBookmarkDragPayload(e: DragEvent): any | null {
     try {
       const dt = e.dataTransfer;
-      let raw = (dt?.getData('application/json') || dt?.getData('application/x-favault-bookmark') || dt?.getData('text/plain') || '').trim();
+      let raw = (
+        dt?.getData("application/json") ||
+        dt?.getData("application/x-favault-bookmark") ||
+        dt?.getData("text/plain") ||
+        ""
+      ).trim();
       let payload: any = null;
       if (raw) {
-        try { payload = JSON.parse(raw); } catch {}
+        try {
+          payload = JSON.parse(raw);
+        } catch {}
       }
-      const gc = (typeof window !== 'undefined' ? (window as any).__fav_dragCandidate : null);
+      const gc =
+        typeof window !== "undefined"
+          ? (window as any).__fav_dragCandidate
+          : null;
       // Only accept explicit bookmark payloads; ignore folder payloads entirely
-      if (payload && payload.id && payload.type === 'bookmark') return payload;
+      if (payload && payload.id && payload.type === "bookmark") return payload;
       if (gc && gc.id) return { id: gc.id, parentId: gc.parentId || null };
     } catch {}
     return null;
@@ -134,46 +267,59 @@
     if (active) {
       // Immediately activate drop zone
       currentDropState = true;
-      el.classList.add('drop-zone-active', 'drop-target');
-      el.setAttribute('data-drop-active', 'true');
+      el.classList.add("drop-zone-active", "drop-target");
+      el.setAttribute("data-drop-active", "true");
     } else {
       // Debounce deactivation to prevent rapid flickering
       dropZoneTimeout = setTimeout(() => {
         currentDropState = false;
-        el.classList.remove('drop-zone-active', 'drop-target');
-        el.removeAttribute('data-drop-active');
+        el.classList.remove("drop-zone-active", "drop-target");
+        el.removeAttribute("data-drop-active");
         dropZoneTimeout = null;
       }, 50); // 50ms debounce delay
     }
   }
 
   // Optimistic UI update to reflect moves immediately
-  function optimisticMove(bookmarkId: string, fromParentId: string | null, toParentId: string, toIndex?: number) {
+  function optimisticMove(
+    bookmarkId: string,
+    fromParentId: string | null,
+    toParentId: string,
+    toIndex?: number,
+  ) {
     try {
-      bookmarkFolders.update(folders => {
+      bookmarkFolders.update((folders) => {
         // Shallow clone to avoid mutating original objects in place
-        const copy = folders.map(f => ({ ...f, bookmarks: Array.isArray(f.bookmarks) ? [...f.bookmarks] : [] }));
+        const copy = folders.map((f) => ({
+          ...f,
+          bookmarks: Array.isArray(f.bookmarks) ? [...f.bookmarks] : [],
+        }));
         let moved: any = null;
 
         // Prefer removing from provided source, but fall back to scanning all folders
         if (fromParentId) {
-          const src = copy.find(f => f.id === fromParentId);
+          const src = copy.find((f) => f.id === fromParentId);
           if (src) {
-            const idx = src.bookmarks.findIndex((b: any) => b.id === bookmarkId);
+            const idx = src.bookmarks.findIndex(
+              (b: any) => b.id === bookmarkId,
+            );
             if (idx >= 0) moved = src.bookmarks.splice(idx, 1)[0];
           }
         }
         if (!moved) {
           for (const f of copy) {
             const idx = f.bookmarks.findIndex((b: any) => b.id === bookmarkId);
-            if (idx >= 0) { moved = f.bookmarks.splice(idx, 1)[0]; break; }
+            if (idx >= 0) {
+              moved = f.bookmarks.splice(idx, 1)[0];
+              break;
+            }
           }
         }
 
         // Insert into target
-        const tgt = copy.find(f => f.id === toParentId);
+        const tgt = copy.find((f) => f.id === toParentId);
         if (tgt && moved) {
-          if (typeof toIndex === 'number' && toIndex >= 0) {
+          if (typeof toIndex === "number" && toIndex >= 0) {
             const ins = Math.min(toIndex, tgt.bookmarks.length);
             tgt.bookmarks.splice(ins, 0, moved);
           } else {
@@ -183,10 +329,9 @@
         return copy;
       });
     } catch (err) {
-      console.warn('Optimistic move failed:', err);
+      console.warn("Optimistic move failed:", err);
     }
   }
-
 
   // Header drag enter counter
   let headerDragEnterCount = 0;
@@ -207,7 +352,7 @@
     const payload = getBookmarkDragPayload(e);
     if (payload) {
       e.preventDefault();
-      (e.dataTransfer as DataTransfer).dropEffect = 'move';
+      (e.dataTransfer as DataTransfer).dropEffect = "move";
       // Don't call markDropActive here to avoid redundant calls
     }
   }
@@ -216,68 +361,103 @@
     if (payload) {
       e.preventDefault();
       try {
-        console.log('🟦 HEADER DROP: Processing bookmark drop on folder header');
-        console.log('🟦 DEBUG: Drop parameters:', {
+        console.log(
+          "🟦 HEADER DROP: Processing bookmark drop on folder header",
+        );
+        console.log("🟦 DEBUG: Drop parameters:", {
           bookmarkId: payload.id,
           targetFolderId: folder.id,
           targetIndex: 0,
           folderTitle: folder.title,
-          bookmarkParentId: payload.parentId
+          bookmarkParentId: payload.parentId,
         });
-        
+
         // Perform move to beginning of folder when dropping on header
-        const result = await BookmarkEditAPI.moveBookmark(payload.id, { parentId: folder.id, index: 0 });
-        
-        console.log('🟦 DEBUG: Header drop API result:', result);
-        
+        const result = await BookmarkEditAPI.moveBookmark(payload.id, {
+          parentId: folder.id,
+          index: 0,
+        });
+
+        console.log("🟦 DEBUG: Header drop API result:", result);
+
         if (result.success) {
-          console.log('🟦 ✅ SUCCESS: Header drop move completed');
+          console.log("🟦 ✅ SUCCESS: Header drop move completed");
           // Optimistic UI update for immediate correctness
           optimisticMove(payload.id, payload.parentId || null, folder.id, 0);
           BookmarkManager.clearCache();
           await refreshBookmarks();
-          
+
           // CRITICAL DEBUG: Verify bookmark persistence after header drop
           setTimeout(async () => {
             try {
-              console.log('🟦 🚨 POST-HEADER-DROP VERIFICATION: Checking bookmark persistence...');
+              console.log(
+                "🟦 🚨 POST-HEADER-DROP VERIFICATION: Checking bookmark persistence...",
+              );
               const folders = await BookmarkManager.getOrganizedBookmarks();
-              const targetFolder = folders.find(f => f.id === folder.id);
-              
+              const targetFolder = folders.find((f) => f.id === folder.id);
+
               if (targetFolder) {
-                const foundBookmark = targetFolder.bookmarks.find(b => b.id === payload.id);
+                const foundBookmark = targetFolder.bookmarks.find(
+                  (b) => b.id === payload.id,
+                );
                 if (foundBookmark) {
-                  console.log('🟦 ✅ POST-HEADER-DROP: Bookmark found at index:', targetFolder.bookmarks.indexOf(foundBookmark));
+                  console.log(
+                    "🟦 ✅ POST-HEADER-DROP: Bookmark found at index:",
+                    targetFolder.bookmarks.indexOf(foundBookmark),
+                  );
                 } else {
-                  console.error('🟦 🚨 CRITICAL ERROR: Bookmark disappeared after header drop! ID:', payload.id);
+                  console.error(
+                    "🟦 🚨 CRITICAL ERROR: Bookmark disappeared after header drop! ID:",
+                    payload.id,
+                  );
                 }
               } else {
-                console.error('🟦 🚨 CRITICAL ERROR: Target folder not found after header drop!');
+                console.error(
+                  "🟦 🚨 CRITICAL ERROR: Target folder not found after header drop!",
+                );
               }
             } catch (verifyError) {
-              console.error('🟦 🚨 POST-HEADER-DROP VERIFICATION FAILED:', verifyError);
+              console.error(
+                "🟦 🚨 POST-HEADER-DROP VERIFICATION FAILED:",
+                verifyError,
+              );
             }
           }, 200);
         } else {
-          console.error('🟦 ❌ FAILED: Failed to move bookmark via native header drop:', result.error);
+          console.error(
+            "🟦 ❌ FAILED: Failed to move bookmark via native header drop:",
+            result.error,
+          );
         }
       } catch (err) {
-        console.error('🟦 🚨 ERROR: Error during native header drop move:', err);
+        console.error(
+          "🟦 🚨 ERROR: Error during native header drop move:",
+          err,
+        );
       } finally {
         markDropActive(folderHeader as HTMLElement, false);
       }
     }
   }
-  function getDraggingBookmarkInfo(): { id: string | null; parentId: string | null } {
+  function getDraggingBookmarkInfo(): {
+    id: string | null;
+    parentId: string | null;
+  } {
     // Prefer global candidate
-    const gc = (typeof window !== 'undefined' ? (window as any).__fav_dragCandidate : null);
+    const gc =
+      typeof window !== "undefined"
+        ? (window as any).__fav_dragCandidate
+        : null;
     if (gc && gc.id) return { id: gc.id, parentId: gc.parentId || null };
     // Fallback: find element marked as dragging
-    const el = document.querySelector('.bookmark-item.dragging, [data-dragging="true"]') as HTMLElement | null;
+    const el = document.querySelector(
+      '.bookmark-item.dragging, [data-dragging="true"]',
+    ) as HTMLElement | null;
     if (el) {
-      const id = el.getAttribute('data-id') || el.getAttribute('data-bookmark-id');
-      const parent = el.closest('.folder-container') as HTMLElement | null;
-      const parentId = parent?.getAttribute('data-folder-id') || null;
+      const id =
+        el.getAttribute("data-id") || el.getAttribute("data-bookmark-id");
+      const parent = el.closest(".folder-container") as HTMLElement | null;
+      const parentId = parent?.getAttribute("data-folder-id") || null;
       return { id: id || null, parentId };
     }
     return { id: null, parentId: null };
@@ -287,45 +467,59 @@
   async function onHeaderMouseUp(_e: MouseEvent) {
     try {
       const info = getDraggingBookmarkInfo();
-      console.log('[DnD Debug] Header mouseup triggered for folder', folder.title);
-      console.log('[DnD Debug] Dragging info:', info);
-      console.log('[DnD Debug] Target folder details:', {
+      console.log(
+        "[DnD Debug] Header mouseup triggered for folder",
+        folder.title,
+      );
+      console.log("[DnD Debug] Dragging info:", info);
+      console.log("[DnD Debug] Target folder details:", {
         folderId: folder.id,
         folderTitle: folder.title,
         destFolderId: folder.id, // This should be the destination
-        targetIndex: 0
+        targetIndex: 0,
       });
-      
+
       if (info.id) {
         if (info.parentId !== folder.id) {
-          console.log('[DnD Debug] Executing bookmark move:', {
+          console.log("[DnD Debug] Executing bookmark move:", {
             bookmarkId: info.id,
             fromParentId: info.parentId,
             toParentId: folder.id,
             targetIndex: 0,
-            destFolderId: folder.id // CRITICAL: This ensures destFolderId is not empty
+            destFolderId: folder.id, // CRITICAL: This ensures destFolderId is not empty
           });
-          
-          const result = await BookmarkEditAPI.moveBookmark(info.id, { parentId: folder.id, index: 0 });
+
+          const result = await BookmarkEditAPI.moveBookmark(info.id, {
+            parentId: folder.id,
+            index: 0,
+          });
           if (result.success) {
-            console.log('[DnD Debug] Move success for', info.id, '->', folder.id);
+            console.log(
+              "[DnD Debug] Move success for",
+              info.id,
+              "->",
+              folder.id,
+            );
             // Optimistic UI update
             optimisticMove(info.id, info.parentId, folder.id, 0);
             BookmarkManager.clearCache();
             await refreshBookmarks();
           } else {
-            console.error('[DnD Debug] Failed to move bookmark:', result.error);
+            console.error("[DnD Debug] Failed to move bookmark:", result.error);
           }
         } else {
-          console.log('[DnD Debug] Source and destination are the same, skipping move');
+          console.log(
+            "[DnD Debug] Source and destination are the same, skipping move",
+          );
         }
       } else {
-        console.warn('[DnD Debug] No dragging bookmark info available');
+        console.warn("[DnD Debug] No dragging bookmark info available");
       }
     } catch (err) {
-      console.error('[DnD Debug] Error during manual move:', err);
+      console.error("[DnD Debug] Error during manual move:", err);
     } finally {
-      if (typeof window !== 'undefined') (window as any).__fav_dragCandidate = null;
+      if (typeof window !== "undefined")
+        (window as any).__fav_dragCandidate = null;
       markDropActive(folderHeader as HTMLElement, false);
     }
   }
@@ -362,7 +556,7 @@
     const payload = getBookmarkDragPayload(e);
     if (payload) {
       e.preventDefault();
-      (e.dataTransfer as DataTransfer).dropEffect = 'move';
+      (e.dataTransfer as DataTransfer).dropEffect = "move";
       // Don't call markDropActive here to avoid redundant calls
     }
   }
@@ -371,57 +565,93 @@
     if (payload) {
       e.preventDefault();
       try {
-        console.log('🟨 CONTAINER DROP: Processing bookmark drop on folder container');
+        console.log(
+          "🟨 CONTAINER DROP: Processing bookmark drop on folder container",
+        );
         // Append to end by default when dropping on container
-        const appendIndex = Array.isArray(folder.bookmarks) ? folder.bookmarks.length : undefined;
-        
-        console.log('🟨 DEBUG: Container drop parameters:', {
+        const appendIndex = Array.isArray(folder.bookmarks)
+          ? folder.bookmarks.length
+          : undefined;
+
+        console.log("🟨 DEBUG: Container drop parameters:", {
           bookmarkId: payload.id,
           targetFolderId: folder.id,
           appendIndex: appendIndex,
           folderTitle: folder.title,
           folderBookmarkCount: folder.bookmarks.length,
-          bookmarkParentId: payload.parentId
+          bookmarkParentId: payload.parentId,
         });
-        
-        const result = await BookmarkEditAPI.moveBookmark(payload.id, { parentId: folder.id, index: appendIndex });
-        
-        console.log('🟨 DEBUG: Container drop API result:', result);
-        
+
+        const result = await BookmarkEditAPI.moveBookmark(payload.id, {
+          parentId: folder.id,
+          index: appendIndex,
+        });
+
+        console.log("🟨 DEBUG: Container drop API result:", result);
+
         if (result.success) {
-          console.log('🟨 ✅ SUCCESS: Container drop move completed');
+          console.log("🟨 ✅ SUCCESS: Container drop move completed");
           // Optimistic UI update for immediate correctness
-          optimisticMove(payload.id, payload.parentId || null, folder.id, appendIndex);
+          optimisticMove(
+            payload.id,
+            payload.parentId || null,
+            folder.id,
+            appendIndex,
+          );
           BookmarkManager.clearCache();
           await refreshBookmarks();
-          
+
           // CRITICAL DEBUG: Verify bookmark persistence after container drop
           setTimeout(async () => {
             try {
-              console.log('🟨 🚨 POST-CONTAINER-DROP VERIFICATION: Checking bookmark persistence...');
+              console.log(
+                "🟨 🚨 POST-CONTAINER-DROP VERIFICATION: Checking bookmark persistence...",
+              );
               const folders = await BookmarkManager.getOrganizedBookmarks();
-              const targetFolder = folders.find(f => f.id === folder.id);
-              
+              const targetFolder = folders.find((f) => f.id === folder.id);
+
               if (targetFolder) {
-                const foundBookmark = targetFolder.bookmarks.find(b => b.id === payload.id);
+                const foundBookmark = targetFolder.bookmarks.find(
+                  (b) => b.id === payload.id,
+                );
                 if (foundBookmark) {
-                  const actualIndex = targetFolder.bookmarks.indexOf(foundBookmark);
-                  console.log('🟨 ✅ POST-CONTAINER-DROP: Bookmark found at index:', actualIndex, 'expected around:', appendIndex);
+                  const actualIndex =
+                    targetFolder.bookmarks.indexOf(foundBookmark);
+                  console.log(
+                    "🟨 ✅ POST-CONTAINER-DROP: Bookmark found at index:",
+                    actualIndex,
+                    "expected around:",
+                    appendIndex,
+                  );
                 } else {
-                  console.error('🟨 🚨 CRITICAL ERROR: Bookmark disappeared after container drop! ID:', payload.id);
+                  console.error(
+                    "🟨 🚨 CRITICAL ERROR: Bookmark disappeared after container drop! ID:",
+                    payload.id,
+                  );
                 }
               } else {
-                console.error('🟨 🚨 CRITICAL ERROR: Target folder not found after container drop!');
+                console.error(
+                  "🟨 🚨 CRITICAL ERROR: Target folder not found after container drop!",
+                );
               }
             } catch (verifyError) {
-              console.error('🟨 🚨 POST-CONTAINER-DROP VERIFICATION FAILED:', verifyError);
+              console.error(
+                "🟨 🚨 POST-CONTAINER-DROP VERIFICATION FAILED:",
+                verifyError,
+              );
             }
           }, 200);
         } else {
-          console.error('🟨 ❌ FAILED: Failed to move bookmark via native container drop:', result.error);
+          console.error(
+            "🟨 ❌ FAILED: Failed to move bookmark via native container drop:",
+            result.error,
+          );
         }
       } catch (err) {
-        console.error('🟨 🚨 ERROR: Error during native container drop move:', err);
+        console.error(
+          "🟨 🚨 ERROR: Error during native container drop move:",
+          err,
+        );
       } finally {
         markDropActive(folderElement as HTMLElement, false);
       }
@@ -431,48 +661,64 @@
   async function onContainerMouseUp(_e: MouseEvent) {
     try {
       const info = getDraggingBookmarkInfo();
-      console.log('[DnD Debug] Container mouseup triggered for folder', folder.title);
-      console.log('[DnD Debug] Dragging info:', info);
-      
-      const appendIndex = Array.isArray(folder.bookmarks) ? folder.bookmarks.length : undefined;
-      console.log('[DnD Debug] Container drop target details:', {
+      console.log(
+        "[DnD Debug] Container mouseup triggered for folder",
+        folder.title,
+      );
+      console.log("[DnD Debug] Dragging info:", info);
+
+      const appendIndex = Array.isArray(folder.bookmarks)
+        ? folder.bookmarks.length
+        : undefined;
+      console.log("[DnD Debug] Container drop target details:", {
         folderId: folder.id,
         folderTitle: folder.title,
         destFolderId: folder.id, // This should be the destination
         targetIndex: appendIndex,
-        appendToEnd: true
+        appendToEnd: true,
       });
-      
+
       if (info.id) {
         if (info.parentId !== folder.id) {
-          console.log('[DnD Debug] Executing container bookmark move:', {
+          console.log("[DnD Debug] Executing container bookmark move:", {
             bookmarkId: info.id,
             fromParentId: info.parentId,
             toParentId: folder.id,
             targetIndex: appendIndex,
-            destFolderId: folder.id // CRITICAL: This ensures destFolderId is not empty
+            destFolderId: folder.id, // CRITICAL: This ensures destFolderId is not empty
           });
-          
-          const result = await BookmarkEditAPI.moveBookmark(info.id, { parentId: folder.id, index: appendIndex });
+
+          const result = await BookmarkEditAPI.moveBookmark(info.id, {
+            parentId: folder.id,
+            index: appendIndex,
+          });
           if (result.success) {
-            console.log('[DnD Debug] Container move success for', info.id, '->', folder.id);
+            console.log(
+              "[DnD Debug] Container move success for",
+              info.id,
+              "->",
+              folder.id,
+            );
             // Optimistic UI update
             optimisticMove(info.id, info.parentId, folder.id, appendIndex);
             BookmarkManager.clearCache();
             await refreshBookmarks();
           } else {
-            console.error('[DnD Debug] Failed to move bookmark:', result.error);
+            console.error("[DnD Debug] Failed to move bookmark:", result.error);
           }
         } else {
-          console.log('[DnD Debug] Source and destination are the same, skipping move');
+          console.log(
+            "[DnD Debug] Source and destination are the same, skipping move",
+          );
         }
       } else {
-        console.warn('[DnD Debug] No dragging bookmark info available');
+        console.warn("[DnD Debug] No dragging bookmark info available");
       }
     } catch (err) {
-      console.error('[DnD Debug] Error during manual move:', err);
+      console.error("[DnD Debug] Error during manual move:", err);
     } finally {
-      if (typeof window !== 'undefined') (window as any).__fav_dragCandidate = null;
+      if (typeof window !== "undefined")
+        (window as any).__fav_dragCandidate = null;
       markDropActive(folderElement as HTMLElement, false);
     }
   }
@@ -506,14 +752,22 @@
     if (!folderElement) {
       if (dragDropRetryCount < MAX_DRAGDROP_RETRIES) {
         dragDropRetryCount++;
-        console.log('Folder element not available yet for:', folder.title, `- scheduling retry ${dragDropRetryCount}/${MAX_DRAGDROP_RETRIES}...`);
+        console.log(
+          "Folder element not available yet for:",
+          folder.title,
+          `- scheduling retry ${dragDropRetryCount}/${MAX_DRAGDROP_RETRIES}...`,
+        );
 
         // Retry after a short delay to allow DOM to be ready
         dragDropRetryTimeout = setTimeout(() => {
           updateEnhancedDragDropState();
         }, 100);
       } else {
-        console.warn('Max retries reached for folder element:', folder.title, '- giving up on drag-drop setup');
+        console.warn(
+          "Max retries reached for folder element:",
+          folder.title,
+          "- giving up on drag-drop setup",
+        );
         dragDropRetryCount = 0; // Reset for potential future attempts
       }
       return;
@@ -523,183 +777,298 @@
     dragDropRetryCount = 0;
 
     if (isEditMode) {
-      console.log('Enabling enhanced drag-drop for folder:', folder.title);
+      console.log("Enabling enhanced drag-drop for folder:", folder.title);
 
       // Initialize the enhanced system if not already done
       if (!EnhancedDragDropManager.isEditModeEnabled()) {
-        EnhancedDragDropManager.enableEditMode().catch(error => {
-          console.error('Failed to enable enhanced edit mode:', error);
+        EnhancedDragDropManager.enableEditMode().catch((error) => {
+          console.error("Failed to enable enhanced edit mode:", error);
         });
       }
 
       // Force folder setup after element is available
       setTimeout(() => {
         if (folderElement && EnhancedDragDropManager.isEditModeEnabled()) {
-          console.log('🦁 Forcing folder setup for:', folder.title);
+          console.log("🦁 Forcing folder setup for:", folder.title);
           EnhancedDragDropManager.setupFolderDragDrop();
           // Also ensure this folder acts as a drop target for bookmarks (inter-folder move)
           setupFolderDropZones();
         }
       }, 200);
     } else {
-      console.log('Disabling enhanced drag-drop for folder:', folder.title);
+      console.log("Disabling enhanced drag-drop for folder:", folder.title);
       EnhancedDragDropManager.disableEditMode();
     }
   }
-
 
   // Ensure this folder (header and container) accepts bookmark drops for inter-folder moves
   function setupFolderDropZones() {
     if (!folderElement) return;
 
-    const DragManager = BraveDragDropManager.isBraveBrowser() ? BraveDragDropManager : DragDropManager;
+    const DragManager = BraveDragDropManager.isBraveBrowser()
+      ? BraveDragDropManager
+      : DragDropManager;
 
     // Prevent double-initialization
-    const markInitialized = (el: HTMLElement) => el.setAttribute('data-drop-initialized', 'true');
-    const isInitialized = (el: HTMLElement | null | undefined) => !!(el && el.getAttribute('data-drop-initialized'));
+    const markInitialized = (el: HTMLElement) =>
+      el.setAttribute("data-drop-initialized", "true");
+    const isInitialized = (el: HTMLElement | null | undefined) =>
+      !!(el && el.getAttribute("data-drop-initialized"));
 
     // Header drop: insert at beginning (index 0)
     if (folderHeader && !isInitialized(folderHeader)) {
-      DragManager.initializeDropZone(folderHeader as HTMLElement, { type: 'folder', targetId: folder.id, targetIndex: 0 }, {
-        acceptTypes: ['bookmark'],
-        onDragEnter: () => {
-          console.log('📥 Drag enter on folder header:', folder.title, folder.id);
-          folderHeader.classList.add('drop-zone-active', 'drop-target');
-          (folderHeader as HTMLElement).setAttribute('data-drop-active', 'true');
-        },
-        onDragLeave: () => {
-          console.log('📤 Drag leave on folder header:', folder.title, folder.id);
-          folderHeader.classList.remove('drop-zone-active', 'drop-target');
-          (folderHeader as HTMLElement).removeAttribute('data-drop-active');
-        },
-        onDrop: async (dragData) => {
-          console.log('✅ Drop on folder header:', folder.title, folder.id, 'dragData:', dragData);
-          try {
-            console.log('🟣 ENHANCED HEADER DROP: Processing bookmark drop via enhanced system');
-            console.log('🟣 DEBUG: Enhanced header drop parameters:', {
-              bookmarkId: dragData.id,
-              targetFolderId: folder.id,
-              targetIndex: 0,
-              folderTitle: folder.title,
-              dragDataTitle: dragData.title
-            });
-            
-            const result = await BookmarkEditAPI.moveBookmark(dragData.id, { parentId: folder.id, index: 0 });
-            
-            console.log('🟣 DEBUG: Enhanced header drop API result:', result);
-            
-            if (result.success) {
-              console.log('🟣 ✅ SUCCESS: Enhanced header drop move completed');
-              BookmarkManager.clearCache();
-              await refreshBookmarks();
-              
-              // CRITICAL DEBUG: Verify bookmark persistence after enhanced header drop
-              setTimeout(async () => {
-                try {
-                  console.log('🟣 🚨 POST-ENHANCED-HEADER-DROP VERIFICATION: Checking bookmark persistence...');
-                  const folders = await BookmarkManager.getOrganizedBookmarks();
-                  const targetFolder = folders.find(f => f.id === folder.id);
-                  
-                  if (targetFolder) {
-                    const foundBookmark = targetFolder.bookmarks.find(b => b.id === dragData.id);
-                    if (foundBookmark) {
-                      console.log('🟣 ✅ POST-ENHANCED-HEADER-DROP: Bookmark found at index:', targetFolder.bookmarks.indexOf(foundBookmark));
+      DragManager.initializeDropZone(
+        folderHeader as HTMLElement,
+        { type: "folder", targetId: folder.id, targetIndex: 0 },
+        {
+          acceptTypes: ["bookmark"],
+          onDragEnter: () => {
+            console.log(
+              "📥 Drag enter on folder header:",
+              folder.title,
+              folder.id,
+            );
+            folderHeader.classList.add("drop-zone-active", "drop-target");
+            (folderHeader as HTMLElement).setAttribute(
+              "data-drop-active",
+              "true",
+            );
+          },
+          onDragLeave: () => {
+            console.log(
+              "📤 Drag leave on folder header:",
+              folder.title,
+              folder.id,
+            );
+            folderHeader.classList.remove("drop-zone-active", "drop-target");
+            (folderHeader as HTMLElement).removeAttribute("data-drop-active");
+          },
+          onDrop: async (dragData) => {
+            console.log(
+              "✅ Drop on folder header:",
+              folder.title,
+              folder.id,
+              "dragData:",
+              dragData,
+            );
+            try {
+              console.log(
+                "🟣 ENHANCED HEADER DROP: Processing bookmark drop via enhanced system",
+              );
+              console.log("🟣 DEBUG: Enhanced header drop parameters:", {
+                bookmarkId: dragData.id,
+                targetFolderId: folder.id,
+                targetIndex: 0,
+                folderTitle: folder.title,
+                dragDataTitle: dragData.title,
+              });
+
+              const result = await BookmarkEditAPI.moveBookmark(dragData.id, {
+                parentId: folder.id,
+                index: 0,
+              });
+
+              console.log("🟣 DEBUG: Enhanced header drop API result:", result);
+
+              if (result.success) {
+                console.log(
+                  "🟣 ✅ SUCCESS: Enhanced header drop move completed",
+                );
+                BookmarkManager.clearCache();
+                await refreshBookmarks();
+
+                // CRITICAL DEBUG: Verify bookmark persistence after enhanced header drop
+                setTimeout(async () => {
+                  try {
+                    console.log(
+                      "🟣 🚨 POST-ENHANCED-HEADER-DROP VERIFICATION: Checking bookmark persistence...",
+                    );
+                    const folders =
+                      await BookmarkManager.getOrganizedBookmarks();
+                    const targetFolder = folders.find(
+                      (f) => f.id === folder.id,
+                    );
+
+                    if (targetFolder) {
+                      const foundBookmark = targetFolder.bookmarks.find(
+                        (b) => b.id === dragData.id,
+                      );
+                      if (foundBookmark) {
+                        console.log(
+                          "🟣 ✅ POST-ENHANCED-HEADER-DROP: Bookmark found at index:",
+                          targetFolder.bookmarks.indexOf(foundBookmark),
+                        );
+                      } else {
+                        console.error(
+                          "🟣 🚨 CRITICAL ERROR: Bookmark disappeared after enhanced header drop! ID:",
+                          dragData.id,
+                        );
+                      }
                     } else {
-                      console.error('🟣 🚨 CRITICAL ERROR: Bookmark disappeared after enhanced header drop! ID:', dragData.id);
+                      console.error(
+                        "🟣 🚨 CRITICAL ERROR: Target folder not found after enhanced header drop!",
+                      );
                     }
-                  } else {
-                    console.error('🟣 🚨 CRITICAL ERROR: Target folder not found after enhanced header drop!');
+                  } catch (verifyError) {
+                    console.error(
+                      "🟣 🚨 POST-ENHANCED-HEADER-DROP VERIFICATION FAILED:",
+                      verifyError,
+                    );
                   }
-                } catch (verifyError) {
-                  console.error('🟣 🚨 POST-ENHANCED-HEADER-DROP VERIFICATION FAILED:', verifyError);
-                }
-              }, 200);
-            } else {
-              console.error('🟣 ❌ FAILED: Failed to move bookmark on enhanced header drop:', result.error);
+                }, 200);
+              } else {
+                console.error(
+                  "🟣 ❌ FAILED: Failed to move bookmark on enhanced header drop:",
+                  result.error,
+                );
+              }
+            } catch (err) {
+              console.error(
+                "🟣 🚨 ERROR: Error moving bookmark on enhanced header drop:",
+                err,
+              );
             }
-          } catch (err) {
-            console.error('🟣 🚨 ERROR: Error moving bookmark on enhanced header drop:', err);
-          }
-          folderHeader.classList.remove('drop-zone-active', 'drop-target');
-          (folderHeader as HTMLElement).removeAttribute('data-drop-active');
-          return true;
-        }
-      });
+            folderHeader.classList.remove("drop-zone-active", "drop-target");
+            (folderHeader as HTMLElement).removeAttribute("data-drop-active");
+            return true;
+          },
+        },
+      );
       markInitialized(folderHeader as HTMLElement);
     }
 
     // Container drop: append to end (or to computed index)
     if (!isInitialized(folderElement as HTMLElement)) {
-      DragManager.initializeDropZone(folderElement as HTMLElement, { type: 'folder', targetId: folder.id }, {
-        acceptTypes: ['bookmark'],
-        onDragEnter: () => {
-          console.log('\ud83d\udce5 Drag enter on folder container:', folder.title, folder.id);
-          folderElement.classList.add('drop-zone-active', 'drop-target');
-          (folderElement as HTMLElement).setAttribute('data-drop-active', 'true');
-        },
-        onDragLeave: () => {
-          console.log('\ud83d\udce4 Drag leave on folder container:', folder.title, folder.id);
-          folderElement.classList.remove('drop-zone-active', 'drop-target');
-          (folderElement as HTMLElement).removeAttribute('data-drop-active');
-        },
-        onDrop: async (dragData) => {
-          console.log('\u2705 Drop on folder container:', folder.title, folder.id, 'dragData:', dragData);
-          try {
-            console.log('🟪 ENHANCED CONTAINER DROP: Processing bookmark drop via enhanced system');
-            // Append to end by default
-            const appendIndex = Array.isArray(folder.bookmarks) ? folder.bookmarks.length : undefined;
-            
-            console.log('🟪 DEBUG: Enhanced container drop parameters:', {
-              bookmarkId: dragData.id,
-              targetFolderId: folder.id,
-              appendIndex: appendIndex,
-              folderTitle: folder.title,
-              folderBookmarkCount: folder.bookmarks.length,
-              dragDataTitle: dragData.title
-            });
-            
-            const result = await BookmarkEditAPI.moveBookmark(dragData.id, { parentId: folder.id, index: appendIndex });
-            
-            console.log('🟪 DEBUG: Enhanced container drop API result:', result);
-            
-            if (result.success) {
-              console.log('🟪 ✅ SUCCESS: Enhanced container drop move completed');
-              BookmarkManager.clearCache();
-              await refreshBookmarks();
-              
-              // CRITICAL DEBUG: Verify bookmark persistence after enhanced container drop
-              setTimeout(async () => {
-                try {
-                  console.log('🟪 🚨 POST-ENHANCED-CONTAINER-DROP VERIFICATION: Checking bookmark persistence...');
-                  const folders = await BookmarkManager.getOrganizedBookmarks();
-                  const targetFolder = folders.find(f => f.id === folder.id);
-                  
-                  if (targetFolder) {
-                    const foundBookmark = targetFolder.bookmarks.find(b => b.id === dragData.id);
-                    if (foundBookmark) {
-                      const actualIndex = targetFolder.bookmarks.indexOf(foundBookmark);
-                      console.log('🟪 ✅ POST-ENHANCED-CONTAINER-DROP: Bookmark found at index:', actualIndex, 'expected around:', appendIndex);
+      DragManager.initializeDropZone(
+        folderElement as HTMLElement,
+        { type: "folder", targetId: folder.id },
+        {
+          acceptTypes: ["bookmark"],
+          onDragEnter: () => {
+            console.log(
+              "\ud83d\udce5 Drag enter on folder container:",
+              folder.title,
+              folder.id,
+            );
+            folderElement.classList.add("drop-zone-active", "drop-target");
+            (folderElement as HTMLElement).setAttribute(
+              "data-drop-active",
+              "true",
+            );
+          },
+          onDragLeave: () => {
+            console.log(
+              "\ud83d\udce4 Drag leave on folder container:",
+              folder.title,
+              folder.id,
+            );
+            folderElement.classList.remove("drop-zone-active", "drop-target");
+            (folderElement as HTMLElement).removeAttribute("data-drop-active");
+          },
+          onDrop: async (dragData) => {
+            console.log(
+              "\u2705 Drop on folder container:",
+              folder.title,
+              folder.id,
+              "dragData:",
+              dragData,
+            );
+            try {
+              console.log(
+                "🟪 ENHANCED CONTAINER DROP: Processing bookmark drop via enhanced system",
+              );
+              // Append to end by default
+              const appendIndex = Array.isArray(folder.bookmarks)
+                ? folder.bookmarks.length
+                : undefined;
+
+              console.log("🟪 DEBUG: Enhanced container drop parameters:", {
+                bookmarkId: dragData.id,
+                targetFolderId: folder.id,
+                appendIndex: appendIndex,
+                folderTitle: folder.title,
+                folderBookmarkCount: folder.bookmarks.length,
+                dragDataTitle: dragData.title,
+              });
+
+              const result = await BookmarkEditAPI.moveBookmark(dragData.id, {
+                parentId: folder.id,
+                index: appendIndex,
+              });
+
+              console.log(
+                "🟪 DEBUG: Enhanced container drop API result:",
+                result,
+              );
+
+              if (result.success) {
+                console.log(
+                  "🟪 ✅ SUCCESS: Enhanced container drop move completed",
+                );
+                BookmarkManager.clearCache();
+                await refreshBookmarks();
+
+                // CRITICAL DEBUG: Verify bookmark persistence after enhanced container drop
+                setTimeout(async () => {
+                  try {
+                    console.log(
+                      "🟪 🚨 POST-ENHANCED-CONTAINER-DROP VERIFICATION: Checking bookmark persistence...",
+                    );
+                    const folders =
+                      await BookmarkManager.getOrganizedBookmarks();
+                    const targetFolder = folders.find(
+                      (f) => f.id === folder.id,
+                    );
+
+                    if (targetFolder) {
+                      const foundBookmark = targetFolder.bookmarks.find(
+                        (b) => b.id === dragData.id,
+                      );
+                      if (foundBookmark) {
+                        const actualIndex =
+                          targetFolder.bookmarks.indexOf(foundBookmark);
+                        console.log(
+                          "🟪 ✅ POST-ENHANCED-CONTAINER-DROP: Bookmark found at index:",
+                          actualIndex,
+                          "expected around:",
+                          appendIndex,
+                        );
+                      } else {
+                        console.error(
+                          "🟪 🚨 CRITICAL ERROR: Bookmark disappeared after enhanced container drop! ID:",
+                          dragData.id,
+                        );
+                      }
                     } else {
-                      console.error('🟪 🚨 CRITICAL ERROR: Bookmark disappeared after enhanced container drop! ID:', dragData.id);
+                      console.error(
+                        "🟪 🚨 CRITICAL ERROR: Target folder not found after enhanced container drop!",
+                      );
                     }
-                  } else {
-                    console.error('🟪 🚨 CRITICAL ERROR: Target folder not found after enhanced container drop!');
+                  } catch (verifyError) {
+                    console.error(
+                      "🟪 🚨 POST-ENHANCED-CONTAINER-DROP VERIFICATION FAILED:",
+                      verifyError,
+                    );
                   }
-                } catch (verifyError) {
-                  console.error('🟪 🚨 POST-ENHANCED-CONTAINER-DROP VERIFICATION FAILED:', verifyError);
-                }
-              }, 200);
-            } else {
-              console.error('🟪 ❌ FAILED: Failed to move bookmark on enhanced container drop:', result.error);
+                }, 200);
+              } else {
+                console.error(
+                  "🟪 ❌ FAILED: Failed to move bookmark on enhanced container drop:",
+                  result.error,
+                );
+              }
+            } catch (err) {
+              console.error(
+                "🟪 🚨 ERROR: Error moving bookmark on enhanced container drop:",
+                err,
+              );
             }
-          } catch (err) {
-            console.error('🟪 🚨 ERROR: Error moving bookmark on enhanced container drop:', err);
-          }
-          folderElement.classList.remove('drop-zone-active', 'drop-target');
-          (folderElement as HTMLElement).removeAttribute('data-drop-active');
-          return true;
-        }
-      });
+            folderElement.classList.remove("drop-zone-active", "drop-target");
+            (folderElement as HTMLElement).removeAttribute("data-drop-active");
+            return true;
+          },
+        },
+      );
 
       markInitialized(folderElement as HTMLElement);
     }
@@ -711,10 +1080,9 @@
       const folders = await BookmarkManager.getOrganizedBookmarks();
       bookmarkFolders.set(folders);
     } catch (error) {
-      console.error('Failed to refresh bookmarks:', error);
+      console.error("Failed to refresh bookmarks:", error);
     }
   }
-
 
   // Handle save-all-edits event
   function handleSaveAllEdits() {
@@ -730,9 +1098,15 @@
       if (!EnhancedDragDropManager.isEditModeEnabled() && isEditMode) {
         const initResult = await EnhancedDragDropManager.initialize();
         if (initResult.success) {
-          console.log('✅ Enhanced drag-drop system initialized for folder:', folder.title);
+          console.log(
+            "✅ Enhanced drag-drop system initialized for folder:",
+            folder.title,
+          );
         } else {
-          console.error('❌ Failed to initialize enhanced drag-drop:', initResult.error);
+          console.error(
+            "❌ Failed to initialize enhanced drag-drop:",
+            initResult.error,
+          );
         }
       }
 
@@ -749,112 +1123,144 @@
 
     initializeAsync();
 
-	    // Global mouse bridge: capture source bookmark on mousedown at document level (Playwright mouse flow)
-	    if (typeof window !== 'undefined' && !(window as any).__fav_docMouseBridge) {
-	      const onDocMouseDown = (e: MouseEvent) => {
-	        const t = e.target as HTMLElement | null;
-	        const itemEl = t && (t.closest?.('.bookmark-item[data-bookmark-id]') as HTMLElement | null);
-	        if (!itemEl) return;
-	        const id = itemEl.getAttribute('data-bookmark-id') || itemEl.getAttribute('data-id') || '';
-	        const parentId = (itemEl.closest('[data-folder-id]') as HTMLElement | null)?.getAttribute('data-folder-id') || '';
-	        if (id) {
-	          (window as any).__fav_dragCandidate = { id, parentId };
-	          // Optional visual cue to aid getDraggingBookmarkInfo fallback
-	          itemEl.setAttribute('data-dragging', 'true');
-	          itemEl.classList.add('dragging');
-	          setTimeout(() => {
-	            itemEl.removeAttribute('data-dragging');
-	          }, 2000);
-	        }
-	      };
-	      document.addEventListener('mousedown', onDocMouseDown, true);
-	      (window as any).__fav_docMouseBridge = true;
-	    }
+    // Global mouse bridge: capture source bookmark on mousedown at document level (Playwright mouse flow)
+    if (
+      typeof window !== "undefined" &&
+      !(window as any).__fav_docMouseBridge
+    ) {
+      const onDocMouseDown = (e: MouseEvent) => {
+        const t = e.target as HTMLElement | null;
+        const itemEl =
+          t &&
+          (t.closest?.(
+            ".bookmark-item[data-bookmark-id]",
+          ) as HTMLElement | null);
+        if (!itemEl) return;
+        const id =
+          itemEl.getAttribute("data-bookmark-id") ||
+          itemEl.getAttribute("data-id") ||
+          "";
+        const parentId =
+          (
+            itemEl.closest("[data-folder-id]") as HTMLElement | null
+          )?.getAttribute("data-folder-id") || "";
+        if (id) {
+          (window as any).__fav_dragCandidate = { id, parentId };
+          // Optional visual cue to aid getDraggingBookmarkInfo fallback
+          itemEl.setAttribute("data-dragging", "true");
+          itemEl.classList.add("dragging");
+          setTimeout(() => {
+            itemEl.removeAttribute("data-dragging");
+          }, 2000);
+        }
+      };
+      document.addEventListener("mousedown", onDocMouseDown, true);
+      (window as any).__fav_docMouseBridge = true;
+    }
 
-	    // Global mouseup bridge: perform move when releasing over a folder/header/grid
-	    if (typeof window !== 'undefined' && !(window as any).__fav_docMouseUpBridge) {
-	      const onDocMouseUp = async (e: MouseEvent) => {
-	        try {
-	          console.log('[DnD Fallback] mouseup at', e.target);
-	          const t = e.target as HTMLElement | null;
-	          if (!t) {
-	            console.log('[DnD Fallback] No target element');
-	            return;
-	          }
-	          
-	          const container = (t.closest?.('.folder-header[data-folder-id], .bookmarks-grid[data-folder-id], .folder-container[data-folder-id]') as HTMLElement | null);
-	          console.log('[DnD Fallback] Container found:', container?.className || 'none');
-	          
-	          if (!container) {
-	            console.log('[DnD Fallback] No container found');
-	            return;
-	          }
-	          
-	          const toParentId = container.getAttribute('data-folder-id') || '';
-	          console.log('[DnD Fallback] Target folder ID:', toParentId);
-	          
-	          if (!toParentId) {
-	            console.log('[DnD Fallback] No target folder ID found');
-	            return;
-	          }
-	          
-	          const gc = (typeof window !== 'undefined' ? (window as any).__fav_dragCandidate : null) || {};
-	          const fromId = gc.id;
-	          const fromParentId = gc.parentId;
-	          
-	          console.log('[DnD Fallback] Debug log:', {
-	            bookmarkId: fromId || '',
-	            bookmarkTitle: gc.title || 'Unknown',
-	            currentParent: fromParentId || '',
-	            destFolderId: toParentId, // CRITICAL: This should not be empty
-	            dropHandled: true,
-	            overContainer: !!container,
-	            overHeader: !!t.closest?.('.folder-header')
-	          });
-	          
-	          if (!fromId) {
-	            console.log('[DnD Fallback] No source bookmark captured');
-	            return; // No source captured
-	          }
-	          
-	          // Determine placement: header => index 0, otherwise append
-	          const isHeader = !!t.closest?.('.folder-header');
-	          const toIndex = isHeader ? 0 : undefined;
-	          
-	          console.log('[DnD Fallback] Executing move:', {
-	            bookmarkId: fromId,
-	            fromParentId: fromParentId,
-	            destFolderId: toParentId,
-	            targetIndex: toIndex,
-	            isHeader: isHeader
-	          });
-	          
-	          const result = await BookmarkEditAPI.moveBookmark(fromId, { parentId: toParentId, index: toIndex });
-	          if (result?.success) {
-	            console.log('[DnD Fallback] Move successful');
-	            // Clear cache and refresh to reflect changes
-	            BookmarkManager.clearCache();
-	            await refreshBookmarks();
-	          } else {
-	            console.error('[DnD Fallback] Failed to move bookmark', fromId, '->', toParentId, result?.error);
-	          }
-	        } catch (err) {
-	          console.error('[DnD Fallback] Error handling mouseup drop:', err);
-	        } finally {
-	          if (typeof window !== 'undefined') (window as any).__fav_dragCandidate = null;
-	        }
-	      };
-	      document.addEventListener('mouseup', onDocMouseUp, true);
-	      (window as any).__fav_docMouseUpBridge = true;
-	    }
+    // Global mouseup bridge: perform move when releasing over a folder/header/grid
+    if (
+      typeof window !== "undefined" &&
+      !(window as any).__fav_docMouseUpBridge
+    ) {
+      const onDocMouseUp = async (e: MouseEvent) => {
+        try {
+          console.log("[DnD Fallback] mouseup at", e.target);
+          const t = e.target as HTMLElement | null;
+          if (!t) {
+            console.log("[DnD Fallback] No target element");
+            return;
+          }
 
+          const container = t.closest?.(
+            ".folder-header[data-folder-id], .bookmarks-grid[data-folder-id], .folder-container[data-folder-id]",
+          ) as HTMLElement | null;
+          console.log(
+            "[DnD Fallback] Container found:",
+            container?.className || "none",
+          );
 
+          if (!container) {
+            console.log("[DnD Fallback] No container found");
+            return;
+          }
+
+          const toParentId = container.getAttribute("data-folder-id") || "";
+          console.log("[DnD Fallback] Target folder ID:", toParentId);
+
+          if (!toParentId) {
+            console.log("[DnD Fallback] No target folder ID found");
+            return;
+          }
+
+          const gc =
+            (typeof window !== "undefined"
+              ? (window as any).__fav_dragCandidate
+              : null) || {};
+          const fromId = gc.id;
+          const fromParentId = gc.parentId;
+
+          console.log("[DnD Fallback] Debug log:", {
+            bookmarkId: fromId || "",
+            bookmarkTitle: gc.title || "Unknown",
+            currentParent: fromParentId || "",
+            destFolderId: toParentId, // CRITICAL: This should not be empty
+            dropHandled: true,
+            overContainer: !!container,
+            overHeader: !!t.closest?.(".folder-header"),
+          });
+
+          if (!fromId) {
+            console.log("[DnD Fallback] No source bookmark captured");
+            return; // No source captured
+          }
+
+          // Determine placement: header => index 0, otherwise append
+          const isHeader = !!t.closest?.(".folder-header");
+          const toIndex = isHeader ? 0 : undefined;
+
+          console.log("[DnD Fallback] Executing move:", {
+            bookmarkId: fromId,
+            fromParentId: fromParentId,
+            destFolderId: toParentId,
+            targetIndex: toIndex,
+            isHeader: isHeader,
+          });
+
+          const result = await BookmarkEditAPI.moveBookmark(fromId, {
+            parentId: toParentId,
+            index: toIndex,
+          });
+          if (result?.success) {
+            console.log("[DnD Fallback] Move successful");
+            // Clear cache and refresh to reflect changes
+            BookmarkManager.clearCache();
+            await refreshBookmarks();
+          } else {
+            console.error(
+              "[DnD Fallback] Failed to move bookmark",
+              fromId,
+              "->",
+              toParentId,
+              result?.error,
+            );
+          }
+        } catch (err) {
+          console.error("[DnD Fallback] Error handling mouseup drop:", err);
+        } finally {
+          if (typeof window !== "undefined")
+            (window as any).__fav_dragCandidate = null;
+        }
+      };
+      document.addEventListener("mouseup", onDocMouseUp, true);
+      (window as any).__fav_docMouseUpBridge = true;
+    }
 
     // Listen for save-all-edits event
-    document.addEventListener('save-all-edits', handleSaveAllEdits);
+    document.addEventListener("save-all-edits", handleSaveAllEdits);
 
     return () => {
-      document.removeEventListener('save-all-edits', handleSaveAllEdits);
+      document.removeEventListener("save-all-edits", handleSaveAllEdits);
     };
   });
 
@@ -898,7 +1304,7 @@
     data-folder-id={folder.id}
     data-folder-title={folder.title}
     on:click={toggleExpanded}
-    on:keydown={(e) => e.key === 'Enter' && toggleExpanded()}
+    on:keydown={(e) => e.key === "Enter" && toggleExpanded()}
     on:dragenter|preventDefault={onHeaderDragEnter}
     on:dragover|preventDefault={onHeaderDragOver}
     on:drop|preventDefault={onHeaderDrop}
@@ -920,7 +1326,11 @@
         on:click|stopPropagation
       />
     {:else}
-      <h3 class="folder-title" class:editable={isEditMode} on:dblclick={startRenaming}>
+      <h3
+        class="folder-title"
+        class:editable={isEditMode}
+        on:dblclick={startRenaming}
+      >
         {folder.title}
       </h3>
     {/if}
@@ -929,9 +1339,14 @@
 
     <!-- Edit mode actions -->
     {#if isEditMode && !isRenaming}
-      <button class="edit-button" on:click|stopPropagation={startRenaming} title="Rename folder">
+      <button
+        class="edit-button"
+        on:click|stopPropagation={startRenaming}
+        title="Rename folder"
+      >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
+          ></path>
           <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
         </svg>
       </button>
@@ -958,26 +1373,23 @@
       on:mouseup|capture|preventDefault={onContainerMouseUp}
       role="group"
     >
-      {#if $editMode}
-        <!-- Insertion point at the beginning -->
-        <BookmarkInsertionPoint
-          parentId={folder.id}
-          insertIndex={0}
-          folderTitle={folder.title}
-        />
-      {/if}
-
       {#each folder.bookmarks as bookmark, index (bookmark.id)}
-        <BookmarkItem {bookmark} />
+        <div
+          class="bookmark-wrapper"
+          class:is-dragging={draggingBookmarkId === bookmark.id}
+          draggable={$editMode}
+          on:dragstart={(e) => onGridDragStart(e, bookmark, index)}
+          on:dragover={(e) => onGridDragOver(e, index)}
+          on:dragleave={onGridDragLeave}
+          on:drop|preventDefault={(e) => onGridDrop(e, index)}
+          role="listitem"
+        >
+          <BookmarkItem {bookmark} />
 
-        {#if $editMode}
-          <!-- Insertion point after each bookmark -->
-          <BookmarkInsertionPoint
-            parentId={folder.id}
-            insertIndex={index + 1}
-            folderTitle={folder.title}
-          />
-        {/if}
+          {#if $editMode && dropTargetIndex === index}
+            <div class="drop-indicator {dropPosition}"></div>
+          {/if}
+        </div>
       {/each}
     </div>
   {/if}
@@ -1175,5 +1587,46 @@
     .edit-button:hover {
       background: rgba(255, 255, 255, 0.1);
     }
+  }
+
+  /* Grid Drag and Drop Styles */
+
+  .bookmark-wrapper {
+    position: relative;
+    transition:
+      transform 0.2s ease,
+      opacity 0.2s ease;
+    height: 100%;
+  }
+
+  .bookmark-wrapper.is-dragging {
+    opacity: 0.4;
+    transform: scale(0.95);
+  }
+
+  .drop-indicator {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background-color: #3b82f6;
+    border-radius: 2px;
+    pointer-events: none;
+    z-index: 10;
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.5);
+  }
+
+  .drop-indicator.left {
+    left: -6px;
+  }
+
+  .drop-indicator.right {
+    right: -6px;
+  }
+
+  /* Ensure the grid doesn't collapse */
+  .bookmarks-grid {
+    display: grid;
+    /* Maintain the grid layout defined in component */
   }
 </style>
