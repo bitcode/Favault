@@ -30,25 +30,35 @@ export class BookmarkManager {
     }
   }
 
+  // Chrome's absolute root node (id='0') has no title and must never appear as a user folder.
+  // IDs '1' (Bookmarks Bar) and '2' (Other Bookmarks) are allowed through — they surface
+  // root-level bookmarks that don't belong to any subfolder.
+  private static readonly SYSTEM_ROOT_IDS = new Set(['0']);
+
   private static organizeBookmarks(tree: BookmarkItem[]): BookmarkFolder[] {
     const folders: BookmarkFolder[] = [];
-    
+
     // Recursively traverse the bookmark tree
-    const traverse = (nodes: BookmarkItem[], parentTitle = '') => {
+    const traverse = (nodes: BookmarkItem[]) => {
       for (const node of nodes) {
         if (node.children) {
-          // This is a folder
-          const bookmarks = this.extractBookmarksFromFolder(node.children);
-          if (bookmarks.length > 0) {
+          // Skip Chrome system root containers (id 0, 1, 2) and any node with no title
+          // These are internal Chrome nodes, not real user folders
+          const isSystemRoot = this.SYSTEM_ROOT_IDS.has(node.id);
+          const hasTitle = node.title && node.title.trim() !== '';
+
+          if (!isSystemRoot && hasTitle) {
+            const bookmarks = this.extractBookmarksFromFolder(node.children);
             folders.push({
               id: node.id,
-              title: node.title || 'Untitled Folder',
+              title: node.title,
               bookmarks,
               color: this.generateFolderColor(node.title || node.id)
             });
           }
-          // Continue traversing subfolders
-          traverse(node.children, node.title);
+
+          // Always recurse into children to find nested user folders
+          traverse(node.children);
         }
       }
     };
@@ -67,19 +77,19 @@ export class BookmarkManager {
     for (let i = 0; i < identifier.length; i++) {
       hash = identifier.charCodeAt(i) + ((hash << 5) - hash);
     }
-    
+
     const hue = Math.abs(hash) % 360;
     return `hsl(${hue}, 65%, 75%)`;
   }
 
   static searchBookmarks(folders: BookmarkFolder[], query: string): BookmarkFolder[] {
     if (!query.trim()) return folders;
-    
+
     const searchTerm = query.toLowerCase();
-    
+
     return folders.map(folder => ({
       ...folder,
-      bookmarks: folder.bookmarks.filter(bookmark => 
+      bookmarks: folder.bookmarks.filter(bookmark =>
         bookmark.title.toLowerCase().includes(searchTerm) ||
         (bookmark.url && bookmark.url.toLowerCase().includes(searchTerm))
       )

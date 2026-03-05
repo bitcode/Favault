@@ -14,7 +14,7 @@ export interface FaviconConfig {
 export class FaviconManager {
   private static cache = new Map<string, string>();
   private static failedUrls = new Set<string>();
-  
+
   /**
    * Get favicon URL with intelligent fallback strategies
    */
@@ -50,19 +50,19 @@ export class FaviconManager {
 
       const urlObj = new URL(url);
       const domain = urlObj.hostname;
-      
+
       // Skip special protocols
       if (skipSpecialUrls && this.isSpecialProtocol(url)) {
         this.cache.set(url, '');
         return '';
       }
-      
+
       // Skip local URLs
       if (skipLocalUrls && this.isLocalUrl(domain)) {
         this.cache.set(url, '');
         return '';
       }
-      
+
       // Skip URLs with problematic query parameters that can cause loading issues
       if (this.hasProblematicQueryParams(url)) {
         // Try to clean the URL for favicon generation
@@ -71,12 +71,12 @@ export class FaviconManager {
         this.cache.set(url, faviconUrl);
         return faviconUrl;
       }
-      
+
       // Generate favicon URL based on environment
       const faviconUrl = this.generateFaviconUrl(url, domain, size);
       this.cache.set(url, faviconUrl);
       return faviconUrl;
-      
+
     } catch (error) {
       // Silently fail for favicon URL issues - don't spam console
       this.cache.set(url, '');
@@ -89,17 +89,17 @@ export class FaviconManager {
    */
   static handleFaviconError(img: HTMLImageElement, originalUrl: string): boolean {
     const currentSrc = img.src;
-    
+
     // Silently try fallback strategies in order (no console spam)
     const fallbacks = this.getFallbackStrategies(originalUrl, currentSrc);
-    
+
     for (const fallback of fallbacks) {
       if (fallback && fallback !== currentSrc && !this.failedUrls.has(fallback)) {
         img.src = fallback;
         return true; // Give fallback a chance
       }
     }
-    
+
     // All fallbacks exhausted - silently hide the image
     this.markUrlAsFailed(originalUrl);
     this.markUrlAsFailed(currentSrc);
@@ -135,25 +135,25 @@ export class FaviconManager {
 
   private static isSpecialProtocol(url: string): boolean {
     return url.startsWith('chrome://') ||
-           url.startsWith('chrome-extension://') ||
-           url.startsWith('moz-extension://') ||
-           url.startsWith('safari-web-extension://') ||
-           url.startsWith('ms-browser-extension://') ||
-           url.startsWith('file://') ||
-           url.startsWith('data:') ||
-           url.startsWith('javascript:') ||
-           url.startsWith('blob:');
+      url.startsWith('chrome-extension://') ||
+      url.startsWith('moz-extension://') ||
+      url.startsWith('safari-web-extension://') ||
+      url.startsWith('ms-browser-extension://') ||
+      url.startsWith('file://') ||
+      url.startsWith('data:') ||
+      url.startsWith('javascript:') ||
+      url.startsWith('blob:');
   }
 
   private static isLocalUrl(domain: string): boolean {
     return domain === 'localhost' ||
-           domain.startsWith('127.') ||
-           domain.startsWith('192.168.') ||
-           domain.startsWith('10.') ||
-           domain.endsWith('.local') ||
-           domain === '::1' ||
-           /^192\.168\.\d+\.\d+$/.test(domain) ||
-           /^10\.\d+\.\d+\.\d+$/.test(domain);
+      domain.startsWith('127.') ||
+      domain.startsWith('192.168.') ||
+      domain.startsWith('10.') ||
+      domain.endsWith('.local') ||
+      domain === '::1' ||
+      /^192\.168\.\d+\.\d+$/.test(domain) ||
+      /^10\.\d+\.\d+\.\d+$/.test(domain);
   }
 
   /**
@@ -162,22 +162,22 @@ export class FaviconManager {
   private static isValidUrl(url: string): boolean {
     try {
       const urlObj = new URL(url);
-      
+
       // Must have a valid hostname
       if (!urlObj.hostname || urlObj.hostname.length === 0) {
         return false;
       }
-      
+
       // Must be http or https
       if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
         return false;
       }
-      
+
       // Check for obviously malformed URLs
       if (url.includes('..') || url.includes('\n') || url.includes('\r')) {
         return false;
       }
-      
+
       return true;
     } catch {
       return false;
@@ -191,48 +191,41 @@ export class FaviconManager {
     try {
       const urlObj = new URL(url);
       const params = urlObj.searchParams;
-      
+
       // Check for problematic parameters
       const problematicParams = ['callback', 'jsonp', 'redirect', '_', 'cache_bust', 'timestamp'];
-      
+
       for (const param of problematicParams) {
         if (params.has(param)) {
           return true;
         }
       }
-      
+
       // Check if query string is excessively long (might indicate problems)
       if (urlObj.search && urlObj.search.length > 200) {
         return true;
       }
-      
+
       return false;
     } catch {
       return false;
     }
   }
 
-  private static generateFaviconUrl(originalUrl: string, domain: string, size: number): string {
-    // Strategy 1: Use Chrome's built-in favicon API (most reliable in extensions)
-    if (typeof chrome !== 'undefined' && chrome.runtime) {
-      return `chrome://favicon/${originalUrl}`;
-    }
-    
-    // Strategy 2: Use Google's favicon service (reliable fallback)
+  private static generateFaviconUrl(_originalUrl: string, domain: string, size: number): string {
+    // Use Google's S2 favicon service as the primary source.
+    // NOTE: chrome://favicon/ is NOT available in Manifest V3 new-tab pages — it is blocked
+    // by Chrome's security policy and produces "Not allowed to load local resource" errors.
     return `https://www.google.com/s2/favicons?domain=${domain}&sz=${size}`;
   }
 
   private static getFallbackStrategies(originalUrl: string, currentSrc: string): string[] {
     const fallbacks: string[] = [];
-    
+
     try {
       const domain = new URL(originalUrl).hostname;
-      
-      if (currentSrc.includes('chrome://favicon/')) {
-        // If Chrome favicon failed, try Google's service
-        fallbacks.push(`https://www.google.com/s2/favicons?domain=${domain}&sz=32`);
-        fallbacks.push(`https://www.google.com/s2/favicons?domain=${domain}&sz=16`);
-      } else if (currentSrc.includes('google.com/s2/favicons')) {
+
+      if (currentSrc.includes('google.com/s2/favicons')) {
         // If Google's service failed, try direct favicon.ico
         fallbacks.push(`https://${domain}/favicon.ico`);
         fallbacks.push(`https://${domain}/apple-touch-icon.png`);
@@ -244,13 +237,13 @@ export class FaviconManager {
     } catch (error) {
       // Silently handle errors in fallback generation
     }
-    
+
     return fallbacks.filter(Boolean);
   }
 
   private static markUrlAsFailed(url: string): void {
     this.failedUrls.add(url);
-    
+
     // Prevent memory leaks by limiting failed URL cache size
     if (this.failedUrls.size > 1000) {
       const oldestUrls = Array.from(this.failedUrls).slice(0, 500);

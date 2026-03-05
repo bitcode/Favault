@@ -84,10 +84,10 @@ export default defineConfig({
         },
       },
     },
-    
+
     {
       name: 'chrome-extension',
-      use: { 
+      use: {
         ...devices['Desktop Chrome'],
         channel: 'chrome',
         launchOptions: {
@@ -104,7 +104,7 @@ export default defineConfig({
     // Firefox extension testing (requires different approach)
     {
       name: 'firefox-extension',
-      use: { 
+      use: {
         ...devices['Desktop Firefox'],
         launchOptions: {
           firefoxUserPrefs: {
@@ -118,7 +118,7 @@ export default defineConfig({
     // Edge extension testing
     {
       name: 'edge-extension',
-      use: { 
+      use: {
         ...devices['Desktop Edge'],
         channel: 'msedge',
         launchOptions: {
@@ -136,10 +136,18 @@ export default defineConfig({
       name: 'Mobile Chrome',
       use: { ...devices['Pixel 5'] },
     },
-    
+
     {
       name: 'Mobile Safari',
       use: { ...devices['iPhone 12'] },
+    },
+
+    // Pure unit tests — no browser/extension required
+    {
+      name: 'unit-tests',
+      testDir: './tests/unit',
+      testMatch: '**/*.test.ts',
+      use: { ...devices['Desktop Chrome'] },
     },
   ],
 
@@ -149,13 +157,14 @@ export default defineConfig({
 
   // Output directory for test artifacts
   outputDir: 'test-results/',
-  
+
   // Test match patterns
   testMatch: [
     '**/tests/playwright/**/*.test.ts',
-    '**/tests/playwright/**/*.spec.ts'
+    '**/tests/playwright/**/*.spec.ts',
+    '**/tests/unit/**/*.test.ts'
   ],
-  
+
   // Test ignore patterns
   testIgnore: [
     '**/node_modules/**',

@@ -306,7 +306,13 @@
         cancelable: true,
         dataTransfer: dt,
       });
-      // Ensure visual dragging state even if native dragstart isn't honored in headless
+      // Guard: element may be null if the component unmounted mid-drag
+      if (!bookmarkElement) {
+        console.warn(
+          "[DnD Bridge] bookmarkElement is null at dragstart — aborting bridge",
+        );
+        return;
+      }
       bookmarkElement.classList.add("dragging");
       document.body.classList.add("drag-active");
       bookmarkElement.dispatchEvent(dragStart);
@@ -453,7 +459,10 @@
           cancelable: true,
           dataTransfer: dt,
         });
-        bookmarkElement.dispatchEvent(dragEnd);
+        // Guard: component may have unmounted between mousedown and mouseup
+        if (bookmarkElement) {
+          bookmarkElement.dispatchEvent(dragEnd);
+        }
         document.removeEventListener("mouseup", handleMouseUp, false);
       };
       // Use non-capturing so folder/header mouseup|capture can process first
@@ -601,6 +610,27 @@
         refreshTimeout = null;
       }
     }, 150); // 150ms debounce
+  }
+
+  // Delete bookmark via Chrome Bookmarks API
+  async function deleteBookmark() {
+    const confirmed = window.confirm(
+      `Delete "${bookmark.title}"? This cannot be undone.`,
+    );
+    if (!confirmed) return;
+
+    try {
+      const result = await BookmarkEditAPI.removeBookmark(bookmark.id);
+      if (result.success) {
+        BookmarkManager.clearCache();
+        await refreshBookmarks();
+      } else {
+        console.error("Failed to delete bookmark:", result.error);
+        alert(`Could not delete bookmark: ${result.error}`);
+      }
+    } catch (error) {
+      console.error("Failed to delete bookmark:", error);
+    }
   }
 
   // Handle save-all-edits event
@@ -790,8 +820,12 @@
   {#if isEditMode}
     <div
       class="delete-badge"
-      on:click|stopPropagation={() => dispatch("delete", bookmark.id)}
+      on:click|stopPropagation={deleteBookmark}
+      role="button"
+      tabindex="0"
+      on:keydown={(e) => e.key === "Enter" && deleteBookmark()}
       title="Delete bookmark"
+      aria-label="Delete bookmark"
     >
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
         <path

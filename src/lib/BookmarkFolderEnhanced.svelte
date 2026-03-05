@@ -111,14 +111,23 @@
       `Grid Drop: Moving ${bookmarkId} to index ${targetIndex} in folder ${folder.id}`,
     );
 
+    // Grab source parent from drag payload for optimistic move
+    let fromParentId: string | null = null;
+    try {
+      const raw = e.dataTransfer?.getData("application/x-favault-bookmark");
+      if (raw) fromParentId = JSON.parse(raw).parentId ?? null;
+    } catch {}
+
     try {
       const result = await BookmarkEditAPI.moveBookmark(bookmarkId, {
         parentId: folder.id,
         index: targetIndex,
       });
       if (result.success) {
-        BookmarkManager.clearCache();
-        await refreshBookmarks();
+        // Instant optimistic update — no full re-render
+        optimisticMove(bookmarkId, fromParentId, folder.id, targetIndex);
+        // Reconcile silently in background after 1.5 s
+        scheduleSilentSync();
       } else {
         console.error("Move failed:", result.error);
       }
@@ -188,25 +197,51 @@
     newFolderName = "";
   }
 
-  // Save folder name
+  // Save folder name via Chrome Bookmarks API
   async function saveFolderName() {
     if (!newFolderName.trim()) {
       cancelRenaming();
       return;
     }
 
+    const trimmedName = newFolderName.trim();
     try {
-      // TODO: Implement folder renaming via BookmarkEditAPI
-      // const result = await BookmarkEditAPI.updateBookmark(folder.id, { title: newFolderName.trim() });
-      // if (result.success) {
-      //   folder.title = newFolderName.trim();
-      // }
-      folder.title = newFolderName.trim(); // Temporary until API is connected
-      isRenaming = false;
-      newFolderName = "";
+      const result = await BookmarkEditAPI.updateBookmark(folder.id, {
+        title: trimmedName,
+      });
+      if (result.success) {
+        folder.title = trimmedName;
+        BookmarkManager.clearCache();
+        await refreshBookmarks();
+      } else {
+        console.error("Failed to rename folder:", result.error);
+      }
     } catch (error) {
       console.error("Failed to rename folder:", error);
-      cancelRenaming();
+    } finally {
+      isRenaming = false;
+      newFolderName = "";
+    }
+  }
+
+  // Delete folder (and all its contents) via Chrome Bookmarks API
+  async function deleteFolder() {
+    const confirmed = window.confirm(
+      `Delete folder "${folder.title}" and all ${folder.bookmarks.length} bookmark(s) inside? This cannot be undone.`,
+    );
+    if (!confirmed) return;
+
+    try {
+      const result = await BookmarkEditAPI.removeBookmarkTree(folder.id);
+      if (result.success) {
+        BookmarkManager.clearCache();
+        await refreshBookmarks();
+      } else {
+        console.error("Failed to delete folder:", result.error);
+        alert(`Could not delete folder: ${result.error}`);
+      }
+    } catch (error) {
+      console.error("Failed to delete folder:", error);
     }
   }
 
@@ -251,6 +286,17 @@
   // Debounce drop zone state changes to prevent flickering
   let dropZoneTimeout: number | null = null;
   let currentDropState = false;
+
+  // Silent background sync: reconcile store with Chrome after a short delay without
+  // triggering a jarring full re-render. Only one pending sync runs at a time.
+  let silentSyncTimer: number | null = null;
+  function scheduleSilentSync(delayMs = 1500) {
+    if (silentSyncTimer) clearTimeout(silentSyncTimer);
+    silentSyncTimer = window.setTimeout(async () => {
+      silentSyncTimer = null;
+      await refreshBookmarks();
+    }, delayMs);
+  }
 
   function markDropActive(el: HTMLElement, active: boolean) {
     if (!el) return;
@@ -381,48 +427,10 @@
         console.log("🟦 DEBUG: Header drop API result:", result);
 
         if (result.success) {
-          console.log("🟦 ✅ SUCCESS: Header drop move completed");
-          // Optimistic UI update for immediate correctness
+          // Instant optimistic update — no full re-render
           optimisticMove(payload.id, payload.parentId || null, folder.id, 0);
-          BookmarkManager.clearCache();
-          await refreshBookmarks();
-
-          // CRITICAL DEBUG: Verify bookmark persistence after header drop
-          setTimeout(async () => {
-            try {
-              console.log(
-                "🟦 🚨 POST-HEADER-DROP VERIFICATION: Checking bookmark persistence...",
-              );
-              const folders = await BookmarkManager.getOrganizedBookmarks();
-              const targetFolder = folders.find((f) => f.id === folder.id);
-
-              if (targetFolder) {
-                const foundBookmark = targetFolder.bookmarks.find(
-                  (b) => b.id === payload.id,
-                );
-                if (foundBookmark) {
-                  console.log(
-                    "🟦 ✅ POST-HEADER-DROP: Bookmark found at index:",
-                    targetFolder.bookmarks.indexOf(foundBookmark),
-                  );
-                } else {
-                  console.error(
-                    "🟦 🚨 CRITICAL ERROR: Bookmark disappeared after header drop! ID:",
-                    payload.id,
-                  );
-                }
-              } else {
-                console.error(
-                  "🟦 🚨 CRITICAL ERROR: Target folder not found after header drop!",
-                );
-              }
-            } catch (verifyError) {
-              console.error(
-                "🟦 🚨 POST-HEADER-DROP VERIFICATION FAILED:",
-                verifyError,
-              );
-            }
-          }, 200);
+          // Reconcile silently in background after 1.5 s
+          scheduleSilentSync();
         } else {
           console.error(
             "🟦 ❌ FAILED: Failed to move bookmark via native header drop:",
@@ -465,6 +473,12 @@
 
   // Mouse-based fallback: if a drag candidate exists, treat mouseup on header as drop-at-beginning
   async function onHeaderMouseUp(_e: MouseEvent) {
+    // Only act if a real drag (mouse moved while held) actually occurred
+    if (!(window as any).__fav_isDragging) {
+      if (typeof window !== "undefined")
+        (window as any).__fav_dragCandidate = null;
+      return;
+    }
     try {
       const info = getDraggingBookmarkInfo();
       console.log(
@@ -494,16 +508,10 @@
             index: 0,
           });
           if (result.success) {
-            console.log(
-              "[DnD Debug] Move success for",
-              info.id,
-              "->",
-              folder.id,
-            );
-            // Optimistic UI update
+            // Instant optimistic update — no full re-render
             optimisticMove(info.id, info.parentId, folder.id, 0);
-            BookmarkManager.clearCache();
-            await refreshBookmarks();
+            // Reconcile silently in background after 1.5 s
+            scheduleSilentSync();
           } else {
             console.error("[DnD Debug] Failed to move bookmark:", result.error);
           }
@@ -518,8 +526,10 @@
     } catch (err) {
       console.error("[DnD Debug] Error during manual move:", err);
     } finally {
-      if (typeof window !== "undefined")
+      if (typeof window !== "undefined") {
         (window as any).__fav_dragCandidate = null;
+        (window as any).__fav_isDragging = false;
+      }
       markDropActive(folderHeader as HTMLElement, false);
     }
   }
@@ -590,57 +600,15 @@
         console.log("🟨 DEBUG: Container drop API result:", result);
 
         if (result.success) {
-          console.log("🟨 ✅ SUCCESS: Container drop move completed");
-          // Optimistic UI update for immediate correctness
+          // Instant optimistic update — no full re-render
           optimisticMove(
             payload.id,
             payload.parentId || null,
             folder.id,
             appendIndex,
           );
-          BookmarkManager.clearCache();
-          await refreshBookmarks();
-
-          // CRITICAL DEBUG: Verify bookmark persistence after container drop
-          setTimeout(async () => {
-            try {
-              console.log(
-                "🟨 🚨 POST-CONTAINER-DROP VERIFICATION: Checking bookmark persistence...",
-              );
-              const folders = await BookmarkManager.getOrganizedBookmarks();
-              const targetFolder = folders.find((f) => f.id === folder.id);
-
-              if (targetFolder) {
-                const foundBookmark = targetFolder.bookmarks.find(
-                  (b) => b.id === payload.id,
-                );
-                if (foundBookmark) {
-                  const actualIndex =
-                    targetFolder.bookmarks.indexOf(foundBookmark);
-                  console.log(
-                    "🟨 ✅ POST-CONTAINER-DROP: Bookmark found at index:",
-                    actualIndex,
-                    "expected around:",
-                    appendIndex,
-                  );
-                } else {
-                  console.error(
-                    "🟨 🚨 CRITICAL ERROR: Bookmark disappeared after container drop! ID:",
-                    payload.id,
-                  );
-                }
-              } else {
-                console.error(
-                  "🟨 🚨 CRITICAL ERROR: Target folder not found after container drop!",
-                );
-              }
-            } catch (verifyError) {
-              console.error(
-                "🟨 🚨 POST-CONTAINER-DROP VERIFICATION FAILED:",
-                verifyError,
-              );
-            }
-          }, 200);
+          // Reconcile silently in background after 1.5 s
+          scheduleSilentSync();
         } else {
           console.error(
             "🟨 ❌ FAILED: Failed to move bookmark via native container drop:",
@@ -659,6 +627,12 @@
   }
   // Mouse-based fallback: if a drag candidate exists, treat mouseup on container as drop-append
   async function onContainerMouseUp(_e: MouseEvent) {
+    // Only act if a real drag (mouse moved while held) actually occurred
+    if (!(window as any).__fav_isDragging) {
+      if (typeof window !== "undefined")
+        (window as any).__fav_dragCandidate = null;
+      return;
+    }
     try {
       const info = getDraggingBookmarkInfo();
       console.log(
@@ -693,16 +667,10 @@
             index: appendIndex,
           });
           if (result.success) {
-            console.log(
-              "[DnD Debug] Container move success for",
-              info.id,
-              "->",
-              folder.id,
-            );
-            // Optimistic UI update
+            // Instant optimistic update — no full re-render
             optimisticMove(info.id, info.parentId, folder.id, appendIndex);
-            BookmarkManager.clearCache();
-            await refreshBookmarks();
+            // Reconcile silently in background after 1.5 s
+            scheduleSilentSync();
           } else {
             console.error("[DnD Debug] Failed to move bookmark:", result.error);
           }
@@ -717,8 +685,10 @@
     } catch (err) {
       console.error("[DnD Debug] Error during manual move:", err);
     } finally {
-      if (typeof window !== "undefined")
+      if (typeof window !== "undefined") {
         (window as any).__fav_dragCandidate = null;
+        (window as any).__fav_isDragging = false;
+      }
       markDropActive(folderElement as HTMLElement, false);
     }
   }
@@ -743,6 +713,9 @@
 
   // Update enhanced drag and drop state with retry logic
   function updateEnhancedDragDropState() {
+    // No setup needed when not in edit mode — skip silently to avoid noisy retries at page load
+    if (!isEditMode) return;
+
     // Clear any existing retry timeout
     if (dragDropRetryTimeout) {
       clearTimeout(dragDropRetryTimeout);
@@ -871,51 +844,15 @@
               console.log("🟣 DEBUG: Enhanced header drop API result:", result);
 
               if (result.success) {
-                console.log(
-                  "🟣 ✅ SUCCESS: Enhanced header drop move completed",
+                // Instant optimistic update — no full re-render
+                optimisticMove(
+                  dragData.id,
+                  dragData.parentId || null,
+                  folder.id,
+                  0,
                 );
-                BookmarkManager.clearCache();
-                await refreshBookmarks();
-
-                // CRITICAL DEBUG: Verify bookmark persistence after enhanced header drop
-                setTimeout(async () => {
-                  try {
-                    console.log(
-                      "🟣 🚨 POST-ENHANCED-HEADER-DROP VERIFICATION: Checking bookmark persistence...",
-                    );
-                    const folders =
-                      await BookmarkManager.getOrganizedBookmarks();
-                    const targetFolder = folders.find(
-                      (f) => f.id === folder.id,
-                    );
-
-                    if (targetFolder) {
-                      const foundBookmark = targetFolder.bookmarks.find(
-                        (b) => b.id === dragData.id,
-                      );
-                      if (foundBookmark) {
-                        console.log(
-                          "🟣 ✅ POST-ENHANCED-HEADER-DROP: Bookmark found at index:",
-                          targetFolder.bookmarks.indexOf(foundBookmark),
-                        );
-                      } else {
-                        console.error(
-                          "🟣 🚨 CRITICAL ERROR: Bookmark disappeared after enhanced header drop! ID:",
-                          dragData.id,
-                        );
-                      }
-                    } else {
-                      console.error(
-                        "🟣 🚨 CRITICAL ERROR: Target folder not found after enhanced header drop!",
-                      );
-                    }
-                  } catch (verifyError) {
-                    console.error(
-                      "🟣 🚨 POST-ENHANCED-HEADER-DROP VERIFICATION FAILED:",
-                      verifyError,
-                    );
-                  }
-                }, 200);
+                // Reconcile silently in background after 1.5 s
+                scheduleSilentSync();
               } else {
                 console.error(
                   "🟣 ❌ FAILED: Failed to move bookmark on enhanced header drop:",
@@ -1002,55 +939,15 @@
               );
 
               if (result.success) {
-                console.log(
-                  "🟪 ✅ SUCCESS: Enhanced container drop move completed",
+                // Instant optimistic update — no full re-render
+                optimisticMove(
+                  dragData.id,
+                  dragData.parentId || null,
+                  folder.id,
+                  appendIndex,
                 );
-                BookmarkManager.clearCache();
-                await refreshBookmarks();
-
-                // CRITICAL DEBUG: Verify bookmark persistence after enhanced container drop
-                setTimeout(async () => {
-                  try {
-                    console.log(
-                      "🟪 🚨 POST-ENHANCED-CONTAINER-DROP VERIFICATION: Checking bookmark persistence...",
-                    );
-                    const folders =
-                      await BookmarkManager.getOrganizedBookmarks();
-                    const targetFolder = folders.find(
-                      (f) => f.id === folder.id,
-                    );
-
-                    if (targetFolder) {
-                      const foundBookmark = targetFolder.bookmarks.find(
-                        (b) => b.id === dragData.id,
-                      );
-                      if (foundBookmark) {
-                        const actualIndex =
-                          targetFolder.bookmarks.indexOf(foundBookmark);
-                        console.log(
-                          "🟪 ✅ POST-ENHANCED-CONTAINER-DROP: Bookmark found at index:",
-                          actualIndex,
-                          "expected around:",
-                          appendIndex,
-                        );
-                      } else {
-                        console.error(
-                          "🟪 🚨 CRITICAL ERROR: Bookmark disappeared after enhanced container drop! ID:",
-                          dragData.id,
-                        );
-                      }
-                    } else {
-                      console.error(
-                        "🟪 🚨 CRITICAL ERROR: Target folder not found after enhanced container drop!",
-                      );
-                    }
-                  } catch (verifyError) {
-                    console.error(
-                      "🟪 🚨 POST-ENHANCED-CONTAINER-DROP VERIFICATION FAILED:",
-                      verifyError,
-                    );
-                  }
-                }, 200);
+                // Reconcile silently in background after 1.5 s
+                scheduleSilentSync();
               } else {
                 console.error(
                   "🟪 ❌ FAILED: Failed to move bookmark on enhanced container drop:",
@@ -1077,8 +974,32 @@
   // Refresh bookmarks after changes to ensure UI updates and persistence
   async function refreshBookmarks() {
     try {
-      const folders = await BookmarkManager.getOrganizedBookmarks();
-      bookmarkFolders.set(folders);
+      const fresh = await BookmarkManager.getOrganizedBookmarks();
+      bookmarkFolders.update((current) => {
+        // If the store is empty (first load), just use what Chrome gave us.
+        if (!current || current.length === 0) return fresh;
+
+        // Build a quick id→folder lookup from the fresh data.
+        const freshMap = new Map(fresh.map((f) => [f.id, f]));
+
+        // 1. Walk the *current* display order so sections never jump around.
+        //    For each existing folder, swap in the fresh bookmark list.
+        //    If Chrome no longer has a folder (it was deleted), drop it.
+        const updated = current
+          .map((f) => {
+            const freshFolder = freshMap.get(f.id);
+            if (!freshFolder) return null; // folder deleted — remove it
+            return { ...f, bookmarks: freshFolder.bookmarks };
+          })
+          .filter((f): f is NonNullable<typeof f> => f !== null);
+
+        // 2. Append any brand-new folders that weren't in the store yet
+        //    (e.g. the user just created one).
+        const currentIds = new Set(current.map((f) => f.id));
+        const newFolders = fresh.filter((f) => !currentIds.has(f.id));
+
+        return [...updated, ...newFolders];
+      });
     } catch (error) {
       console.error("Failed to refresh bookmarks:", error);
     }
@@ -1128,7 +1049,17 @@
       typeof window !== "undefined" &&
       !(window as any).__fav_docMouseBridge
     ) {
+      let _mouseDownX = 0;
+      let _mouseDownY = 0;
+
       const onDocMouseDown = (e: MouseEvent) => {
+        // Always reset drag state on a fresh mousedown
+        (window as any).__fav_isDragging = false;
+        (window as any).__fav_dragCandidate = null;
+
+        _mouseDownX = e.clientX;
+        _mouseDownY = e.clientY;
+
         const t = e.target as HTMLElement | null;
         const itemEl =
           t &&
@@ -1154,7 +1085,23 @@
           }, 2000);
         }
       };
+
+      // Only mark as a real drag once the mouse has moved a few pixels
+      const onDocMouseMove = (e: MouseEvent) => {
+        if (
+          (window as any).__fav_dragCandidate &&
+          !(window as any).__fav_isDragging
+        ) {
+          const dx = Math.abs(e.clientX - _mouseDownX);
+          const dy = Math.abs(e.clientY - _mouseDownY);
+          if (dx > 4 || dy > 4) {
+            (window as any).__fav_isDragging = true;
+          }
+        }
+      };
+
       document.addEventListener("mousedown", onDocMouseDown, true);
+      document.addEventListener("mousemove", onDocMouseMove, true);
       (window as any).__fav_docMouseBridge = true;
     }
 
@@ -1232,10 +1179,10 @@
             index: toIndex,
           });
           if (result?.success) {
-            console.log("[DnD Fallback] Move successful");
-            // Clear cache and refresh to reflect changes
-            BookmarkManager.clearCache();
-            await refreshBookmarks();
+            // Instant optimistic update — no full re-render
+            optimisticMove(fromId, fromParentId || null, toParentId, toIndex);
+            // Reconcile silently in background after 1.5 s
+            scheduleSilentSync();
           } else {
             console.error(
               "[DnD Fallback] Failed to move bookmark",
@@ -1248,8 +1195,10 @@
         } catch (err) {
           console.error("[DnD Fallback] Error handling mouseup drop:", err);
         } finally {
-          if (typeof window !== "undefined")
+          if (typeof window !== "undefined") {
             (window as any).__fav_dragCandidate = null;
+            (window as any).__fav_isDragging = false;
+          }
         }
       };
       document.addEventListener("mouseup", onDocMouseUp, true);
@@ -1343,11 +1292,26 @@
         class="edit-button"
         on:click|stopPropagation={startRenaming}
         title="Rename folder"
+        aria-label="Rename folder"
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
           ></path>
           <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+        </svg>
+      </button>
+      <button
+        class="delete-button"
+        on:click|stopPropagation={deleteFolder}
+        title="Delete folder"
+        aria-label="Delete folder"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <polyline points="3,6 5,6 21,6"></polyline>
+          <path d="M19,6l-1,14a2,2,0,0,1-2,2H8a2,2,0,0,1-2-2L5,6"></path>
+          <path d="M10,11v6"></path>
+          <path d="M14,11v6"></path>
+          <path d="M9,6V4a1,1,0,0,1,1-1h4a1,1,0,0,1,1,1v2"></path>
         </svg>
       </button>
     {/if}
@@ -1465,7 +1429,8 @@
     outline: none;
   }
 
-  .edit-button {
+  .edit-button,
+  .delete-button {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1480,7 +1445,8 @@
     opacity: 0;
   }
 
-  .folder-header:hover .edit-button {
+  .folder-header:hover .edit-button,
+  .folder-header:hover .delete-button {
     opacity: 1;
   }
 
@@ -1489,7 +1455,13 @@
     color: rgba(255, 255, 255, 0.9);
   }
 
-  .edit-button svg {
+  .delete-button:hover {
+    background: rgba(239, 68, 68, 0.25);
+    color: rgb(252, 165, 165);
+  }
+
+  .edit-button svg,
+  .delete-button svg {
     width: 14px;
     height: 14px;
   }

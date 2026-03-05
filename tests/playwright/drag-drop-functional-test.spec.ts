@@ -85,10 +85,10 @@ test.describe('Drag-and-Drop Functional Tests', () => {
           },
         },
       };
-      
+
       // Also ensure it's available globally
       (globalThis as any).chrome = (window as any).chrome;
-      
+
       console.log('Chrome API mock initialized:', typeof (window as any).chrome);
     });
 
@@ -99,11 +99,11 @@ test.describe('Drag-and-Drop Functional Tests', () => {
     `);
 
     page = await context.newPage();
-    
+
     // Navigate to extension new tab page
     await page.goto(`file://${extensionPath}/newtab.html`);
     await page.waitForLoadState('networkidle');
-    
+
     // Wait for extension to fully load
     await page.waitForTimeout(5000);
   });
@@ -125,69 +125,69 @@ test.describe('Drag-and-Drop Functional Tests', () => {
         consoleLogs.push(msg.text());
       }
     });
-    
+
     // Check initial state
     const initialState = await page.evaluate(() => {
       return (window as any).debugDragDrop?.();
     });
-    
+
     console.log('Initial state:', initialState);
     expect(initialState.elements.bookmarkItems).toBeGreaterThan(0);
     expect(initialState.elements.folderContainers).toBeGreaterThan(0);
-    
+
     // Try to enable edit mode via keyboard shortcut
     console.log('Attempting to enable edit mode with Ctrl+E...');
     await page.keyboard.press('Control+e');
     await page.waitForTimeout(1000);
-    
+
     // Check if edit mode is now active
     let editModeState = await page.evaluate(() => {
       return (window as any).debugDragDrop?.();
     });
-    
+
     console.log('After Ctrl+E:', editModeState);
-    
+
     // If keyboard shortcut didn't work, try clicking edit button
     if (!editModeState.editMode.appEditMode) {
       console.log('Keyboard shortcut failed, looking for edit button...');
-      
+
       // Look for edit button
       const editButton = page.locator('button:has-text("Edit"), .edit-toggle, [data-testid="edit-button"]');
-      
+
       if (await editButton.count() > 0) {
         console.log('Found edit button, clicking...');
         await editButton.first().click();
         await page.waitForTimeout(1000);
-        
+
         editModeState = await page.evaluate(() => {
           return (window as any).debugDragDrop?.();
         });
-        
+
         console.log('After button click:', editModeState);
       }
     }
-    
+
     // If still not in edit mode, try to force it via JavaScript
     if (!editModeState.editMode.appEditMode) {
       console.log('Forcing edit mode via JavaScript...');
-      
+
       await page.evaluate(() => {
         // Try to find and trigger edit mode
         const app = document.querySelector('.app');
         if (app) {
           app.classList.add('edit-mode');
         }
-        
+
         const body = document.body;
         if (body) {
           body.classList.add('edit-mode');
         }
-        
+
         // Try to trigger any edit mode functions
         if ((window as any).toggleEditMode) {
           (window as any).toggleEditMode();
         }
-        
+
         // Dispatch a custom event to trigger edit mode
         window.dispatchEvent(new KeyboardEvent('keydown', {
           key: 'e',
@@ -195,16 +195,16 @@ test.describe('Drag-and-Drop Functional Tests', () => {
           bubbles: true
         }));
       });
-      
+
       await page.waitForTimeout(1000);
-      
+
       editModeState = await page.evaluate(() => {
         return (window as any).debugDragDrop?.();
       });
-      
+
       console.log('After forcing edit mode:', editModeState);
     }
-    
+
     // Verify edit mode is active and we have the expected elements
     expect(editModeState.elements.bookmarkItems).toBeGreaterThan(0);
     expect(editModeState.elements.folderContainers).toBeGreaterThan(0);
@@ -225,7 +225,7 @@ test.describe('Drag-and-Drop Functional Tests', () => {
         elements: editModeState.elements
       });
     }
-    
+
     // Test the insertion point functionality
     const insertionPointTest = await page.evaluate(() => {
       return (window as any).testInsertionPoints?.();
@@ -335,60 +335,66 @@ test.describe('Drag-and-Drop Functional Tests', () => {
     // Enable edit mode first (repeat from previous test)
     await page.keyboard.press('Control+e');
     await page.waitForTimeout(1000);
-    
+
     // Get current state
     const dragDropState = await page.evaluate(() => {
       return (window as any).debugDragDrop?.();
     });
-    
+
     console.log('Drag-drop state:', dragDropState);
-    
+
     // Test the overall drag-drop functionality
     const functionalityTest = await page.evaluate(() => {
       return (window as any).testDragDropFunctionality?.();
     });
-    
+
     console.log('Drag-drop functionality test:', functionalityTest);
-    
-    if (functionalityTest) {
+
+    if (functionalityTest && functionalityTest.bookmarksFound !== undefined) {
       expect(functionalityTest.bookmarksFound).toBe(true);
       expect(functionalityTest.foldersFound).toBe(true);
+    } else {
+      console.log('⚠️ testDragDropFunctionality not available or returned partial data - verifying via DOM instead');
+      const bookmarkItems = await page.locator('.bookmark-item').count();
+      const folderContainers = await page.locator('.folder-container').count();
+      expect(bookmarkItems).toBeGreaterThan(0);
+      expect(folderContainers).toBeGreaterThan(0);
     }
-    
+
     // Look for specific bookmarks mentioned in the issue
     const ciscoWebVoicemail = page.locator('.bookmark-item:has-text("Cisco Web Voicemail")');
     const ciscoFolder = page.locator('.folder-container:has-text("Cisco")');
     const zingFolder = page.locator('.folder-container:has-text("Zing")');
-    
+
     if (await ciscoWebVoicemail.count() > 0) {
       console.log('✅ Found Cisco Web Voicemail bookmark');
       await expect(ciscoWebVoicemail).toBeVisible();
     }
-    
+
     if (await ciscoFolder.count() > 0) {
       console.log('✅ Found Cisco folder');
       await expect(ciscoFolder).toBeVisible();
     }
-    
+
     if (await zingFolder.count() > 0) {
       console.log('✅ Found Zing folder');
       await expect(zingFolder).toBeVisible();
     }
-    
+
     // Test insertion points if they exist
     const insertionPoints = page.locator('.bookmark-insertion-point');
     const insertionPointCount = await insertionPoints.count();
-    
+
     console.log(`Found ${insertionPointCount} insertion points`);
-    
+
     if (insertionPointCount > 0) {
       // Test that insertion points are visible
       await expect(insertionPoints.first()).toBeVisible();
-      
+
       // Check if they have the debug labels
       const firstInsertionPoint = insertionPoints.first();
       const hasDebugLabel = await firstInsertionPoint.locator('.insertion-hint:has-text("Drop here")').count() > 0;
-      
+
       if (hasDebugLabel) {
         console.log('✅ Insertion points have debug labels');
         await expect(firstInsertionPoint.locator('.insertion-hint')).toBeVisible();
@@ -399,19 +405,19 @@ test.describe('Drag-and-Drop Functional Tests', () => {
   test('should validate bookmark structure matches test data', async () => {
     // Wait for bookmarks to load
     await page.waitForTimeout(2000);
-    
+
     // Get all bookmark titles
     const bookmarkTitles = await page.evaluate(() => {
       const bookmarks = Array.from(document.querySelectorAll('.bookmark-title'));
       return bookmarks.map(b => b.textContent?.trim()).filter(Boolean);
     });
-    
+
     console.log('Found bookmark titles:', bookmarkTitles);
-    
+
     // Check for expected bookmarks from our mock data
     const expectedBookmarks = [
       'Cisco Web Voicemail',
-      'Cisco Unity Connection', 
+      'Cisco Unity Connection',
       'Cisco Unified CM Console',
       'Telephony - Home',
       'Zing',
@@ -419,7 +425,7 @@ test.describe('Drag-and-Drop Functional Tests', () => {
       'URL List for Platform.xlsx',
       'Jewelers Mutual Services'
     ];
-    
+
     let foundBookmarks = 0;
     for (const expected of expectedBookmarks) {
       if (bookmarkTitles.includes(expected)) {
@@ -429,7 +435,7 @@ test.describe('Drag-and-Drop Functional Tests', () => {
         console.log(`⚠️ Missing expected bookmark: ${expected}`);
       }
     }
-    
+
     expect(foundBookmarks).toBeGreaterThan(0);
     console.log(`Found ${foundBookmarks}/${expectedBookmarks.length} expected bookmarks`);
   });

@@ -287,18 +287,26 @@ export class DragDropManager {
           await this.performDrop(dragData, dropZoneData);
         }
 
-        console.log('[DragDropManager] Logging successful drop via DragDropLogger', {
-          targetIndex: dropZoneData.targetIndex
-        });
-        // Log successful drop
-        await DragDropLogger.logDrop(dropZoneData, dropZoneData.targetIndex);
+        // Log successful drop — wrapped so a logging/storage failure never
+        // propagates as a "Drop operation failed" error.
+        try {
+          await DragDropLogger.logDrop(dropZoneData, dropZoneData.targetIndex);
+        } catch (logErr) {
+          console.warn('[DragDropManager] Logger failed to record drop (non-critical):', logErr);
+        }
 
         this.notifyEventListeners('drop', { dragData, dropZone: dropZoneData, element });
       } catch (error) {
-        console.error('Drop operation failed:', error);
+        const msg = error instanceof Error ? error.message : String(error);
+        console.error('[DragDropManager] Drop operation failed:', msg, error);
         const errorMsg = 'Failed to move bookmark';
         this.showDropError(errorMsg);
-        await DragDropLogger.logDropError(errorMsg, dropZoneData);
+        // Best-effort log — ignore if logger itself throws
+        try {
+          await DragDropLogger.logDropError(errorMsg, dropZoneData);
+        } catch (logErr) {
+          console.warn('[DragDropManager] Logger failed to record drop error (non-critical):', logErr);
+        }
       }
     };
 
@@ -361,8 +369,8 @@ export class DragDropManager {
   private static isEditModeEnabled(): boolean {
     // Check multiple ways to ensure edit mode is detected
     return document.body.classList.contains('edit-mode') ||
-           document.querySelector('.app.edit-mode') !== null ||
-           document.body.classList.contains('drag-enabled');
+      document.querySelector('.app.edit-mode') !== null ||
+      document.body.classList.contains('drag-enabled');
   }
 
   /**

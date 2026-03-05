@@ -57,7 +57,9 @@
     "test:install": "playwright install",
     "test:build-and-test": "npm run build:chrome && npm run test",
     "test:ci": "npm run build:chrome && playwright test --reporter=github",
-    "test:coverage": "playwright test --reporter=html,json,junit"
+    "test:coverage": "playwright test --reporter=html,json,junit",
+    "test:unit": "playwright test --project=unit-tests",
+    "test:sections": "playwright test --project=chrome-extension tests/playwright/specs/section-drag-drop.test.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.54.2",

@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
-  import { EnhancedDragDropManager } from './dragdrop-enhanced';
-  import { editMode } from './stores';
+  import { onMount, onDestroy } from "svelte";
+  import { EnhancedDragDropManager } from "./dragdrop-enhanced";
+  import { editMode } from "./stores";
 
   export let insertionIndex: number;
   export let isFirst = false;
@@ -20,7 +20,7 @@
 
   // Subscribe to edit mode changes
   onMount(() => {
-    unsubscribeEditMode = editMode.subscribe(value => {
+    unsubscribeEditMode = editMode.subscribe((value) => {
       isEditMode = value;
       updateDropZoneState();
     });
@@ -64,16 +64,21 @@
 
     // Always set up drop zone listeners (not just in edit mode)
     // The enhanced drag-drop manager will handle edit mode checks
-    addTrackedEventListener('dragover', handleDragOver);
-    addTrackedEventListener('dragenter', handleDragEnter);
-    addTrackedEventListener('dragleave', handleDragLeave);
-    addTrackedEventListener('drop', handleDrop);
+    addTrackedEventListener("dragover", handleDragOver);
+    addTrackedEventListener("dragenter", handleDragEnter);
+    addTrackedEventListener("dragleave", handleDragLeave);
+    addTrackedEventListener("drop", handleDrop);
 
     // Mark element as a drop zone
-    insertionElement.setAttribute('data-drop-zone', 'insertion-point');
-    insertionElement.setAttribute('data-insertion-index', insertionIndex.toString());
+    insertionElement.setAttribute("data-drop-zone", "insertion-point");
+    insertionElement.setAttribute(
+      "data-insertion-index",
+      insertionIndex.toString(),
+    );
 
-    console.log(`📍 Insertion point ${insertionIndex} listeners set up (edit mode: ${isEditMode})`);
+    console.log(
+      `📍 Insertion point ${insertionIndex} listeners set up (edit mode: ${isEditMode})`,
+    );
   }
 
   function handleDragOver(e: DragEvent) {
@@ -82,12 +87,15 @@
 
     // Always allow drops and set move effect
     if (e.dataTransfer) {
-      e.dataTransfer.dropEffect = 'move';
+      e.dataTransfer.dropEffect = "move";
     }
 
     // Debug: Log available data types
     if (e.dataTransfer?.types) {
-      console.log(`📍 Drag over insertion point ${insertionIndex}, available types:`, e.dataTransfer.types);
+      console.log(
+        `📍 Drag over insertion point ${insertionIndex}, available types:`,
+        e.dataTransfer.types,
+      );
     }
   }
 
@@ -96,7 +104,7 @@
     e.stopPropagation();
 
     isDragOver = true;
-    insertionElement.classList.add('drag-over-insertion');
+    insertionElement.classList.add("drag-over-insertion");
     console.log(`📍 Drag enter insertion point ${insertionIndex}`);
   }
 
@@ -107,7 +115,7 @@
     // Only remove drag-over if we're actually leaving the element
     if (!insertionElement.contains(e.relatedTarget as Node)) {
       isDragOver = false;
-      insertionElement.classList.remove('drag-over-insertion');
+      insertionElement.classList.remove("drag-over-insertion");
       console.log(`📍 Drag leave insertion point ${insertionIndex}`);
     }
   }
@@ -116,53 +124,70 @@
     e.preventDefault();
     e.stopPropagation();
     isDragOver = false;
-    insertionElement.classList.remove('drag-over-insertion');
+    insertionElement.classList.remove("drag-over-insertion");
 
     try {
       // Try to get drag data from multiple formats
-      let dragDataStr = e.dataTransfer?.getData('application/x-favault-bookmark');
+      let dragDataStr = e.dataTransfer?.getData(
+        "application/x-favault-bookmark",
+      );
       if (!dragDataStr) {
-        dragDataStr = e.dataTransfer?.getData('text/plain');
+        dragDataStr = e.dataTransfer?.getData("text/plain");
       }
 
       if (!dragDataStr) {
-        console.log('❌ No drag data found in any format');
-        console.log('Available types:', e.dataTransfer?.types);
+        console.log("❌ No drag data found in any format");
+        console.log("Available types:", e.dataTransfer?.types);
         // Clean up all drop zones even on failed drop
         EnhancedDragDropManager.cleanupAllDropZones();
         return;
       }
 
-      console.log(`📍 Drop on insertion point ${insertionIndex}, data:`, dragDataStr);
+      console.log(
+        `📍 Drop on insertion point ${insertionIndex}, data:`,
+        dragDataStr,
+      );
 
       const dragData = JSON.parse(dragDataStr);
-      if (dragData.type !== 'folder') {
-        console.log('❌ Not a folder drag operation, type:', dragData.type);
+      if (dragData.type !== "folder") {
+        console.log("❌ Not a folder drag operation, type:", dragData.type);
         // Clean up all drop zones for non-folder drops
         EnhancedDragDropManager.cleanupAllDropZones();
         return;
       }
 
-      console.log(`🎯 INSERTION POINT DROP: "${dragData.title}" at insertion point ${insertionIndex}`);
-      console.log(`🎯 VISUAL EXPECTATION: Folder should be placed at position ${insertionIndex + 1}`);
-      console.log(`🎯 CALLING: moveFolderToPosition(${dragData.index}, ${insertionIndex})`);
+      console.log(
+        `🎯 INSERTION POINT DROP: "${dragData.title}" at insertion point ${insertionIndex}`,
+      );
+      console.log(
+        `🎯 VISUAL EXPECTATION: Folder should be placed at position ${insertionIndex + 1}`,
+      );
+      console.log(
+        `🎯 CALLING: moveFolderToPosition(${dragData.index}, ${insertionIndex}, mode='insertion-index')`,
+      );
 
-      // Use the enhanced drag-drop manager to handle the insertion
-      const result = await EnhancedDragDropManager.moveFolderToPosition(dragData.index, insertionIndex);
+      // Pass mode:'insertion-index' so the gap-slot (0..N) is correctly mapped
+      // to a final 0-based folder index. Without this the raw slot number is used
+      // as a final-index, causing the ~5-position jump bug.
+      const result = await EnhancedDragDropManager.moveFolderToPosition(
+        dragData.index,
+        insertionIndex,
+        { mode: "insertion-index" },
+      );
 
       if (result.success) {
-        console.log('✅ Folder reordered successfully');
+        console.log("✅ Folder reordered successfully");
         // Clean up ALL drop zones after successful operation
         setTimeout(() => {
           EnhancedDragDropManager.cleanupAllDropZones();
         }, 200);
       } else {
-        console.error('❌ Failed to reorder folder:', result.error);
+        console.error("❌ Failed to reorder folder:", result.error);
         // Clean up drop zones even on failure
         EnhancedDragDropManager.cleanupAllDropZones();
       }
     } catch (error) {
-      console.error('Error handling folder drop:', error);
+      console.error("Error handling folder drop:", error);
       // Always clean up drop zones on error
       EnhancedDragDropManager.cleanupAllDropZones();
     }
@@ -170,8 +195,8 @@
 </script>
 
 {#if isEditMode}
-  <div 
-    class="insertion-point" 
+  <div
+    class="insertion-point"
     class:first={isFirst}
     class:last={isLast}
     class:drag-over={isDragOver}
@@ -181,9 +206,12 @@
     <div class="insertion-line">
       <div class="insertion-indicator">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-          <path d="M12 5v14M5 12l7-7 7 7"/>
+          <path d="M12 5v14M5 12l7-7 7 7" />
         </svg>
-        <span>Drop folder here (Will be placed at position {insertionIndex + 1})</span>
+        <span
+          >Drop folder here (Will be placed at position {insertionIndex +
+            1})</span
+        >
       </div>
     </div>
   </div>
@@ -324,7 +352,8 @@
   }
 
   @keyframes pulse-insertion {
-    0%, 100% {
+    0%,
+    100% {
       box-shadow: 0 0 25px rgba(59, 130, 246, 0.3);
       transform: scale(1);
     }
@@ -347,7 +376,8 @@
   }
 
   @keyframes pulse-insertion {
-    0%, 100% {
+    0%,
+    100% {
       box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
     }
     50% {
