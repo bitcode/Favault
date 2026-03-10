@@ -52,32 +52,32 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0.75rem 1rem;
-    background: rgba(255, 255, 255, 0.9);
-    border: 1px solid rgba(0, 0, 0, 0.1);
+    background: var(--theme-panel, rgba(255, 255, 255, 0.9));
+    border: 1px solid var(--theme-border, rgba(0, 0, 0, 0.1));
     border-radius: 12px;
     cursor: pointer;
     font-size: 0.9rem;
     font-weight: 500;
-    color: #333;
+    color: var(--theme-text-primary, #333);
     backdrop-filter: blur(10px);
     transition: all 0.2s ease;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 12px var(--theme-shadow, rgba(0, 0, 0, 0.1));
   }
   
   .edit-toggle:hover {
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--theme-panel-muted, rgba(255, 255, 255, 0.95));
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 6px 20px var(--theme-shadow, rgba(0, 0, 0, 0.15));
   }
   
   .edit-toggle.active {
-    background: #667eea;
-    color: white;
-    border-color: #667eea;
+    background: var(--theme-accent, #667eea);
+    color: var(--theme-accent-contrast, white);
+    border-color: var(--theme-accent, #667eea);
   }
   
   .edit-toggle.active:hover {
-    background: #5a6fd8;
+    background: var(--theme-accent-hover, #5a6fd8);
   }
   
   .edit-toggle svg {
@@ -90,20 +90,20 @@
     align-items: center;
     justify-content: center;
     padding: 0.75rem;
-    background: rgba(255, 255, 255, 0.9);
-    border: 1px solid rgba(0, 0, 0, 0.1);
+    background: var(--theme-panel, rgba(255, 255, 255, 0.9));
+    border: 1px solid var(--theme-border, rgba(0, 0, 0, 0.1));
     border-radius: 12px;
     cursor: pointer;
-    color: #333;
+    color: var(--theme-text-primary, #333);
     backdrop-filter: blur(10px);
     transition: all 0.2s ease;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 12px var(--theme-shadow, rgba(0, 0, 0, 0.1));
   }
   
   .settings-button:hover {
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--theme-panel-muted, rgba(255, 255, 255, 0.95));
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 6px 20px var(--theme-shadow, rgba(0, 0, 0, 0.15));
   }
   
   .settings-button svg {
@@ -132,22 +132,4 @@
     }
   }
   
-  @media (prefers-color-scheme: dark) {
-    .edit-toggle,
-    .settings-button {
-      background: rgba(40, 40, 40, 0.9);
-      border-color: rgba(255, 255, 255, 0.2);
-      color: #fff;
-    }
-    
-    .edit-toggle:hover,
-    .settings-button:hover {
-      background: rgba(50, 50, 50, 0.95);
-    }
-    
-    .edit-toggle.active {
-      background: #667eea;
-      border-color: #667eea;
-    }
-  }
 </style>

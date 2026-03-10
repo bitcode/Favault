@@ -155,7 +155,7 @@ export class ExtensionAPI {
   static getDefaultSettings(): UserSettings {
     return {
       theme: {
-        selectedTheme: 'default',
+        selectedTheme: 'ayu-light-mode',
         customColors: {},
         backgroundGradient: ['#667eea', '#764ba2']
       },

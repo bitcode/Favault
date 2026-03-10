@@ -232,6 +232,13 @@ if (typeof document !== 'undefined') {
     // Mouseup handler: determine drop target and perform move
     const onDocMouseUp = async (e: MouseEvent) => {
       try {
+        if (!(window as any).__fav_isDragging) {
+          (window as any).__fav_dragCandidate = null;
+          (window as any).__fav_draggedEl = null;
+          (window as any).__fav_lastHoveredFolderId = null;
+          return;
+        }
+
         let gc = (window as any).__fav_dragCandidate;
 
         // If no recorded candidate, try to infer from DOM (dragging class)
@@ -449,6 +456,7 @@ if (typeof document !== 'undefined') {
           }
         } catch {}
         (window as any).__fav_dragCandidate = null;
+        (window as any).__fav_isDragging = false;
         (window as any).__fav_draggedEl = null;
         (window as any).__fav_lastHoveredFolderId = null;
         try { document.body?.removeAttribute('data-dnd-candidate'); } catch {}
@@ -459,6 +467,7 @@ if (typeof document !== 'undefined') {
     const onDocMouseDown = (e: MouseEvent) => {
       try {
         isMouseDown = true;
+        (window as any).__fav_isDragging = false;
         (window as any).__fav_lastMouseDown = { x: e.clientX, y: e.clientY };
         const target = e.target as HTMLElement | null;
         let item = target?.closest('.bookmark-item, [data-testid="bookmark-item"]') as HTMLElement | null;
@@ -505,6 +514,17 @@ if (typeof document !== 'undefined') {
     const onDocMouseMove = (e: MouseEvent) => {
       if (!isMouseDown) return;
       updateLastHoveredFolder(e);
+      if ((window as any).__fav_dragCandidate && !(window as any).__fav_isDragging) {
+        const pos = (window as any).__fav_lastMouseDown as { x: number; y: number } | undefined;
+        if (pos) {
+          const dx = Math.abs(e.clientX - pos.x);
+          const dy = Math.abs(e.clientY - pos.y);
+          if (dx > 4 || dy > 4) {
+            (window as any).__fav_isDragging = true;
+          }
+        }
+      }
+
       // If we haven't resolved a candidate yet, try by last mousedown position
       const hasCandidate = !!(window as any).__fav_dragCandidate;
       const pending = !!(window as any).__fav_pendingCandidate;
@@ -551,6 +571,7 @@ if (typeof document !== 'undefined') {
       const id = item.getAttribute('data-bookmark-id') || item.getAttribute('data-id');
       const parentId = (item.closest('[data-folder-id]') as HTMLElement | null)?.getAttribute('data-folder-id') || undefined;
       (window as any).__fav_dragCandidate = { id, parentId, title: item.getAttribute('data-title') || '' };
+      (window as any).__fav_isDragging = true;
       (window as any).__fav_draggedEl = item;
       item.classList.add('dragging');
       item.setAttribute('data-dragging', 'true');
@@ -667,6 +688,7 @@ if (typeof document !== 'undefined') {
        console.error('[Global DnD] Drop handler error', err);
      } finally {
        (window as any).__fav_dragCandidate = null;
+       (window as any).__fav_isDragging = false;
        const dragged = (window as any).__fav_draggedEl as HTMLElement | null;
        if (dragged) {
          dragged.classList.remove('dragging');

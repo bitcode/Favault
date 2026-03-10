@@ -1112,6 +1112,11 @@
     ) {
       const onDocMouseUp = async (e: MouseEvent) => {
         try {
+          if (!(window as any).__fav_isDragging) {
+            (window as any).__fav_dragCandidate = null;
+            return;
+          }
+
           console.log("[DnD Fallback] mouseup at", e.target);
           const t = e.target as HTMLElement | null;
           if (!t) {

@@ -256,6 +256,15 @@
       e.dataTransfer?.setData("text/plain", JSON.stringify(data));
       if (e.dataTransfer) e.dataTransfer.effectAllowed = "move";
     } catch {}
+    if (typeof window !== "undefined") {
+      (window as any).__fav_isDragging = true;
+      (window as any).__fav_dragCandidate = {
+        id: bookmark.id,
+        parentId: bookmark.parentId,
+        title: bookmark.title,
+        startedAt: Date.now(),
+      };
+    }
     // Visual feedback (generic selectors used by tests)
     bookmarkElement.classList.add("dragging");
     document.body.classList.add("drag-active");
@@ -264,6 +273,10 @@
   function handleHtml5DragEnd(_e: DragEvent) {
     bookmarkElement.classList.remove("dragging");
     document.body.classList.remove("drag-active");
+    if (typeof window !== "undefined") {
+      (window as any).__fav_isDragging = false;
+      (window as any).__fav_dragCandidate = null;
+    }
   }
 
   // Bridge for Playwright mouse-based drag to HTML5 DnD

@@ -1,6 +1,7 @@
 import { writable, derived } from 'svelte/store';
 import type { BookmarkFolder, UserSettings } from './api';
 import { ExtensionAPI } from './api';
+import { resolveThemeId } from './themes';
 
 // Store for all bookmark folders
 export const bookmarkFolders = writable<BookmarkFolder[]>([]);
@@ -78,8 +79,20 @@ export const settingsManager = {
   async loadSettings(): Promise<void> {
     try {
       const settings = await ExtensionAPI.getSettings();
-      userSettings.set(settings);
-      editMode.set(settings.editMode.enabled);
+      const normalizedSettings = {
+        ...settings,
+        theme: {
+          ...settings.theme,
+          selectedTheme: resolveThemeId(settings.theme?.selectedTheme)
+        }
+      };
+
+      userSettings.set(normalizedSettings);
+      editMode.set(normalizedSettings.editMode.enabled);
+
+      if (normalizedSettings.theme.selectedTheme !== settings.theme?.selectedTheme) {
+        await ExtensionAPI.saveSettings(normalizedSettings);
+      }
     } catch (error) {
       console.error('Failed to load settings:', error);
     }

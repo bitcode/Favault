@@ -128,6 +128,11 @@
 
       const onDocMouseUp = async (e: MouseEvent | PointerEvent) => {
         try {
+          if (!(window as any).__fav_isDragging) {
+            (window as any).__fav_dragCandidate = null;
+            return;
+          }
+
           // Remove helper class regardless of success
           document.querySelector(".app")?.classList.remove("drag-active");
 
@@ -410,8 +415,10 @@
     error,
     settingsManager,
     editMode,
+    userSettings,
   } from "./lib/stores";
   import { ExtensionAPI, BookmarkEditAPI } from "./lib/api";
+  import { getTheme, getThemeStyle } from "./lib/themes";
 
   // Import drag-and-drop animations CSS
   import "./lib/drag-drop-animations.css";
@@ -458,6 +465,11 @@
       };
       const onDocMouseUp = async (e: MouseEvent | PointerEvent) => {
         try {
+          if (!(window as any).__fav_isDragging) {
+            (window as any).__fav_dragCandidate = null;
+            return;
+          }
+
           const t = e.target as HTMLElement | null;
           if (!t) return;
           const container = t.closest?.(
@@ -1366,6 +1378,11 @@
       };
       const onDocMouseUp = async (e: MouseEvent | PointerEvent) => {
         try {
+          if (!(window as any).__fav_isDragging) {
+            (window as any).__fav_dragCandidate = null;
+            return;
+          }
+
           const t = e.target as HTMLElement | null;
           if (!t) return;
           const container = t.closest?.(
@@ -2117,9 +2134,18 @@
       refreshInProgress = false;
     }
   }
+
+  $: activeTheme = getTheme($userSettings.theme.selectedTheme);
+  $: themeStyle = getThemeStyle(activeTheme);
 </script>
 
-<main class="app" class:edit-mode={$editMode}>
+<main
+  class="app"
+  class:edit-mode={$editMode}
+  data-theme={activeTheme.id}
+  data-color-mode={activeTheme.mode}
+  style={themeStyle}
+>
   <!-- Top Right Control Panel -->
   <div class="top-controls-panel">
     <!-- Service Worker Diagnostics -->
@@ -2276,14 +2302,23 @@
 
   .app {
     min-height: 100vh;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(
+      135deg,
+      var(--theme-bg-start) 0%,
+      var(--theme-bg-end) 100%
+    );
     padding: 2rem 1rem;
     position: relative;
     transition: all 0.3s ease;
+    color: var(--theme-text-primary);
   }
 
   .app.edit-mode {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(
+      135deg,
+      var(--theme-bg-start) 0%,
+      var(--theme-bg-end) 100%
+    );
     position: relative;
   }
 
@@ -2294,7 +2329,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(102, 126, 234, 0.1);
+    background: color-mix(in srgb, var(--theme-accent) 12%, transparent);
     pointer-events: none;
     z-index: 1;
   }
@@ -2308,17 +2343,17 @@
     bottom: 0;
     background: radial-gradient(
         circle at 20% 80%,
-        rgba(120, 119, 198, 0.3) 0%,
+        color-mix(in srgb, var(--theme-bg-accent) 26%, transparent) 0%,
         transparent 50%
       ),
       radial-gradient(
         circle at 80% 20%,
-        rgba(255, 119, 198, 0.3) 0%,
+        color-mix(in srgb, var(--theme-bg-accent-soft) 22%, transparent) 0%,
         transparent 50%
       ),
       radial-gradient(
         circle at 40% 40%,
-        rgba(120, 219, 255, 0.2) 0%,
+        color-mix(in srgb, var(--theme-panel-solid) 28%, white) 0%,
         transparent 50%
       );
     pointer-events: none;
@@ -2340,15 +2375,15 @@
   .title {
     font-size: 3rem;
     font-weight: 700;
-    color: white;
+    color: var(--theme-text-primary);
     margin: 0 0 0.5rem 0;
-    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    text-shadow: 0 2px 10px var(--theme-shadow);
     letter-spacing: -0.02em;
   }
 
   .subtitle {
     font-size: 1.2rem;
-    color: rgba(255, 255, 255, 0.8);
+    color: var(--theme-text-muted);
     margin: 0;
     font-weight: 300;
   }
@@ -2356,14 +2391,14 @@
   .loading {
     text-align: center;
     padding: 4rem 2rem;
-    color: rgba(255, 255, 255, 0.9);
+    color: var(--theme-text-primary);
   }
 
   .loading-spinner {
     width: 40px;
     height: 40px;
-    border: 3px solid rgba(255, 255, 255, 0.3);
-    border-top: 3px solid white;
+    border: 3px solid var(--theme-border);
+    border-top: 3px solid var(--theme-text-primary);
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin: 0 auto 1rem;
@@ -2390,23 +2425,23 @@
   }
 
   .log-viewer-toggle {
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: white;
+    background: var(--theme-panel);
+    border: 1px solid var(--theme-border);
+    color: var(--theme-text-primary);
     padding: 0.5rem 0.75rem;
     border-radius: 8px;
     cursor: pointer;
     font-size: 1.2rem;
     transition: all 0.2s ease;
     backdrop-filter: blur(10px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 2px 8px var(--theme-shadow);
   }
 
   .log-viewer-toggle:hover {
-    background: rgba(255, 255, 255, 0.2);
-    border-color: rgba(255, 255, 255, 0.3);
+    background: var(--theme-panel-muted);
+    border-color: var(--theme-border-strong);
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 4px 12px var(--theme-shadow);
   }
 
   .log-viewer-toggle:active {
@@ -2416,7 +2451,7 @@
   .error {
     text-align: center;
     padding: 4rem 2rem;
-    color: rgba(255, 255, 255, 0.9);
+    color: var(--theme-text-primary);
   }
 
   .error-icon {
@@ -2425,9 +2460,9 @@
   }
 
   .retry-button {
-    background: rgba(255, 255, 255, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    color: white;
+    background: var(--theme-panel);
+    border: 1px solid var(--theme-border-strong);
+    color: var(--theme-text-primary);
     padding: 0.75rem 1.5rem;
     border-radius: 8px;
     cursor: pointer;
@@ -2437,14 +2472,14 @@
   }
 
   .retry-button:hover {
-    background: rgba(255, 255, 255, 0.3);
+    background: var(--theme-panel-muted);
     transform: translateY(-2px);
   }
 
   .empty-state {
     text-align: center;
     padding: 4rem 2rem;
-    color: rgba(255, 255, 255, 0.9);
+    color: var(--theme-text-primary);
   }
 
   .empty-icon {
@@ -2477,10 +2512,10 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0.6rem 1.1rem;
-    background: rgba(255, 255, 255, 0.12);
-    border: 1px dashed rgba(255, 255, 255, 0.35);
+    background: var(--theme-panel);
+    border: 1px dashed var(--theme-border-strong);
     border-radius: 10px;
-    color: rgba(255, 255, 255, 0.85);
+    color: var(--theme-text-primary);
     font-size: 0.9rem;
     font-weight: 500;
     cursor: pointer;
@@ -2489,11 +2524,11 @@
   }
 
   .create-folder-trigger:hover {
-    background: rgba(255, 255, 255, 0.2);
-    border-color: rgba(255, 255, 255, 0.55);
-    color: white;
+    background: var(--theme-panel-muted);
+    border-color: var(--theme-border-strong);
+    color: var(--theme-text-primary);
     transform: translateY(-1px);
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 4px 14px var(--theme-shadow);
   }
 
   .create-folder-trigger svg {
@@ -2505,12 +2540,12 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.12);
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    background: var(--theme-panel);
+    border: 1px solid var(--theme-border);
     border-radius: 10px;
     padding: 0.35rem 0.5rem;
     backdrop-filter: blur(8px);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 4px 16px var(--theme-shadow);
   }
 
   .create-folder-input {
@@ -2519,14 +2554,14 @@
     background: transparent;
     border: none;
     outline: none;
-    color: white;
+    color: var(--theme-input-text);
     font-size: 0.9rem;
     font-weight: 500;
     padding: 0 0.4rem;
   }
 
   .create-folder-input::placeholder {
-    color: rgba(255, 255, 255, 0.45);
+    color: var(--theme-input-placeholder);
   }
 
   .create-folder-confirm {
@@ -2534,10 +2569,10 @@
     align-items: center;
     gap: 0.35rem;
     padding: 0.35rem 0.75rem;
-    background: #667eea;
+    background: var(--theme-accent);
     border: none;
     border-radius: 6px;
-    color: white;
+    color: var(--theme-accent-contrast);
     font-size: 0.85rem;
     font-weight: 600;
     cursor: pointer;
@@ -2546,7 +2581,7 @@
   }
 
   .create-folder-confirm:hover {
-    background: #5a6fd8;
+    background: var(--theme-accent-hover);
     transform: translateY(-1px);
   }
 
@@ -2561,17 +2596,17 @@
     justify-content: center;
     width: 28px;
     height: 28px;
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--theme-panel-muted);
     border: none;
     border-radius: 6px;
-    color: rgba(255, 255, 255, 0.6);
+    color: var(--theme-text-muted);
     cursor: pointer;
     transition: all 0.2s ease;
   }
 
   .create-folder-cancel:hover {
-    background: rgba(239, 68, 68, 0.2);
-    color: rgb(252, 165, 165);
+    background: color-mix(in srgb, var(--theme-danger) 20%, transparent);
+    color: var(--theme-danger);
   }
 
   .create-folder-cancel svg {
@@ -2615,17 +2650,6 @@
       top: 0.5rem;
       right: 0.5rem;
       gap: 0.5rem;
-    }
-  }
-
-  @media (prefers-color-scheme: dark) {
-    .app {
-      background: linear-gradient(
-        135deg,
-        #1a1a2e 0%,
-        #16213e 50%,
-        #0f3460 100%
-      );
     }
   }
 

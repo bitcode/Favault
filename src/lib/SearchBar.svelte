@@ -101,23 +101,25 @@
     position: relative;
     display: flex;
     align-items: center;
-    background: rgba(255, 255, 255, 0.9);
+    background: var(--theme-input-bg, rgba(255, 255, 255, 0.9));
     border-radius: 12px;
     padding: 0.75rem 1rem;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 20px var(--theme-shadow, rgba(0, 0, 0, 0.1));
     backdrop-filter: blur(10px);
     transition: all 0.3s ease;
+    border: 1px solid var(--theme-border, transparent);
   }
   
   .search-wrapper:focus-within {
-    box-shadow: 0 6px 30px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 6px 30px var(--theme-shadow, rgba(0, 0, 0, 0.15));
+    border-color: var(--theme-border-strong, transparent);
     transform: translateY(-2px);
   }
   
   .search-icon {
     width: 20px;
     height: 20px;
-    color: #666;
+    color: var(--theme-text-muted, #666);
     margin-right: 0.75rem;
     flex-shrink: 0;
   }
@@ -128,12 +130,12 @@
     outline: none;
     background: transparent;
     font-size: 1.1rem;
-    color: #333;
+    color: var(--theme-input-text, #333);
     font-weight: 400;
   }
   
   .search-input::placeholder {
-    color: #999;
+    color: var(--theme-input-placeholder, #999);
   }
   
   .clear-button {
@@ -145,13 +147,13 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #666;
+    color: var(--theme-text-muted, #666);
     transition: all 0.2s ease;
   }
   
   .clear-button:hover {
-    background: rgba(0, 0, 0, 0.1);
-    color: #333;
+    background: var(--theme-panel-muted, rgba(0, 0, 0, 0.1));
+    color: var(--theme-text-primary, #333);
   }
   
   .clear-button svg {
@@ -162,41 +164,15 @@
   .search-results-info {
     text-align: center;
     margin-top: 0.5rem;
-    color: rgba(255, 255, 255, 0.8);
+    color: var(--theme-text-secondary, rgba(255, 255, 255, 0.8));
     font-size: 0.9rem;
   }
   
   .no-results {
     text-align: center;
     margin-top: 1rem;
-    color: rgba(255, 255, 255, 0.7);
+    color: var(--theme-text-muted, rgba(255, 255, 255, 0.7));
     font-size: 1rem;
   }
   
-  @media (prefers-color-scheme: dark) {
-    .search-wrapper {
-      background: rgba(40, 40, 40, 0.9);
-    }
-    
-    .search-input {
-      color: #fff;
-    }
-    
-    .search-input::placeholder {
-      color: #aaa;
-    }
-    
-    .search-icon {
-      color: #aaa;
-    }
-    
-    .clear-button {
-      color: #aaa;
-    }
-    
-    .clear-button:hover {
-      background: rgba(255, 255, 255, 0.1);
-      color: #fff;
-    }
-  }
 </style>
