@@ -1,4 +1,5 @@
 import { Page, Locator } from '@playwright/test';
+import { getExtensionProtocol, navigateToExtensionHome } from './extension-target';
 
 /**
  * Utility class for extension-specific operations
@@ -7,13 +8,11 @@ export class ExtensionTestUtils {
   /**
    * Navigate to the extension page
    */
-  static async navigateToExtension(page: Page): Promise<void> {
+  static async navigateToExtension(page: Page, browserName = 'chromium', extensionOrigin?: string | null): Promise<void> {
     console.log('🔗 Navigating to extension...');
 
     try {
-      // Try chrome://newtab/ first (most common case)
-      await page.goto('chrome://newtab/');
-      await page.waitForLoadState('networkidle');
+      await navigateToExtensionHome(page, browserName, extensionOrigin);
 
       // Wait for extension to load
       await page.waitForTimeout(3000);
@@ -22,30 +21,18 @@ export class ExtensionTestUtils {
       console.log(`🔗 Current URL: ${currentUrl}`);
 
       // Check if we're on the extension page
-      if (currentUrl.startsWith('chrome-extension://')) {
-        console.log('✅ Extension loaded via chrome://newtab/');
+      if (currentUrl.startsWith(getExtensionProtocol(browserName))) {
+        console.log('✅ Extension loaded via browser new tab override');
         return;
       }
 
-      // If not, try to get extension ID and navigate directly
-      const extensionId = await page.evaluate(() => {
-        // Try to get extension ID from any existing chrome-extension URLs
-        const scripts = Array.from(document.querySelectorAll('script[src*="chrome-extension://"]'));
-        if (scripts.length > 0) {
-          const src = scripts[0].getAttribute('src') || '';
-          const match = src.match(/chrome-extension:\/\/([a-z]+)/);
-          return match ? match[1] : null;
-        }
-        return null;
-      });
-
-      if (extensionId) {
-        const extensionUrl = `chrome-extension://${extensionId}/newtab.html`;
+      if (extensionOrigin) {
+        const extensionUrl = `${extensionOrigin}/newtab.html`;
         console.log(`🔗 Navigating directly to: ${extensionUrl}`);
         await page.goto(extensionUrl);
         await page.waitForLoadState('networkidle');
       } else {
-        console.log('⚠️ Could not determine extension ID, staying on current page');
+        console.log('⚠️ Could not determine extension origin, staying on current page');
       }
 
     } catch (error) {
@@ -294,9 +281,10 @@ export class ExtensionTestUtils {
 
       // Check what's actually available
       const pageStatus = await page.evaluate(() => {
+        const extensionAPI = (window as any).browser || (window as any).chrome;
         return {
           readyState: document.readyState,
-          hasChrome: typeof chrome !== 'undefined',
+          hasExtensionAPI: typeof extensionAPI !== 'undefined',
           hasEnhancedDragDrop: typeof (window as any).EnhancedDragDropManager !== 'undefined',
           elementCount: document.querySelectorAll('*').length,
           scripts: document.querySelectorAll('script').length,
@@ -345,8 +333,9 @@ export class ExtensionTestUtils {
    */
   static async getExtensionInfo(page: Page): Promise<any> {
     return await page.evaluate(() => {
+      const extensionAPI = (window as any).browser || (window as any).chrome;
       return {
-        version: (window as any).chrome?.runtime?.getManifest?.()?.version || 'unknown',
+        version: extensionAPI?.runtime?.getManifest?.()?.version || 'unknown',
         userAgent: navigator.userAgent,
         timestamp: Date.now(),
         enhancedDragDropVersion: (window as any).EnhancedDragDropManager?.version || 'unknown'
@@ -359,7 +348,8 @@ export class ExtensionTestUtils {
    */
   static async isDevelopmentMode(page: Page): Promise<boolean> {
     return await page.evaluate(() => {
-      return !!(window as any).chrome?.runtime?.getManifest?.()?.key === undefined;
+      const extensionAPI = (window as any).browser || (window as any).chrome;
+      return extensionAPI?.runtime?.getManifest?.()?.key === undefined;
     });
   }
 

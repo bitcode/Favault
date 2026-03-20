@@ -4,6 +4,7 @@
 
 import { BookmarkEditAPI, type BookmarkItem, type BookmarkFolder, browserAPI } from './api';
 import { bookmarkFolders } from './stores';
+import { getExtensionProtocol } from './utils';
 
 // Enhanced interfaces with console script features
 export interface DragData {
@@ -99,15 +100,17 @@ export class EnhancedDragDropManager {
    * Detect if we're running in production mode
    */
   private static isProductionMode(): boolean {
+    const runtime = browserAPI?.runtime;
+    const extensionProtocol = getExtensionProtocol();
+
     // Check for common production indicators
     return (
-      // Chrome extension in production (no dev tools context)
-      typeof chrome !== 'undefined' &&
-      chrome.runtime &&
-      !chrome.runtime.getManifest().key && // Dev extensions have a key
+      // Unpacked extensions typically carry a manifest key during development.
+      !!runtime &&
+      !runtime.getManifest().key &&
       // URL-based detection
-      (window.location.protocol === 'chrome-extension:' ||
-        window.location.protocol === 'moz-extension:') &&
+      !!extensionProtocol &&
+      window.location.protocol === extensionProtocol &&
       // No development flags
       !window.location.search.includes('debug') &&
       !window.location.search.includes('dev')
@@ -1103,8 +1106,8 @@ export class EnhancedDragDropManager {
       // Strategy:
       //   1. Build folder-only sibling list (preserving their real indices in parentChildren).
       //   2. Map the UI insertionIndex [0..numFolders] → desired folder-sibling gap.
-      //   3. Convert that gap to the Chrome sibling index of the destination slot so
-      //      chrome.bookmarks.move gets the right position.
+      //   3. Convert that gap to the extension sibling index of the destination slot so
+      //      bookmarks.move gets the right position.
       //   4. Derive the UI display index (position among folders-only) to feed
       //      optimisticFolderReorder correctly.
 
@@ -1115,7 +1118,7 @@ export class EnhancedDragDropManager {
       // Index of the dragged folder within the folder-sibling list
       const fromFolderSiblingIdx = folderSiblings.findIndex((c: any) => c.id === fromBookmarkId);
 
-      let targetIndex: number;       // Chrome sibling index (used in chrome.bookmarks.move)
+      let targetIndex: number;       // Extension sibling index used in bookmarks.move
       let uiTargetDisplayIdx: number; // Display index among folder-only list (for optimisticFolderReorder)
 
       if (mode === 'insertion-index') {

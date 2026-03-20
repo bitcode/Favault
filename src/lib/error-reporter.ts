@@ -1,7 +1,7 @@
-// Enhanced Error Reporting System for FaVault Chrome Extension
+// Enhanced Error Reporting System for FaVault extension
 // Captures and formats extension loading errors, initialization problems, and runtime errors
 
-import { getBrowserInfo, getExtensionContext } from './utils';
+import { getBrowserInfo, getExtensionAPI, getExtensionContext, sendRuntimeMessage } from './utils';
 
 export interface ErrorReport {
   id: string;
@@ -68,8 +68,8 @@ class ErrorReporter {
    */
   private detectProductionEnvironment(): boolean {
     try {
-      // Check if we're in a Chrome extension context (production indicator)
-      const isExtension = !!(typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id);
+      const runtime = getExtensionAPI()?.runtime;
+      const isExtension = !!runtime?.id;
       
       // Check for development indicators
       const isDevelopment = window.location.hostname === 'localhost' || 
@@ -315,10 +315,17 @@ class ErrorReporter {
       state.dragDropInitialized = !!(window as any).enhancedDragDropReady;
       
       // Check service worker status
-      if (typeof chrome !== 'undefined' && chrome.runtime) {
-        chrome.runtime.sendMessage({ type: 'PING' }, (response) => {
-          state.serviceWorkerActive = !!response;
-        });
+      const runtime = getExtensionAPI()?.runtime;
+      state.serviceWorkerActive = !!runtime?.id;
+
+      if (runtime?.sendMessage) {
+        sendRuntimeMessage({ type: 'PING' })
+          .then((response: unknown) => {
+            state.serviceWorkerActive = !!response;
+          })
+          .catch(() => {
+            state.serviceWorkerActive = false;
+          });
       }
     } catch (e) {
       // Ignore errors when getting state
@@ -341,19 +348,19 @@ class ErrorReporter {
         break;
         
       case 'initialization':
-        suggestions.push('Try reloading the extension in chrome://extensions/');
+        suggestions.push('Try reloading the extension in the browser extension manager');
         suggestions.push('Check browser console for additional error details');
-        suggestions.push('Verify Chrome extension APIs are available');
+        suggestions.push('Verify extension APIs are available');
         break;
         
       case 'api':
         suggestions.push('Check if required permissions are granted in manifest.json');
-        suggestions.push('Verify the Chrome API is available in this context');
+        suggestions.push('Verify the extension API is available in this context');
         suggestions.push('Try restarting the browser if API calls are failing');
         break;
         
       case 'permission':
-        suggestions.push('Grant required permissions in chrome://extensions/');
+        suggestions.push('Grant required permissions in the browser extension manager');
         suggestions.push('Check if bookmarks permission is enabled');
         suggestions.push('Verify storage permission is granted');
         break;
@@ -375,7 +382,7 @@ class ErrorReporter {
       'manifest',
       'permission denied',
       'extension not found',
-      'chrome api not available'
+      'extension api not available'
     ];
     
     const message = errorData.message.toLowerCase();
@@ -557,11 +564,11 @@ Protocol: ${extensionInfo.protocol}
 Extension ID: ${extensionInfo.extensionId || 'N/A'}
 Manifest Version: ${extensionInfo.manifestVersion || 'N/A'}
 
-Chrome APIs Available:
-Runtime: ${browserInfo.chrome?.runtime ? 'Yes' : 'No'}
-Bookmarks: ${browserInfo.chrome?.bookmarks ? 'Yes' : 'No'}
-Storage: ${browserInfo.chrome?.storage ? 'Yes' : 'No'}
-Extension Version: ${browserInfo.chrome?.version || 'N/A'}
+Extension APIs Available:
+Runtime: ${browserInfo.extensionApi?.runtime ? 'Yes' : 'No'}
+Bookmarks: ${browserInfo.extensionApi?.bookmarks ? 'Yes' : 'No'}
+Storage: ${browserInfo.extensionApi?.storage ? 'Yes' : 'No'}
+Extension Version: ${browserInfo.extensionApi?.version || 'N/A'}
 `;
     }
 

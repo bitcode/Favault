@@ -311,47 +311,48 @@ export class ConsoleTestUtils {
   }
 
   /**
-   * Monitor Chrome extension API calls
+   * Monitor extension bookmark API calls
    */
   async monitorExtensionAPICalls(): Promise<void> {
     await this.page.addInitScript(() => {
-      // Monitor chrome.bookmarks API calls
-      if (typeof chrome !== 'undefined' && chrome.bookmarks) {
+      const extensionAPI = (window as any).browser || (window as any).chrome;
+
+      if (extensionAPI?.bookmarks) {
         const originalMethods = {
-          getTree: chrome.bookmarks.getTree,
-          move: chrome.bookmarks.move,
-          create: chrome.bookmarks.create,
-          remove: chrome.bookmarks.remove,
-          update: chrome.bookmarks.update
+          getTree: extensionAPI.bookmarks.getTree,
+          move: extensionAPI.bookmarks.move,
+          create: extensionAPI.bookmarks.create,
+          remove: extensionAPI.bookmarks.remove,
+          update: extensionAPI.bookmarks.update
         };
 
         // Wrap API methods to log calls
-        chrome.bookmarks.getTree = function(...args) {
-          console.log('🔍 chrome.bookmarks.getTree called', args);
+        extensionAPI.bookmarks.getTree = function(...args) {
+          console.log('🔍 extension.bookmarks.getTree called', args);
           return originalMethods.getTree.apply(this, args);
         };
 
-        chrome.bookmarks.move = function(...args) {
-          console.log('🔍 chrome.bookmarks.move called', args);
+        extensionAPI.bookmarks.move = function(...args) {
+          console.log('🔍 extension.bookmarks.move called', args);
           return originalMethods.move.apply(this, args);
         };
 
-        chrome.bookmarks.create = function(...args) {
-          console.log('🔍 chrome.bookmarks.create called', args);
+        extensionAPI.bookmarks.create = function(...args) {
+          console.log('🔍 extension.bookmarks.create called', args);
           return originalMethods.create.apply(this, args);
         };
 
-        chrome.bookmarks.remove = function(...args) {
-          console.log('🔍 chrome.bookmarks.remove called', args);
+        extensionAPI.bookmarks.remove = function(...args) {
+          console.log('🔍 extension.bookmarks.remove called', args);
           return originalMethods.remove.apply(this, args);
         };
 
-        chrome.bookmarks.update = function(...args) {
-          console.log('🔍 chrome.bookmarks.update called', args);
+        extensionAPI.bookmarks.update = function(...args) {
+          console.log('🔍 extension.bookmarks.update called', args);
           return originalMethods.update.apply(this, args);
         };
 
-        console.log('🔍 Chrome extension API monitoring enabled');
+        console.log('🔍 Extension API monitoring enabled');
       }
     });
   }

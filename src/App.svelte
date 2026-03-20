@@ -417,7 +417,7 @@
     editMode,
     userSettings,
   } from "./lib/stores";
-  import { ExtensionAPI, BookmarkEditAPI } from "./lib/api";
+  import { ExtensionAPI, BookmarkEditAPI, browserAPI } from "./lib/api";
   import { getTheme, getThemeStyle } from "./lib/themes";
 
   // Import drag-and-drop animations CSS
@@ -563,8 +563,13 @@
           .querySelector(".folder-title, h3, .folder-name")
           ?.textContent?.trim();
 
-        // Get Chrome bookmark tree
-        const tree = await (chrome as any).bookmarks.getTree();
+        const bookmarksAPI = browserAPI?.bookmarks;
+        if (!bookmarksAPI) {
+          throw new Error("Bookmark API not available");
+        }
+
+        // Get bookmark tree through the shared extension API
+        const tree = await bookmarksAPI.getTree();
         const findFolder = (nodes: any[], title: string): any | null => {
           for (const node of nodes) {
             if (node.title === title && node.children && !node.url) return node;
@@ -582,7 +587,7 @@
         }
 
         // Perform the move
-        const result = await (chrome as any).bookmarks.move(bookmarkFolder.id, {
+        const result = await bookmarksAPI.move(bookmarkFolder.id, {
           parentId: "1", // Bookmarks folder
           index: toIndex,
         });
@@ -611,7 +616,12 @@
       try {
         console.log("📊 Current bookmark state:");
 
-        const children = await (chrome as any).bookmarks.getChildren("1"); // Bookmarks folder
+        const bookmarksAPI = browserAPI?.bookmarks;
+        if (!bookmarksAPI) {
+          throw new Error("Bookmark API not available");
+        }
+
+        const children = await bookmarksAPI.getChildren("1"); // Bookmarks folder
         const folders = children.filter((child: any) => !child.url);
 
         console.log(`📊 ${folders.length} folders in Chrome bookmarks`);
@@ -638,12 +648,13 @@
 
         const tests = [
           {
-            name: "Chrome API Check",
+            name: "Extension API Check",
             test: async () => {
-              if (typeof chrome === "undefined" || !(chrome as any).bookmarks) {
-                throw new Error("Chrome bookmark API not available");
+              const bookmarksAPI = browserAPI?.bookmarks;
+              if (!bookmarksAPI) {
+                throw new Error("Bookmark API not available");
               }
-              const tree = await (chrome as any).bookmarks.getTree();
+              const tree = await bookmarksAPI.getTree();
               return { treeNodes: tree.length };
             },
           },
@@ -660,7 +671,12 @@
           {
             name: "Bookmark Folders Check",
             test: async () => {
-              const children = await (chrome as any).bookmarks.getChildren("1");
+              const bookmarksAPI = browserAPI?.bookmarks;
+              if (!bookmarksAPI) {
+                throw new Error("Bookmark API not available");
+              }
+
+              const children = await bookmarksAPI.getChildren("1");
               const folders = children.filter((child: any) => !child.url);
               if (folders.length === 0) {
                 throw new Error("No bookmark folders found");

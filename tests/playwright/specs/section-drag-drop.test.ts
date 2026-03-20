@@ -3,7 +3,7 @@
  *
  * These tests call `EnhancedDragDropManager.moveFolderToPosition` directly
  * (the same function the insertion-point drop handler calls) and then read
- * the Chrome Bookmarks API to verify the folder landed at the correct
+ * the extension bookmarks API to verify the folder landed at the correct
  * sibling position.
  *
  * They use the SAME index criteria the codebase uses:
@@ -11,8 +11,8 @@
  *   - insertionIndex = UI gap slot (0 = before first section, N = after last)
  *   - mode = 'insertion-index' (what FolderInsertionPoint.svelte passes)
  *
- * The tests then ask Chrome "where did this folder actually end up?" and
- * compare that Chrome sibling position (among folder-type children only, which
+ * The tests then ask the extension runtime "where did this folder actually end up?" and
+ * compare that sibling position (among folder-type children only, which
  * matches what the user sees) against the intended display position.
  */
 
@@ -42,14 +42,14 @@ async function getDomSectionState(page: Page) {
 }
 
 /**
- * Uses the Chrome Bookmarks API (via `EnhancedDragDropManager` which has access
+ * Uses the extension bookmarks API (via `EnhancedDragDropManager` which has access
  * to `browserAPI`) to get the actual sibling position of a folder, counting
  * only folder-type siblings (no URL nodes) — which matches what the user sees.
  *
  * Returns:
  *   chromeSiblingAll:    raw index in parentChildren (includes loose bookmarks)
  *   chromeFolderOnly:    index among folder-only siblings (what the UI shows)
- *   parentId:            Chrome parent bookmark ID
+ *   parentId:            extension parent bookmark ID
  *   parentChildren:      all sibling titles for diagnostics
  *   folderOnlySiblings:  folder sibling titles for diagnostics
  */
@@ -60,11 +60,11 @@ async function getChromeFolderPosition(page: Page, bookmarkId: string) {
 
         // Use the same browser API the manager uses internally
         // It's exposed on the window for testing
-        const chromeBookmarks = (window as any).chrome?.bookmarks ?? (window as any).browser?.bookmarks;
-        if (!chromeBookmarks) throw new Error('chrome.bookmarks API not accessible');
+        const extensionBookmarks = (window as any).browser?.bookmarks ?? (window as any).chrome?.bookmarks;
+        if (!extensionBookmarks) throw new Error('Extension bookmarks API not accessible');
 
-        const [node] = await chromeBookmarks.get(id);
-        const parentChildren = await chromeBookmarks.getChildren(node.parentId);
+        const [node] = await extensionBookmarks.get(id);
+        const parentChildren = await extensionBookmarks.getChildren(node.parentId);
 
         const chromeSiblingAll = parentChildren.findIndex((c: any) => c.id === id);
         const folderOnlySiblings = parentChildren.filter((c: any) => !c.url);

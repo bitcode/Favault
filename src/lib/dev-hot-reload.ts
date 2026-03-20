@@ -3,11 +3,14 @@
  * Automatically reloads and reinjects testing scripts during development
  */
 
+import { getExtensionAPI, getExtensionProtocol } from './utils';
+
 export class DevHotReload {
   private static instance: DevHotReload;
   private reloadInterval: number | null = null;
   private lastModified: number = 0;
   private isEnabled = false;
+  private extensionAPI = getExtensionAPI();
 
   static getInstance(): DevHotReload {
     if (!DevHotReload.instance) {
@@ -54,7 +57,7 @@ export class DevHotReload {
   private async checkForUpdates(): Promise<void> {
     try {
       // Check if extension context is still valid
-      if (typeof chrome === 'undefined' || !chrome.runtime) {
+      if (!this.extensionAPI?.runtime) {
         console.log('🔄 Extension context invalidated, reloading page...');
         window.location.reload();
         return;
@@ -67,7 +70,7 @@ export class DevHotReload {
         
         // Try to ping the extension
         try {
-          await chrome.runtime.sendMessage({ type: 'PING' });
+          await this.extensionAPI.runtime.sendMessage({ type: 'PING' });
         } catch (error) {
           console.log('🔄 Extension updated, reloading page...');
           window.location.reload();
@@ -86,7 +89,7 @@ export class DevHotReload {
     
     try {
       // Try to reload the extension
-      await chrome.runtime.reload();
+      await this.extensionAPI?.runtime?.reload?.();
     } catch (error) {
       // If that fails, just reload the page
       window.location.reload();
@@ -101,6 +104,8 @@ export class DevHotReload {
     
     // Import and initialize the development testing module
     try {
+      // Optional dev-only helper; the module is not present in every checkout.
+      // @ts-expect-error dynamic dev helper is intentionally optional
       const { EnhancedDragDropDev } = await import('./enhanced-dragdrop-dev');
       const devSystem = EnhancedDragDropDev.getInstance();
       await devSystem.initialize();
@@ -132,8 +137,9 @@ export class DevHotReload {
  */
 export function initDevMode(): void {
   // Only enable in development (check for localhost or unpacked extension)
+  const extensionProtocol = getExtensionProtocol();
   const isDev = window.location.hostname === 'localhost' || 
-                window.location.protocol === 'chrome-extension:' ||
+                window.location.protocol === extensionProtocol ||
                 process.env.NODE_ENV === 'development';
 
   if (isDev) {

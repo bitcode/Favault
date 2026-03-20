@@ -337,9 +337,10 @@ test.describe('UI Components and Visual Testing', () => {
     // Inject script to simulate error state
     await consoleUtils.injectTestScript(`
       // Simulate bookmark loading error
-      if (typeof chrome !== 'undefined' && chrome.bookmarks) {
-        const originalGetTree = chrome.bookmarks.getTree;
-        chrome.bookmarks.getTree = function() {
+      const extensionAPI = window.browser || window.chrome;
+      if (extensionAPI?.bookmarks) {
+        const originalGetTree = extensionAPI.bookmarks.getTree;
+        extensionAPI.bookmarks.getTree = function() {
           return Promise.reject(new Error('Simulated bookmark loading error'));
         };
         

@@ -1,4 +1,5 @@
 // Brave browser debugging utilities for drag-and-drop functionality
+import { getExtensionAPI } from './utils';
 
 export class BraveDebugger {
   /**
@@ -55,12 +56,14 @@ export class BraveDebugger {
    * Check for Brave-specific features
    */
   private static getBraveFeatures(): any {
+    const chromeAPI = (window as any).chrome;
+
     return {
-      shieldsAPI: !!(window as any).chrome?.braveShields,
-      rewardsAPI: !!(window as any).chrome?.braveRewards,
-      walletAPI: !!(window as any).chrome?.braveWallet,
-      themeAPI: !!(window as any).chrome?.braveTheme,
-      adblockAPI: !!(window as any).chrome?.adblock
+      shieldsAPI: !!chromeAPI?.braveShields,
+      rewardsAPI: !!chromeAPI?.braveRewards,
+      walletAPI: !!chromeAPI?.braveWallet,
+      themeAPI: !!chromeAPI?.braveTheme,
+      adblockAPI: !!chromeAPI?.adblock
     };
   }
 
@@ -96,15 +99,16 @@ export class BraveDebugger {
    * Check extension permissions
    */
   private static checkPermissions(): any {
-    const chrome = (window as any).chrome;
-    if (!chrome || !chrome.runtime) {
-      return { available: false, error: 'Chrome runtime not available' };
+    const extensionAPI = getExtensionAPI();
+    const runtime = extensionAPI?.runtime;
+    if (!runtime) {
+      return { available: false, error: 'Extension runtime not available' };
     }
 
     return {
       available: true,
-      manifest: chrome.runtime.getManifest ? chrome.runtime.getManifest() : null,
-      id: chrome.runtime.id || null
+      manifest: runtime.getManifest ? runtime.getManifest() : null,
+      id: runtime.id || null
     };
   }
 
@@ -124,7 +128,7 @@ export class BraveDebugger {
       canSetDraggable: false,
       draggableAfterSet: false,
       hasAttribute: false,
-      attributeValue: null
+      attributeValue: null as string | null
     };
 
     try {
@@ -232,7 +236,7 @@ export class BraveDebugger {
       draggableBehavior: this.testDraggableBehavior(),
       eventListeners: this.testEventListeners(),
       cspRestrictions: this.testCSPRestrictions(),
-      recommendations: []
+      recommendations: [] as string[]
     };
 
     // Generate recommendations
@@ -288,7 +292,7 @@ export class BraveDebugger {
       <p><strong>CSP:</strong> ${diagnostic.cspRestrictions.dynamicStyles ? '✅' : '❌'}</p>
       <div style="margin-top: 10px;">
         <strong>Recommendations:</strong>
-        ${diagnostic.recommendations.map(rec => `<div>• ${rec}</div>`).join('')}
+        ${diagnostic.recommendations.map((rec: string) => `<div>• ${rec}</div>`).join('')}
       </div>
       <button onclick="this.parentElement.remove()" style="margin-top: 10px; padding: 5px 10px;">Close</button>
     `;

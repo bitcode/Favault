@@ -28,10 +28,11 @@ test.describe('Drag-Drop Integration Verification', () => {
 
     // Verify basic page structure
     const pageStructure = await newTabPage.evaluate(() => {
+      const extensionAPI = (window as any).browser || (window as any).chrome;
       return {
         hasBody: document.body !== null,
-        hasChrome: typeof chrome !== 'undefined',
-        hasBookmarksAPI: typeof chrome !== 'undefined' && typeof chrome.bookmarks !== 'undefined',
+        hasExtensionAPI: typeof extensionAPI !== 'undefined',
+        hasBookmarksAPI: typeof extensionAPI?.bookmarks !== 'undefined',
         elementCounts: {
           divs: document.querySelectorAll('div').length,
           scripts: document.querySelectorAll('script').length,
@@ -227,11 +228,13 @@ test.describe('Drag-Drop Integration Verification', () => {
 
     // Check if this is a production build
     const buildInfo = await newTabPage.evaluate(() => {
+      const extensionAPI = (window as any).browser || (window as any).chrome;
+      const manifest = extensionAPI?.runtime?.getManifest?.();
       return {
-        isDevelopment: !!(window as any).chrome?.runtime?.getManifest?.()?.key === undefined,
-        manifestVersion: (window as any).chrome?.runtime?.getManifest?.()?.manifest_version,
-        extensionName: (window as any).chrome?.runtime?.getManifest?.()?.name,
-        version: (window as any).chrome?.runtime?.getManifest?.()?.version
+        isDevelopment: manifest?.key === undefined,
+        manifestVersion: manifest?.manifest_version,
+        extensionName: manifest?.name,
+        version: manifest?.version
       };
     });
     

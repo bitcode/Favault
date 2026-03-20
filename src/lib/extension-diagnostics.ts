@@ -2,7 +2,7 @@
 // Specialized utilities for diagnosing Chrome extension issues
 
 import { errorReporter, reportLoadingError, reportInitializationError, reportAPIError, reportPermissionError } from './error-reporter';
-import { getBrowserInfo, getExtensionContext } from './utils';
+import { getBrowserInfo, getErrorMessage, getExtensionAPI, getExtensionContext, sendRuntimeMessage } from './utils';
 
 export interface DiagnosticResult {
   test: string;
@@ -32,6 +32,11 @@ export interface ExtensionDiagnostics {
 
 export class ExtensionDiagnosticsRunner {
   private results: DiagnosticResult[] = [];
+  private extensionAPI = getExtensionAPI();
+
+  private getManifest(): any {
+    return this.extensionAPI?.runtime?.getManifest?.();
+  }
 
   /**
    * Run comprehensive extension diagnostics
@@ -43,7 +48,7 @@ export class ExtensionDiagnosticsRunner {
     // Core extension tests
     await this.testExtensionContext();
     await this.testManifestAccess();
-    await this.testChromeAPIs();
+    await this.testExtensionAPIs();
     await this.testPermissions();
     await this.testServiceWorker();
     
@@ -86,7 +91,7 @@ export class ExtensionDiagnosticsRunner {
         message: 'Not running in extension context',
         details: { url: context.url, protocol: context.protocol },
         suggestions: [
-          'Load this page as a Chrome extension',
+          'Load this page as a browser extension',
           'Check if extension is properly installed',
           'Verify manifest.json configuration'
         ],
@@ -107,11 +112,11 @@ export class ExtensionDiagnosticsRunner {
     const startTime = Date.now();
     
     try {
-      if (typeof chrome === 'undefined' || !chrome.runtime) {
-        throw new Error('Chrome runtime not available');
+      if (!this.extensionAPI?.runtime) {
+        throw new Error('Extension runtime not available');
       }
 
-      const manifest = chrome.runtime.getManifest();
+      const manifest = this.getManifest();
       
       if (!manifest) {
         throw new Error('Manifest not accessible');
@@ -151,32 +156,33 @@ export class ExtensionDiagnosticsRunner {
         });
       }
     } catch (error) {
+      const errorMessage = getErrorMessage(error);
       this.addResult({
         test: 'Manifest Access',
         status: 'fail',
-        message: `Failed to access manifest: ${error.message}`,
+        message: `Failed to access manifest: ${errorMessage}`,
         suggestions: [
           'Check if extension is properly loaded',
-          'Verify Chrome extension APIs are available',
+          'Verify extension APIs are available',
           'Try reloading the extension'
         ],
         timing: Date.now() - startTime
       });
       
-      reportLoadingError('Manifest access failed', { error: error.message });
+      reportLoadingError('Manifest access failed', { error: errorMessage });
     }
   }
 
   /**
-   * Test Chrome API availability
+   * Test extension API availability
    */
-  private async testChromeAPIs(): Promise<void> {
+  private async testExtensionAPIs(): Promise<void> {
     const startTime = Date.now();
     const apis = [
-      { name: 'runtime', api: chrome?.runtime },
-      { name: 'bookmarks', api: chrome?.bookmarks },
-      { name: 'storage', api: chrome?.storage },
-      { name: 'commands', api: chrome?.commands }
+      { name: 'runtime', api: this.extensionAPI?.runtime },
+      { name: 'bookmarks', api: this.extensionAPI?.bookmarks },
+      { name: 'storage', api: this.extensionAPI?.storage },
+      { name: 'commands', api: this.extensionAPI?.commands }
     ];
 
     const availableAPIs: string[] = [];
@@ -192,9 +198,9 @@ export class ExtensionDiagnosticsRunner {
 
     if (unavailableAPIs.length === 0) {
       this.addResult({
-        test: 'Chrome APIs',
+        test: 'Extension APIs',
         status: 'pass',
-        message: 'All required Chrome APIs are available',
+        message: 'All required extension APIs are available',
         details: { availableAPIs },
         timing: Date.now() - startTime
       });
@@ -202,9 +208,9 @@ export class ExtensionDiagnosticsRunner {
       const severity = unavailableAPIs.includes('runtime') || unavailableAPIs.includes('bookmarks') ? 'fail' : 'warning';
       
       this.addResult({
-        test: 'Chrome APIs',
+        test: 'Extension APIs',
         status: severity,
-        message: `Some Chrome APIs are unavailable: ${unavailableAPIs.join(', ')}`,
+        message: `Some extension APIs are unavailable: ${unavailableAPIs.join(', ')}`,
         details: { availableAPIs, unavailableAPIs },
         suggestions: [
           'Check manifest.json permissions',
@@ -215,7 +221,7 @@ export class ExtensionDiagnosticsRunner {
       });
 
       if (severity === 'fail') {
-        reportAPIError('Critical Chrome APIs unavailable', 'Chrome Extension APIs', {
+        reportAPIError('Critical extension APIs unavailable', 'Extension APIs', {
           unavailableAPIs
         });
       }
@@ -229,23 +235,23 @@ export class ExtensionDiagnosticsRunner {
     const startTime = Date.now();
     
     try {
-      if (!chrome?.runtime) {
-        throw new Error('Chrome runtime not available');
+      if (!this.extensionAPI?.runtime) {
+        throw new Error('Extension runtime not available');
       }
 
-      const manifest = chrome.runtime.getManifest();
+      const manifest = this.getManifest();
       const declaredPermissions = manifest.permissions || [];
       
       // Test specific permissions
       const permissionTests = [
         {
           name: 'bookmarks',
-          test: () => !!chrome.bookmarks,
+          test: () => !!this.extensionAPI?.bookmarks,
           required: true
         },
         {
           name: 'storage',
-          test: () => !!chrome.storage,
+          test: () => !!this.extensionAPI?.storage,
           required: true
         }
       ];
@@ -287,10 +293,11 @@ export class ExtensionDiagnosticsRunner {
         });
       }
     } catch (error) {
+      const errorMessage = getErrorMessage(error);
       this.addResult({
         test: 'Permissions',
         status: 'fail',
-        message: `Permission check failed: ${error.message}`,
+        message: `Permission check failed: ${errorMessage}`,
         suggestions: [
           'Check if extension is properly loaded',
           'Verify manifest.json permissions section'
@@ -298,7 +305,7 @@ export class ExtensionDiagnosticsRunner {
         timing: Date.now() - startTime
       });
       
-      reportLoadingError('Permission check failed', { error: error.message });
+      reportLoadingError('Permission check failed', { error: errorMessage });
     }
   }
 
@@ -309,16 +316,10 @@ export class ExtensionDiagnosticsRunner {
     const startTime = Date.now();
     
     try {
-      if (!chrome?.runtime) {
-        throw new Error('Chrome runtime not available');
+      if (!this.extensionAPI?.runtime) {
+        throw new Error('Extension runtime not available');
       }
-
-      // Try to ping the service worker
-      const response = await new Promise((resolve) => {
-        chrome.runtime.sendMessage({ type: 'PING' }, (response) => {
-          resolve(response);
-        });
-      });
+      const response = await sendRuntimeMessage({ type: 'PING' });
 
       if (response) {
         this.addResult({
@@ -342,10 +343,11 @@ export class ExtensionDiagnosticsRunner {
         });
       }
     } catch (error) {
+      const errorMessage = getErrorMessage(error);
       this.addResult({
         test: 'Service Worker',
         status: 'fail',
-        message: `Service worker test failed: ${error.message}`,
+        message: `Service worker test failed: ${errorMessage}`,
         suggestions: [
           'Check if service worker is registered',
           'Look for service worker errors in extension console',
@@ -355,7 +357,7 @@ export class ExtensionDiagnosticsRunner {
       });
       
       reportInitializationError('Service worker communication failed', {
-        error: error.message
+        error: errorMessage
       });
     }
   }
@@ -392,10 +394,11 @@ export class ExtensionDiagnosticsRunner {
         throw new Error('DOM manipulation test failed');
       }
     } catch (error) {
+      const errorMessage = getErrorMessage(error);
       this.addResult({
         test: 'DOM Access',
         status: 'fail',
-        message: `DOM access failed: ${error.message}`,
+        message: `DOM access failed: ${errorMessage}`,
         suggestions: [
           'Check if page has finished loading',
           'Verify script execution context',
@@ -404,7 +407,7 @@ export class ExtensionDiagnosticsRunner {
         timing: Date.now() - startTime
       });
       
-      reportInitializationError('DOM access failed', { error: error.message });
+      reportInitializationError('DOM access failed', { error: errorMessage });
     }
   }
 
@@ -415,12 +418,12 @@ export class ExtensionDiagnosticsRunner {
     const startTime = Date.now();
 
     try {
-      if (!chrome?.bookmarks) {
+      if (!this.extensionAPI?.bookmarks) {
         throw new Error('Bookmarks API not available');
       }
 
       // Try to get bookmark tree
-      const bookmarks = await chrome.bookmarks.getTree();
+      const bookmarks = await this.extensionAPI.bookmarks.getTree();
 
       if (bookmarks && bookmarks.length > 0) {
         const folderCount = this.countBookmarkFolders(bookmarks);
@@ -445,10 +448,11 @@ export class ExtensionDiagnosticsRunner {
         });
       }
     } catch (error) {
+      const errorMessage = getErrorMessage(error);
       this.addResult({
         test: 'Bookmark Access',
         status: 'fail',
-        message: `Bookmark API failed: ${error.message}`,
+        message: `Bookmark API failed: ${errorMessage}`,
         suggestions: [
           'Check bookmarks permission in manifest.json',
           'Verify extension has been granted bookmarks access',
@@ -457,7 +461,7 @@ export class ExtensionDiagnosticsRunner {
         timing: Date.now() - startTime
       });
 
-      reportAPIError('Bookmark API access failed', 'Bookmarks', { error: error.message });
+      reportAPIError('Bookmark API access failed', 'Bookmarks', { error: errorMessage });
     }
   }
 
@@ -468,7 +472,7 @@ export class ExtensionDiagnosticsRunner {
     const startTime = Date.now();
 
     try {
-      if (!chrome?.storage?.local) {
+      if (!this.extensionAPI?.storage?.local) {
         throw new Error('Storage API not available');
       }
 
@@ -476,13 +480,13 @@ export class ExtensionDiagnosticsRunner {
       const testValue = { timestamp: Date.now(), test: true };
 
       // Test write
-      await chrome.storage.local.set({ [testKey]: testValue });
+      await this.extensionAPI.storage.local.set({ [testKey]: testValue });
 
       // Test read
-      const result = await chrome.storage.local.get(testKey);
+      const result = await this.extensionAPI.storage.local.get(testKey);
 
       // Test delete
-      await chrome.storage.local.remove(testKey);
+      await this.extensionAPI.storage.local.remove(testKey);
 
       if (result[testKey] && result[testKey].test === true) {
         this.addResult({
@@ -495,10 +499,11 @@ export class ExtensionDiagnosticsRunner {
         throw new Error('Storage read/write test failed');
       }
     } catch (error) {
+      const errorMessage = getErrorMessage(error);
       this.addResult({
         test: 'Storage Access',
         status: 'fail',
-        message: `Storage API failed: ${error.message}`,
+        message: `Storage API failed: ${errorMessage}`,
         suggestions: [
           'Check storage permission in manifest.json',
           'Verify extension has storage access',
@@ -507,7 +512,7 @@ export class ExtensionDiagnosticsRunner {
         timing: Date.now() - startTime
       });
 
-      reportAPIError('Storage API access failed', 'Storage', { error: error.message });
+      reportAPIError('Storage API access failed', 'Storage', { error: errorMessage });
     }
   }
 
@@ -552,10 +557,11 @@ export class ExtensionDiagnosticsRunner {
         });
       }
     } catch (error) {
+      const errorMessage = getErrorMessage(error);
       this.addResult({
         test: 'Drag-Drop System',
         status: 'fail',
-        message: `Drag-drop system test failed: ${error.message}`,
+        message: `Drag-drop system test failed: ${errorMessage}`,
         suggestions: [
           'Check browser console for drag-drop errors',
           'Verify all required scripts are loaded',
@@ -819,7 +825,7 @@ Browser: ${diagnostics.systemInfo.browser.userAgent}
 Platform: ${diagnostics.systemInfo.browser.platform}
 Extension ID: ${diagnostics.systemInfo.extension.extensionId || 'N/A'}
 Manifest Version: ${diagnostics.systemInfo.extension.manifestVersion || 'N/A'}
-Chrome APIs: ${JSON.stringify(diagnostics.systemInfo.browser.chrome, null, 2)}
+Extension APIs: ${JSON.stringify(diagnostics.systemInfo.browser.extensionApi, null, 2)}
 `;
 
   return report;

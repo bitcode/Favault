@@ -2,6 +2,7 @@ import { test, expect, devices } from '@playwright/test';
 import { BookmarkTestUtils } from '../utils/bookmark-utils';
 import { DragDropTestUtils } from '../utils/dragdrop-utils';
 import { ConsoleTestUtils } from '../utils/console-utils';
+import { getExtensionProtocol, navigateToExtensionHome } from '../utils/extension-target';
 
 /**
  * Cross-browser compatibility tests for FaVault extension
@@ -39,20 +40,25 @@ const browserConfigs = [
 // Run tests for each browser configuration
 for (const config of browserConfigs) {
   test.describe(`Cross-Browser Compatibility - ${config.name}`, () => {
+    const assertMatchingProject = (projectName: string) => {
+      test.skip(projectName !== config.project, `Only runs in ${config.project}`);
+    };
+
+    const assertSupportedBrowser = (browserName: string) => {
+      test.fixme(browserName === 'firefox', 'Firefox extension launch path is not wired into Playwright yet.');
+    };
+
     // Note: test.use() moved to individual tests to avoid worker conflicts
 
-    test(`should load extension correctly in ${config.name}`, async ({ page, context }) => {
-      // Skip Firefox for now as it requires different extension loading approach
-      if (config.name === 'Firefox') {
-        test.skip('Firefox extension testing requires different setup');
-      }
+    test(`should load extension correctly in ${config.name}`, async ({ page, browserName }, testInfo) => {
+      assertMatchingProject(testInfo.project.name);
+      assertSupportedBrowser(browserName);
 
       const consoleUtils = new ConsoleTestUtils(page);
       await consoleUtils.startMonitoring();
 
       try {
-        // Navigate to new tab
-        await page.goto('chrome://newtab/');
+        await navigateToExtensionHome(page, browserName);
         
         // Wait for extension to load
         await page.waitForSelector('[data-testid="favault-app"], .app-container, #app', { timeout: 10000 });
@@ -68,7 +74,7 @@ for (const config of browserConfigs) {
         const criticalErrors = errors.filter(err => 
           !err.includes('favicon') && 
           !err.includes('net::ERR') &&
-          !err.includes('chrome-extension://') &&
+          !err.includes(getExtensionProtocol(browserName)) &&
           !err.includes('Manifest V2')
         );
         
@@ -79,10 +85,9 @@ for (const config of browserConfigs) {
       }
     });
 
-    test(`should handle bookmarks consistently in ${config.name}`, async ({ page }) => {
-      if (config.name === 'Firefox') {
-        test.skip('Firefox extension testing requires different setup');
-      }
+    test(`should handle bookmarks consistently in ${config.name}`, async ({ page, browserName }, testInfo) => {
+      assertMatchingProject(testInfo.project.name);
+      assertSupportedBrowser(browserName);
 
       const bookmarkUtils = new BookmarkTestUtils(page);
       const consoleUtils = new ConsoleTestUtils(page);
@@ -90,7 +95,7 @@ for (const config of browserConfigs) {
       await consoleUtils.startMonitoring();
       
       try {
-        await page.goto('chrome://newtab/');
+        await navigateToExtensionHome(page, browserName);
         await bookmarkUtils.waitForBookmarksToLoad();
         
         // Test basic bookmark functionality
@@ -127,14 +132,13 @@ for (const config of browserConfigs) {
       }
     });
 
-    test(`should support keyboard shortcuts in ${config.name}`, async ({ page }) => {
-      if (config.name === 'Firefox') {
-        test.skip('Firefox extension testing requires different setup');
-      }
+    test(`should support keyboard shortcuts in ${config.name}`, async ({ page, browserName }, testInfo) => {
+      assertMatchingProject(testInfo.project.name);
+      assertSupportedBrowser(browserName);
 
       const bookmarkUtils = new BookmarkTestUtils(page);
       
-      await page.goto('chrome://newtab/');
+      await navigateToExtensionHome(page, browserName);
       await bookmarkUtils.waitForBookmarksToLoad();
       
       // Test search shortcut (browser-specific)
@@ -166,10 +170,9 @@ for (const config of browserConfigs) {
       console.log(`✅ ${config.name}: Keyboard shortcuts working`);
     });
 
-    test(`should handle drag-and-drop in ${config.name}`, async ({ page }) => {
-      if (config.name === 'Firefox') {
-        test.skip('Firefox extension testing requires different setup');
-      }
+    test(`should handle drag-and-drop in ${config.name}`, async ({ page, browserName }, testInfo) => {
+      assertMatchingProject(testInfo.project.name);
+      assertSupportedBrowser(browserName);
 
       const bookmarkUtils = new BookmarkTestUtils(page);
       const dragDropUtils = new DragDropTestUtils(page);
@@ -179,7 +182,7 @@ for (const config of browserConfigs) {
       await consoleUtils.injectDragDropTestFunctions();
       
       try {
-        await page.goto('chrome://newtab/');
+        await navigateToExtensionHome(page, browserName);
         await bookmarkUtils.waitForBookmarksToLoad();
         
         // Enable edit mode
@@ -216,14 +219,13 @@ for (const config of browserConfigs) {
       }
     });
 
-    test(`should handle responsive design in ${config.name}`, async ({ page }) => {
-      if (config.name === 'Firefox') {
-        test.skip('Firefox extension testing requires different setup');
-      }
+    test(`should handle responsive design in ${config.name}`, async ({ page, browserName }, testInfo) => {
+      assertMatchingProject(testInfo.project.name);
+      assertSupportedBrowser(browserName);
 
       const bookmarkUtils = new BookmarkTestUtils(page);
       
-      await page.goto('chrome://newtab/');
+      await navigateToExtensionHome(page, browserName);
       await bookmarkUtils.waitForBookmarksToLoad();
       
       // Test different viewport sizes
@@ -251,10 +253,9 @@ for (const config of browserConfigs) {
       }
     });
 
-    test(`should maintain performance standards in ${config.name}`, async ({ page }) => {
-      if (config.name === 'Firefox') {
-        test.skip('Firefox extension testing requires different setup');
-      }
+    test(`should maintain performance standards in ${config.name}`, async ({ page, browserName }, testInfo) => {
+      assertMatchingProject(testInfo.project.name);
+      assertSupportedBrowser(browserName);
 
       const bookmarkUtils = new BookmarkTestUtils(page);
       const consoleUtils = new ConsoleTestUtils(page);
@@ -264,7 +265,7 @@ for (const config of browserConfigs) {
       try {
         const startTime = Date.now();
         
-        await page.goto('chrome://newtab/');
+        await navigateToExtensionHome(page, browserName);
         await bookmarkUtils.waitForBookmarksToLoad();
         
         const loadTime = Date.now() - startTime;
@@ -297,24 +298,24 @@ for (const config of browserConfigs) {
       }
     });
 
-    test(`should handle browser-specific APIs in ${config.name}`, async ({ page }) => {
-      if (config.name === 'Firefox') {
-        test.skip('Firefox extension testing requires different setup');
-      }
+    test(`should handle browser-specific APIs in ${config.name}`, async ({ page, browserName }, testInfo) => {
+      assertMatchingProject(testInfo.project.name);
+      assertSupportedBrowser(browserName);
 
       const consoleUtils = new ConsoleTestUtils(page);
       await consoleUtils.startMonitoring();
       
       try {
-        await page.goto('chrome://newtab/');
+        await navigateToExtensionHome(page, browserName);
         
         // Test browser API availability
         const apiTest = await page.evaluate(() => {
+          const extensionAPI = (window as any).browser || (window as any).chrome;
           const results = {
-            chrome: typeof chrome !== 'undefined',
-            chromeBookmarks: typeof chrome?.bookmarks !== 'undefined',
-            chromeStorage: typeof chrome?.storage !== 'undefined',
-            webExtensions: typeof browser !== 'undefined'
+            extensionAPI: typeof extensionAPI !== 'undefined',
+            bookmarks: typeof extensionAPI?.bookmarks !== 'undefined',
+            storage: typeof extensionAPI?.storage !== 'undefined',
+            webExtensions: typeof (window as any).browser !== 'undefined'
           };
           
           console.log('🔍 Browser API availability:', results);
@@ -323,9 +324,9 @@ for (const config of browserConfigs) {
         
         // Chrome/Chromium should have chrome APIs
         if (config.name === 'Chrome' || config.name === 'Chromium' || config.name === 'Edge') {
-          expect(apiTest.chrome).toBeTruthy();
-          expect(apiTest.chromeBookmarks).toBeTruthy();
-          expect(apiTest.chromeStorage).toBeTruthy();
+          expect(apiTest.extensionAPI).toBeTruthy();
+          expect(apiTest.bookmarks).toBeTruthy();
+          expect(apiTest.storage).toBeTruthy();
         }
         
         console.log(`✅ ${config.name}: Browser APIs available - ${JSON.stringify(apiTest)}`);

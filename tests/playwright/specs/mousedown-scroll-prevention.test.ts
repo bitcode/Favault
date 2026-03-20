@@ -1,14 +1,16 @@
 import { test, expect, chromium, type BrowserContext, type Page } from '@playwright/test';
 import path from 'path';
 import { execSync } from 'child_process';
+import { getExtensionProtocol, getNewTabUrl } from '../utils/extension-target';
 
 test.describe('Mousedown Scroll Prevention During Drag-Drop', () => {
   let context: BrowserContext;
   let page: Page;
+  const browserName = 'chromium';
 
   test.beforeAll(async () => {
     // Build the extension first
-    console.log('Building Chrome extension...');
+    console.log('Building Chromium extension...');
     execSync('npm run build:chrome', { cwd: process.cwd(), stdio: 'inherit' });
 
     // Launch browser with extension
@@ -33,17 +35,17 @@ test.describe('Mousedown Scroll Prevention During Drag-Drop', () => {
   });
 
   test('should prevent unwanted scrolling on mousedown in edit mode', async () => {
-    // Navigate to chrome://newtab to load the extension
-    await page.goto('chrome://newtab');
+    // Navigate to the browser new tab page to load the extension
+    await page.goto(getNewTabUrl(browserName));
     await page.waitForLoadState('networkidle');
 
     // Wait for extension redirect
     await page.waitForTimeout(3000);
 
-    console.log('Current URL after chrome://newtab:', page.url());
+    console.log('Current URL after new tab navigation:', page.url());
 
     // Verify we're on the extension page
-    if (!page.url().startsWith('chrome-extension://')) {
+    if (!page.url().startsWith(getExtensionProtocol(browserName))) {
       throw new Error('Extension did not load properly');
     }
 
@@ -174,13 +176,13 @@ test.describe('Mousedown Scroll Prevention During Drag-Drop', () => {
   });
 
   test('should maintain scroll position during full drag operation', async () => {
-    // Navigate to chrome://newtab to load the extension
-    await page.goto('chrome://newtab');
+    // Navigate to the browser new tab page to load the extension
+    await page.goto(getNewTabUrl(browserName));
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(3000);
 
     // Verify we're on the extension page
-    if (!page.url().startsWith('chrome-extension://')) {
+    if (!page.url().startsWith(getExtensionProtocol(browserName))) {
       throw new Error('Extension did not load properly');
     }
 
@@ -255,13 +257,13 @@ test.describe('Mousedown Scroll Prevention During Drag-Drop', () => {
   });
 
   test('should check if scroll prevention handlers are properly installed', async () => {
-    // Navigate to chrome://newtab to load the extension
-    await page.goto('chrome://newtab');
+    // Navigate to the browser new tab page to load the extension
+    await page.goto(getNewTabUrl(browserName));
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(3000);
 
     // Verify we're on the extension page
-    if (!page.url().startsWith('chrome-extension://')) {
+    if (!page.url().startsWith(getExtensionProtocol(browserName))) {
       throw new Error('Extension did not load properly');
     }
 

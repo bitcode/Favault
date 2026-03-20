@@ -8,6 +8,9 @@ import Logger from '../../src/lib/logging';
  * Builds extension, validates files, and prepares test environment
  */
 async function globalSetup(config: FullConfig) {
+  const activeProjectNames = new Set(config.projects.map((project) => project.name));
+  const buildTargets = getBuildTargets(activeProjectNames);
+
   // Initialize the logger
   const logger = Logger.getInstance();
   logger.init();
@@ -16,19 +19,36 @@ async function globalSetup(config: FullConfig) {
 
   // 1. Build the extension for testing
   console.log('📦 Building extension for testing...');
-  await buildExtension();
+  await buildExtension(buildTargets);
+
+  if (buildTargets.includes('firefox')) {
+    console.log('🧩 Packaging Firefox extension for profile-based loading...');
+    await packageFirefoxExtension();
+  }
 
   // 2. Validate extension files exist
   console.log('✅ Validating extension build...');
-  await validateExtensionBuild();
+  await validateExtensionBuild(buildTargets);
 
   // 3. Create test data directories
   console.log('📁 Creating test directories...');
   await createTestDirectories();
 
   // 4. Warm up browser for faster test execution
-  console.log('🌡️ Warming up browser...');
-  await warmupBrowser();
+  if (process.env.PLAYWRIGHT_WARMUP === '1') {
+    const shouldWarmChromium = [...activeProjectNames].some((projectName) =>
+      ['chromium-extension', 'chrome-extension', 'edge-extension'].includes(projectName)
+    );
+
+    if (shouldWarmChromium) {
+      console.log('🌡️ Warming up Chromium-based browser...');
+      await warmupBrowser();
+    } else {
+      console.log('⏭️ Skipping Chromium warmup because the active projects do not use Chromium');
+    }
+  } else {
+    console.log('⏭️ Skipping browser warmup (set PLAYWRIGHT_WARMUP=1 to enable)');
+  }
 
   console.log('✅ Global setup completed successfully!');
 }
@@ -36,36 +56,37 @@ async function globalSetup(config: FullConfig) {
 /**
  * Build the extension for testing
  */
-async function buildExtension(): Promise<void> {
+async function buildExtension(buildTargets: Array<'chrome' | 'firefox' | 'edge'>): Promise<void> {
   const { spawn } = await import('child_process');
 
-  return new Promise((resolve, reject) => {
-    const buildProcess = spawn('npm', ['run', 'build:chrome'], {
-      cwd: process.cwd(),
-      stdio: 'inherit',
-      shell: true
-    });
+  for (const browserTarget of buildTargets) {
+    await new Promise<void>((resolve, reject) => {
+      const buildProcess = spawn('npm', ['run', `build:${browserTarget}`], {
+        cwd: process.cwd(),
+        stdio: 'inherit',
+        shell: true
+      });
 
-    buildProcess.on('close', (code: number) => {
-      if (code === 0) {
-        console.log('✅ Extension built successfully');
-        resolve();
-      } else {
-        reject(new Error(`Extension build failed with code ${code}`));
-      }
-    });
+      buildProcess.on('close', (code: number) => {
+        if (code === 0) {
+          console.log(`✅ ${browserTarget} extension built successfully`);
+          resolve();
+        } else {
+          reject(new Error(`${browserTarget} extension build failed with code ${code}`));
+        }
+      });
 
-    buildProcess.on('error', (error: Error) => {
-      reject(new Error(`Failed to start build process: ${error.message}`));
+      buildProcess.on('error', (error: Error) => {
+        reject(new Error(`Failed to start ${browserTarget} build process: ${error.message}`));
+      });
     });
-  });
+  }
 }
 
 /**
  * Validate that extension build files exist
  */
-async function validateExtensionBuild(): Promise<void> {
-  const extensionPath = path.join(process.cwd(), 'dist/chrome');
+async function validateExtensionBuild(buildTargets: Array<'chrome' | 'firefox' | 'edge'>): Promise<void> {
   const requiredFiles = [
     'manifest.json',
     'newtab.html',
@@ -75,36 +96,89 @@ async function validateExtensionBuild(): Promise<void> {
     'icons'
   ];
 
-  // Check if extension directory exists
-  if (!fs.existsSync(extensionPath)) {
-    throw new Error(`Extension build directory not found: ${extensionPath}`);
+  for (const browserTarget of buildTargets) {
+    const extensionPath = path.join(process.cwd(), `dist/${browserTarget}`);
+
+    if (!fs.existsSync(extensionPath)) {
+      throw new Error(`Extension build directory not found: ${extensionPath}`);
+    }
+
+    for (const file of requiredFiles) {
+      const filePath = path.join(extensionPath, file);
+      if (!fs.existsSync(filePath)) {
+        throw new Error(`Required ${browserTarget} extension file missing: ${file}`);
+      }
+    }
+
+    const manifestPath = path.join(extensionPath, 'manifest.json');
+    try {
+      const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+
+      if (!manifest.name || !manifest.version) {
+        throw new Error('Invalid manifest.json: missing name or version');
+      }
+
+      if (!manifest.chrome_url_overrides?.newtab) {
+        throw new Error('Invalid manifest.json: missing new tab override');
+      }
+
+      console.log(`✅ ${browserTarget} extension validated: ${manifest.name} v${manifest.version}`);
+    } catch (error) {
+      throw new Error(`Invalid ${browserTarget} manifest.json: ${(error as Error).message}`);
+    }
+  }
+}
+
+async function packageFirefoxExtension(): Promise<void> {
+  const { spawn } = await import('child_process');
+  const firefoxDistDir = path.join(process.cwd(), 'dist/firefox');
+  const packagedPath = path.join(process.cwd(), 'dist/favault-firefox.xpi');
+
+  if (fs.existsSync(packagedPath)) {
+    fs.rmSync(packagedPath, { force: true });
   }
 
-  // Check required files
-  for (const file of requiredFiles) {
-    const filePath = path.join(extensionPath, file);
-    if (!fs.existsSync(filePath)) {
-      throw new Error(`Required extension file missing: ${file}`);
+  await new Promise<void>((resolve, reject) => {
+    const zipProcess = spawn('zip', ['-qr', packagedPath, '.'], {
+      cwd: firefoxDistDir,
+      stdio: 'inherit'
+    });
+
+    zipProcess.on('close', (code: number) => {
+      if (code === 0) {
+        console.log(`✅ Firefox extension packaged: ${packagedPath}`);
+        resolve();
+      } else {
+        reject(new Error(`Firefox extension packaging failed with code ${code}`));
+      }
+    });
+
+    zipProcess.on('error', (error: Error) => {
+      reject(new Error(`Failed to start Firefox packaging process: ${error.message}`));
+    });
+  });
+}
+
+function getBuildTargets(activeProjectNames: Set<string>): Array<'chrome' | 'firefox' | 'edge'> {
+  const targets = new Set<'chrome' | 'firefox' | 'edge'>();
+
+  for (const projectName of activeProjectNames) {
+    if (projectName === 'firefox-extension') {
+      targets.add('firefox');
+    }
+    if (projectName === 'edge-extension') {
+      targets.add('edge');
+    }
+    if (projectName === 'chromium-extension' || projectName === 'chrome-extension') {
+      targets.add('chrome');
     }
   }
 
-  // Validate manifest.json
-  const manifestPath = path.join(extensionPath, 'manifest.json');
-  try {
-    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-    
-    if (!manifest.name || !manifest.version) {
-      throw new Error('Invalid manifest.json: missing name or version');
-    }
-    
-    if (!manifest.chrome_url_overrides?.newtab) {
-      throw new Error('Invalid manifest.json: missing new tab override');
-    }
-    
-    console.log(`✅ Extension validated: ${manifest.name} v${manifest.version}`);
-  } catch (error) {
-    throw new Error(`Invalid manifest.json: ${(error as Error).message}`);
+  if (targets.size === 0) {
+    targets.add('chrome');
   }
+
+  return Array.from(targets);
 }
 
 /**

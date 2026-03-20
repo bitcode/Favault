@@ -3,6 +3,7 @@ import { ConsoleTestUtils } from '../utils/console-utils';
 import { BookmarkTestUtils } from '../utils/bookmark-utils';
 import { DragDropTestUtils } from '../utils/dragdrop-utils';
 import { ExtensionTestUtils } from '../fixtures/extension';
+import { getExtensionProtocol } from '../utils/extension-target';
 
 /**
  * Console Capture and Network Testing for FaVault extension
@@ -34,7 +35,7 @@ test.describe('Console Capture and Network Testing', () => {
     await consoleUtils.stopMonitoring();
   });
 
-  test('should capture console messages during extension loading', async ({ newTabPage }) => {
+  test('should capture console messages during extension loading', async ({ newTabPage, browserName }) => {
     // Reload to capture initial loading messages
     await newTabPage.reload();
     await bookmarkUtils.waitForBookmarksToLoad();
@@ -60,7 +61,7 @@ test.describe('Console Capture and Network Testing', () => {
     const criticalErrors = errorMessages.filter(err => 
       !err.includes('favicon') && 
       !err.includes('net::ERR_FAILED') &&
-      !err.includes('chrome-extension://') &&
+      !err.includes(getExtensionProtocol(browserName)) &&
       !err.includes('Manifest V2')
     );
     
@@ -71,13 +72,13 @@ test.describe('Console Capture and Network Testing', () => {
     expect(initMessages.length).toBeGreaterThan(0);
   });
 
-  test('should monitor Chrome extension API calls', async ({ newTabPage }) => {
+  test('should monitor extension API calls', async ({ newTabPage }) => {
     // Trigger bookmark operations to generate API calls
     await newTabPage.reload();
     await bookmarkUtils.waitForBookmarksToLoad();
     
     // Look for bookmark API calls in console
-    const bookmarkApiCalls = consoleUtils.getConsoleMessagesContaining('chrome.bookmarks');
+    const bookmarkApiCalls = consoleUtils.getConsoleMessagesContaining('extension.bookmarks');
     
     console.log(`🔍 Captured ${bookmarkApiCalls.length} bookmark API calls`);
     
@@ -92,7 +93,7 @@ test.describe('Console Capture and Network Testing', () => {
     expect(getTreeCalls.length).toBeGreaterThan(0);
   });
 
-  test('should capture network requests and responses', async ({ newTabPage }) => {
+  test('should capture network requests and responses', async ({ newTabPage, browserName }) => {
     // Reload to capture network activity
     await newTabPage.reload();
     await bookmarkUtils.waitForBookmarksToLoad();
@@ -130,7 +131,7 @@ test.describe('Console Capture and Network Testing', () => {
     // Should not have critical failed requests (favicon failures are OK)
     const criticalFailures = failedRequests.filter(req => 
       !req.url.includes('favicon') && 
-      !req.url.includes('chrome-extension://')
+      !req.url.includes(getExtensionProtocol(browserName))
     );
     
     expect(criticalFailures.length).toBeLessThanOrEqual(2); // Allow some tolerance

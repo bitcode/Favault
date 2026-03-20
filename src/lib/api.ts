@@ -253,21 +253,25 @@ export class BookmarkEditAPI extends ExtensionAPI {
         let isAppendingToEnd = false; // Track if we're appending to the end
 
         if (destination.parentId && destination.index !== undefined) {
-          const children = await browserAPI.bookmarks.getChildren(destination.parentId);
-          const bookmarks = children.filter(child => child.url && child.url.trim() !== '');
+          const children = await browserAPI.bookmarks.getChildren(destination.parentId) as BookmarkItem[];
+          const bookmarks = children.filter((child: BookmarkItem) => child.url && child.url.trim() !== '');
 
           console.log('📊 INDEX SPACE CONVERSION:', {
             bookmarkOnlyIndex: destination.index,
             totalChildren: children.length,
             totalBookmarks: bookmarks.length,
-            childrenTypes: children.map(c => ({ id: c.id, title: c.title, isBookmark: !!c.url }))
+            childrenTypes: children.map((child: BookmarkItem) => ({
+              id: child.id,
+              title: child.title,
+              isBookmark: !!child.url
+            }))
           });
 
           // Map bookmark-only index to actual children array index
           if (destination.index < bookmarks.length) {
             // Inserting before an existing bookmark
             const targetBookmark = bookmarks[destination.index];
-            adjustedIndex = children.findIndex(child => child.id === targetBookmark.id);
+            adjustedIndex = children.findIndex((child: BookmarkItem) => child.id === targetBookmark.id);
             isAppendingToEnd = false;
 
             console.log('📍 MAPPED TO EXISTING BOOKMARK:', {

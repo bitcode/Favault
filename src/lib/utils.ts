@@ -1,5 +1,59 @@
 // Utility functions for the extension
 
+declare const browser: any;
+
+export interface ExtensionRuntimeAPI {
+  runtime?: any;
+  bookmarks?: any;
+  storage?: any;
+  commands?: any;
+}
+
+export async function sendRuntimeMessage<T = unknown>(message: unknown): Promise<T> {
+  const runtime = getExtensionAPI()?.runtime;
+
+  if (!runtime?.sendMessage) {
+    throw new Error('Extension runtime not available');
+  }
+
+  if (runtime.sendMessage.length <= 1) {
+    return await runtime.sendMessage(message);
+  }
+
+  return await new Promise<T>((resolve, reject) => {
+    runtime.sendMessage(message, (response: T) => {
+      if (runtime.lastError) {
+        reject(new Error(runtime.lastError.message));
+        return;
+      }
+
+      resolve(response);
+    });
+  });
+}
+
+export function getExtensionAPI(): ExtensionRuntimeAPI | undefined {
+  if (typeof browser !== 'undefined') {
+    return browser;
+  }
+
+  if (typeof chrome !== 'undefined') {
+    return chrome;
+  }
+
+  return undefined;
+}
+
+export function getExtensionProtocol(): string | undefined {
+  const runtime = getExtensionAPI()?.runtime;
+  const url = runtime?.getURL?.('');
+  return typeof url === 'string' ? new URL(url).protocol : undefined;
+}
+
+export function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 /**
  * Debounce function to limit the rate of function calls
  */
@@ -7,7 +61,7 @@ export function debounce<T extends (...args: any[]) => any>(
   func: T,
   wait: number
 ): (...args: Parameters<T>) => void {
-  let timeout: number;
+  let timeout: ReturnType<typeof setTimeout>;
   
   return (...args: Parameters<T>) => {
     clearTimeout(timeout);
@@ -111,9 +165,11 @@ export function getBrowserInfo(): {
   language: string;
   cookieEnabled: boolean;
   onLine: boolean;
-  chrome?: any;
+  extensionApi?: any;
   brave?: any;
 } {
+  const extensionAPI = getExtensionAPI();
+
   return {
     userAgent: navigator.userAgent,
     vendor: navigator.vendor,
@@ -121,11 +177,12 @@ export function getBrowserInfo(): {
     language: navigator.language,
     cookieEnabled: navigator.cookieEnabled,
     onLine: navigator.onLine,
-    chrome: typeof chrome !== 'undefined' ? {
-      runtime: !!chrome.runtime,
-      bookmarks: !!chrome.bookmarks,
-      storage: !!chrome.storage,
-      version: chrome.runtime?.getManifest?.()?.version
+    extensionApi: extensionAPI ? {
+      runtime: !!extensionAPI.runtime,
+      bookmarks: !!extensionAPI.bookmarks,
+      storage: !!extensionAPI.storage,
+      commands: !!extensionAPI.commands,
+      version: extensionAPI.runtime?.getManifest?.()?.version
     } : undefined,
     brave: typeof (navigator as any).brave !== 'undefined' ? {
       isBrave: typeof (navigator as any).brave.isBrave === 'function'
@@ -143,17 +200,19 @@ export function getExtensionContext(): {
   extensionId?: string;
   manifestVersion?: number;
 } {
+  const extensionAPI = getExtensionAPI();
   const url = window.location.href;
   const protocol = window.location.protocol;
-  const isExtensionContext = protocol === 'chrome-extension:' || protocol === 'moz-extension:';
+  const runtimeProtocol = getExtensionProtocol();
+  const isExtensionContext = protocol === 'chrome-extension:' || protocol === 'moz-extension:' || protocol === runtimeProtocol;
 
   let extensionId: string | undefined;
   let manifestVersion: number | undefined;
 
-  if (isExtensionContext && typeof chrome !== 'undefined' && chrome.runtime) {
+  if (isExtensionContext && extensionAPI?.runtime) {
     try {
-      extensionId = chrome.runtime.id;
-      manifestVersion = chrome.runtime.getManifest?.()?.manifest_version;
+      extensionId = extensionAPI.runtime.id;
+      manifestVersion = extensionAPI.runtime.getManifest?.()?.manifest_version;
     } catch (e) {
       // Ignore errors when getting extension info
     }

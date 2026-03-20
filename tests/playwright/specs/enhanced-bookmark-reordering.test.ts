@@ -131,11 +131,12 @@ test.describe('Enhanced Bookmark Reordering Automation', () => {
     });
     
     // 7. Automated assertions
+    const extensionProtocolPattern = /^(chrome|moz)-extension:\/\//;
     expect(reorderResults.length).toBeGreaterThan(0);
     expect(consoleErrors.filter(err => 
       !err.includes('favicon') && 
       !err.includes('net::ERR') &&
-      !err.includes('chrome-extension://')
+      !extensionProtocolPattern.test(err)
     )).toHaveLength(0);
     
     // 8. Generate final automation report

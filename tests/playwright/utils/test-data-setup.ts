@@ -2,7 +2,7 @@ import { Page, BrowserContext } from '@playwright/test';
 
 /**
  * Comprehensive test data setup utility for FaVault browser extension
- * Leverages Chrome bookmarks API to generate diverse test bookmark structures
+ * Leverages browser extension bookmark APIs to generate diverse test bookmark structures
  * for automated testing workflows with drag-and-drop functionality support
  */
 
@@ -63,6 +63,35 @@ export class TestDataSetup {
     this.config = {};
   }
 
+  private async getBookmarkApiStatus(): Promise<{
+    extensionApiExists: boolean;
+    bookmarksExists: boolean;
+    createExists: boolean;
+    browserName: string;
+    protocol: string;
+  }> {
+    return this.page.evaluate(() => {
+      const extensionAPI = (window as any).browser || (window as any).chrome;
+      return {
+        extensionApiExists: typeof extensionAPI !== 'undefined',
+        bookmarksExists: typeof extensionAPI?.bookmarks !== 'undefined',
+        createExists: typeof extensionAPI?.bookmarks?.create === 'function',
+        browserName: navigator.userAgent,
+        protocol: window.location.protocol
+      };
+    });
+  }
+
+  private async getBookmarkTree(): Promise<any[]> {
+    return this.page.evaluate(async () => {
+      const extensionAPI = (window as any).browser || (window as any).chrome;
+      if (extensionAPI?.bookmarks?.getTree) {
+        return await extensionAPI.bookmarks.getTree();
+      }
+      return [];
+    });
+  }
+
   /**
    * Initialize test data setup with configuration
    */
@@ -92,12 +121,7 @@ export class TestDataSetup {
     try {
       console.log('💾 Creating bookmark backup...');
       
-      const originalBookmarks = await this.page.evaluate(async () => {
-        if (typeof chrome !== 'undefined' && chrome.bookmarks) {
-          return await chrome.bookmarks.getTree();
-        }
-        return [];
-      });
+      const originalBookmarks = await this.getBookmarkTree();
 
       this.state.originalBookmarks = originalBookmarks;
       this.state.backupCreated = true;
@@ -170,7 +194,7 @@ export class TestDataSetup {
         title: 'Test Development Tools',
         bookmarks: [
           { title: 'VS Code', url: 'https://code.visualstudio.com' },
-          { title: 'Chrome DevTools', url: 'chrome://devtools/' },
+          { title: 'Browser DevTools', url: 'about:devtools-toolbox' },
           { title: 'Playwright', url: 'https://playwright.dev' }
         ]
       }
@@ -280,7 +304,7 @@ export class TestDataSetup {
       const specialFolder = await this.createFolder('Special URLs Test');
       if (specialFolder) {
         const specialUrls = [
-          { title: 'Chrome Extension', url: 'chrome-extension://test' },
+          { title: 'Extension Page', url: this.config.browserType === 'firefox' ? 'moz-extension://test' : 'chrome-extension://test' },
           { title: 'Data URL', url: 'data:text/html,<h1>Test</h1>' },
           { title: 'File URL', url: 'file:///test/path' },
           { title: 'FTP URL', url: 'ftp://ftp.example.com' },
@@ -320,24 +344,16 @@ export class TestDataSetup {
   }
 
   /**
-   * Create a bookmark folder using Chrome bookmarks API
+   * Create a bookmark folder using the available extension bookmarks API
    */
   private async createFolder(title: string, parentId?: string): Promise<TestBookmarkItem | null> {
     try {
-      // First check if Chrome bookmarks API is available
-      const apiStatus = await this.page.evaluate(() => {
-        return {
-          chromeExists: typeof chrome !== 'undefined',
-          bookmarksExists: typeof chrome !== 'undefined' && typeof chrome.bookmarks !== 'undefined',
-          createExists: typeof chrome !== 'undefined' && typeof chrome.bookmarks?.create === 'function',
-          userAgent: navigator.userAgent
-        };
-      });
+      const apiStatus = await this.getBookmarkApiStatus();
 
-      console.log(`🔍 Chrome API status for folder creation:`, apiStatus);
+      console.log(`🔍 Bookmark API status for folder creation:`, apiStatus);
 
       if (!apiStatus.createExists) {
-        console.warn(`⚠️ Chrome bookmarks API not available, creating mock folder for "${title}"`);
+        console.warn(`⚠️ Browser bookmarks API not available, creating mock folder for "${title}"`);
         // Create a mock folder for testing purposes
         const mockFolder = {
           id: `mock-folder-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -352,16 +368,17 @@ export class TestDataSetup {
       }
 
       const folder = await this.page.evaluate(async (folderData) => {
+        const extensionAPI = (window as any).browser || (window as any).chrome;
         try {
           console.log(`🔧 Creating folder with data:`, folderData);
-          const result = await chrome.bookmarks.create({
+          const result = await extensionAPI.bookmarks.create({
             title: folderData.title,
             parentId: folderData.parentId || '1' // Default to Bookmarks Bar
           });
           console.log(`✅ Folder created successfully:`, result);
           return result;
         } catch (error) {
-          console.error(`❌ Chrome bookmarks API error:`, error);
+          console.error(`❌ Browser bookmarks API error:`, error);
           throw error;
         }
       }, { title, parentId });
@@ -390,21 +407,14 @@ export class TestDataSetup {
   }
 
   /**
-   * Create a bookmark using Chrome bookmarks API
+   * Create a bookmark using the available extension bookmarks API
    */
   private async createBookmark(title: string, url: string, parentId: string): Promise<TestBookmarkItem | null> {
     try {
-      // Check if Chrome bookmarks API is available
-      const apiStatus = await this.page.evaluate(() => {
-        return {
-          chromeExists: typeof chrome !== 'undefined',
-          bookmarksExists: typeof chrome !== 'undefined' && typeof chrome.bookmarks !== 'undefined',
-          createExists: typeof chrome !== 'undefined' && typeof chrome.bookmarks?.create === 'function'
-        };
-      });
+      const apiStatus = await this.getBookmarkApiStatus();
 
       if (!apiStatus.createExists) {
-        console.warn(`⚠️ Chrome bookmarks API not available, creating mock bookmark for "${title}"`);
+        console.warn(`⚠️ Browser bookmarks API not available, creating mock bookmark for "${title}"`);
         // Create a mock bookmark for testing purposes
         const mockBookmark = {
           id: `mock-bookmark-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -418,9 +428,10 @@ export class TestDataSetup {
       }
 
       const bookmark = await this.page.evaluate(async (bookmarkData) => {
+        const extensionAPI = (window as any).browser || (window as any).chrome;
         try {
           console.log(`🔧 Creating bookmark with data:`, bookmarkData);
-          const result = await chrome.bookmarks.create({
+          const result = await extensionAPI.bookmarks.create({
             title: bookmarkData.title,
             url: bookmarkData.url,
             parentId: bookmarkData.parentId
@@ -428,7 +439,7 @@ export class TestDataSetup {
           console.log(`✅ Bookmark created successfully:`, result);
           return result;
         } catch (error) {
-          console.error(`❌ Chrome bookmarks API error:`, error);
+          console.error(`❌ Browser bookmarks API error:`, error);
           throw error;
         }
       }, { title, url, parentId });
@@ -520,9 +531,10 @@ export class TestDataSetup {
       for (const item of allCreatedItems) {
         if (item.id) {
           await this.page.evaluate(async (itemId) => {
-            if (typeof chrome !== 'undefined' && chrome.bookmarks) {
+            const extensionAPI = (window as any).browser || (window as any).chrome;
+            if (extensionAPI?.bookmarks) {
               try {
-                await chrome.bookmarks.removeTree(itemId);
+                await extensionAPI.bookmarks.removeTree(itemId);
               } catch (error) {
                 console.warn('Failed to remove bookmark item:', itemId, error);
               }
@@ -700,19 +712,15 @@ export class TestDataSetup {
 
     try {
       // Check if bookmarks actually exist in browser
-      const browserBookmarks = await this.page.evaluate(async () => {
-        if (typeof chrome !== 'undefined' && chrome.bookmarks) {
-          return await chrome.bookmarks.getTree();
-        }
-        return [];
-      });
+      const browserBookmarks = await this.getBookmarkTree();
 
       // Validate folder structure
       for (const folder of this.state.createdFolders) {
         const folderExists = await this.page.evaluate(async (folderId) => {
-          if (typeof chrome !== 'undefined' && chrome.bookmarks) {
+          const extensionAPI = (window as any).browser || (window as any).chrome;
+          if (extensionAPI?.bookmarks) {
             try {
-              await chrome.bookmarks.get(folderId);
+              await extensionAPI.bookmarks.get(folderId);
               return true;
             } catch {
               return false;
@@ -730,9 +738,10 @@ export class TestDataSetup {
       // Validate bookmark structure
       for (const bookmark of this.state.createdBookmarks) {
         const bookmarkExists = await this.page.evaluate(async (bookmarkId) => {
-          if (typeof chrome !== 'undefined' && chrome.bookmarks) {
+          const extensionAPI = (window as any).browser || (window as any).chrome;
+          if (extensionAPI?.bookmarks) {
             try {
-              await chrome.bookmarks.get(bookmarkId);
+              await extensionAPI.bookmarks.get(bookmarkId);
               return true;
             } catch {
               return false;
@@ -750,7 +759,7 @@ export class TestDataSetup {
       console.log(validation.isValid ? '✅ Test data validation passed' : '❌ Test data validation failed');
       return validation;
     } catch (error) {
-      validation.errors.push(`Validation error: ${error.message}`);
+      validation.errors.push(`Validation error: ${error instanceof Error ? error.message : String(error)}`);
       validation.isValid = false;
       return validation;
     }
@@ -787,7 +796,12 @@ export class TestDataSetup {
     for (const bookmark of this.state.createdBookmarks) {
       if (bookmark.url?.includes('example')) {
         bookmarksByType['test'] = (bookmarksByType['test'] || 0) + 1;
-      } else if (bookmark.url?.startsWith('chrome://') || bookmark.url?.startsWith('data:')) {
+      } else if (
+        bookmark.url?.startsWith('chrome://') ||
+        bookmark.url?.startsWith('moz-extension://') ||
+        bookmark.url?.startsWith('chrome-extension://') ||
+        bookmark.url?.startsWith('data:')
+      ) {
         bookmarksByType['special'] = (bookmarksByType['special'] || 0) + 1;
       } else if (bookmark.url?.includes('localhost')) {
         bookmarksByType['local'] = (bookmarksByType['local'] || 0) + 1;

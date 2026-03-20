@@ -63,6 +63,16 @@ export class TestDataCleanup {
     };
   }
 
+  private async getBookmarkTree(): Promise<any[] | null> {
+    return this.page.evaluate(async () => {
+      const extensionAPI = (window as any).browser || (window as any).chrome;
+      if (extensionAPI?.bookmarks?.getTree) {
+        return await extensionAPI.bookmarks.getTree();
+      }
+      return null;
+    });
+  }
+
   /**
    * Configure cleanup behavior
    */
@@ -137,7 +147,7 @@ export class TestDataCleanup {
 
     } catch (error) {
       result.success = false;
-      result.errors.push(`Cleanup failed: ${error.message}`);
+      result.errors.push(`Cleanup failed: ${error instanceof Error ? error.message : String(error)}`);
       result.duration = Date.now() - startTime;
       
       console.error('❌ Cleanup failed:', error);
@@ -152,12 +162,7 @@ export class TestDataCleanup {
     try {
       console.log('💾 Creating cleanup backup...');
       
-      const backup = await this.page.evaluate(async () => {
-        if (typeof chrome !== 'undefined' && chrome.bookmarks) {
-          return await chrome.bookmarks.getTree();
-        }
-        return null;
-      });
+      const backup = await this.getBookmarkTree();
 
       if (backup) {
         // Store backup in session storage for potential recovery
@@ -243,9 +248,10 @@ export class TestDataCleanup {
         while (retries < this.config.maxRetries!) {
           try {
             const removed = await this.page.evaluate(async (bookmarkId) => {
-              if (typeof chrome !== 'undefined' && chrome.bookmarks) {
+              const extensionAPI = (window as any).browser || (window as any).chrome;
+              if (extensionAPI?.bookmarks) {
                 try {
-                  await chrome.bookmarks.remove(bookmarkId);
+                  await extensionAPI.bookmarks.remove(bookmarkId);
                   return true;
                 } catch (error) {
                   console.warn('Failed to remove bookmark:', bookmarkId, error);
@@ -266,7 +272,7 @@ export class TestDataCleanup {
           } catch (error) {
             retries++;
             if (retries >= this.config.maxRetries!) {
-              result.errors.push(`Failed to remove bookmark "${bookmark.title}": ${error.message}`);
+              result.errors.push(`Failed to remove bookmark "${bookmark.title}": ${error instanceof Error ? error.message : String(error)}`);
             } else {
               console.log(`  🔄 Retrying bookmark removal (${retries}/${this.config.maxRetries}): "${bookmark.title}"`);
               await this.page.waitForTimeout(this.config.delayBetweenOperations! * retries);
@@ -319,10 +325,11 @@ export class TestDataCleanup {
       while (retries < this.config.maxRetries!) {
         try {
           const removed = await this.page.evaluate(async (folderId) => {
-            if (typeof chrome !== 'undefined' && chrome.bookmarks) {
+            const extensionAPI = (window as any).browser || (window as any).chrome;
+            if (extensionAPI?.bookmarks) {
               try {
                 // Use removeTree to remove folder and all contents
-                await chrome.bookmarks.removeTree(folderId);
+                await extensionAPI.bookmarks.removeTree(folderId);
                 return true;
               } catch (error) {
                 console.warn('Failed to remove folder:', folderId, error);
@@ -343,7 +350,7 @@ export class TestDataCleanup {
         } catch (error) {
           retries++;
           if (retries >= this.config.maxRetries!) {
-            result.errors.push(`Failed to remove folder "${folder.title}": ${error.message}`);
+            result.errors.push(`Failed to remove folder "${folder.title}": ${error instanceof Error ? error.message : String(error)}`);
           } else {
             console.log(`  🔄 Retrying folder removal (${retries}/${this.config.maxRetries}): "${folder.title}"`);
             await this.page.waitForTimeout(this.config.delayBetweenOperations! * retries);
@@ -361,9 +368,10 @@ export class TestDataCleanup {
   private async itemExists(itemId: string): Promise<boolean> {
     try {
       return await this.page.evaluate(async (id) => {
-        if (typeof chrome !== 'undefined' && chrome.bookmarks) {
+        const extensionAPI = (window as any).browser || (window as any).chrome;
+        if (extensionAPI?.bookmarks) {
           try {
-            await chrome.bookmarks.get(id);
+            await extensionAPI.bookmarks.get(id);
             return true;
           } catch {
             return false;
@@ -451,12 +459,7 @@ export class TestDataCleanup {
     
     try {
       // Get all bookmarks and remove anything that looks like test data
-      const allBookmarks = await this.page.evaluate(async () => {
-        if (typeof chrome !== 'undefined' && chrome.bookmarks) {
-          return await chrome.bookmarks.getTree();
-        }
-        return [];
-      });
+      const allBookmarks = (await this.getBookmarkTree()) || [];
 
       // Recursively find and remove test items
       await this.recursiveTestDataRemoval(allBookmarks);
@@ -484,8 +487,9 @@ export class TestDataCleanup {
         if (this.looksLikeTestData(node)) {
           try {
             await this.page.evaluate(async (nodeId) => {
-              if (typeof chrome !== 'undefined' && chrome.bookmarks) {
-                await chrome.bookmarks.removeTree(nodeId);
+              const extensionAPI = (window as any).browser || (window as any).chrome;
+              if (extensionAPI?.bookmarks) {
+                await extensionAPI.bookmarks.removeTree(nodeId);
               }
             }, node.id);
             console.log(`🗑️ Emergency removed folder: "${node.title}"`);
@@ -497,8 +501,9 @@ export class TestDataCleanup {
         // This is a bookmark that looks like test data
         try {
           await this.page.evaluate(async (nodeId) => {
-            if (typeof chrome !== 'undefined' && chrome.bookmarks) {
-              await chrome.bookmarks.remove(nodeId);
+            const extensionAPI = (window as any).browser || (window as any).chrome;
+            if (extensionAPI?.bookmarks) {
+              await extensionAPI.bookmarks.remove(nodeId);
             }
           }, node.id);
           console.log(`🗑️ Emergency removed bookmark: "${node.title}"`);
@@ -547,8 +552,9 @@ export class TestIsolationManagerImpl implements TestIsolationManager {
     
     // Store original state
     this.originalState = await this.cleanup['page'].evaluate(async () => {
-      if (typeof chrome !== 'undefined' && chrome.bookmarks) {
-        return await chrome.bookmarks.getTree();
+      const extensionAPI = (window as any).browser || (window as any).chrome;
+      if (extensionAPI?.bookmarks) {
+        return await extensionAPI.bookmarks.getTree();
       }
       return null;
     });

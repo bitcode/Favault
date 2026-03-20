@@ -2,7 +2,7 @@
 // Provides actionable solutions for common extension loading problems
 
 import { reportLoadingError, reportInitializationError, reportPermissionError } from './error-reporter';
-import { getBrowserInfo, getExtensionContext } from './utils';
+import { getBrowserInfo, getErrorMessage, getExtensionAPI, getExtensionContext, sendRuntimeMessage } from './utils';
 
 export interface LoadingDiagnostic {
   issue: string;
@@ -26,6 +26,14 @@ export interface LoadingDiagnosticsReport {
 }
 
 export class ExtensionLoadingDiagnostics {
+  private static getExtensionAPI() {
+    return getExtensionAPI();
+  }
+
+  private static getManifest(): any {
+    return this.getExtensionAPI()?.runtime?.getManifest?.();
+  }
+
   /**
    * Run comprehensive loading diagnostics
    */
@@ -92,13 +100,13 @@ export class ExtensionLoadingDiagnostics {
       detected,
       severity: 'critical',
       description: detected 
-        ? 'Extension is not running in a proper Chrome extension context'
-        : 'Extension is running in proper Chrome extension context',
+        ? 'Extension is not running in a proper browser extension context'
+        : 'Extension is running in a proper browser extension context',
       solutions: detected ? [
-        'Load the extension through chrome://extensions/',
+        'Load the extension through the browser extension manager',
         'Ensure the extension is properly installed',
         'Check if the extension files are in the correct location',
-        'Verify the extension is enabled in Chrome'
+        'Verify the extension is enabled in the target browser'
       ] : [],
       technicalDetails: {
         url: context.url,
@@ -116,11 +124,12 @@ export class ExtensionLoadingDiagnostics {
     let technicalDetails: any = {};
     
     try {
-      if (typeof chrome === 'undefined' || !chrome.runtime) {
+      const extensionAPI = this.getExtensionAPI();
+      if (!extensionAPI?.runtime) {
         detected = true;
-        technicalDetails.error = 'Chrome runtime not available';
+        technicalDetails.error = 'Extension runtime not available';
       } else {
-        const manifest = chrome.runtime.getManifest();
+        const manifest = this.getManifest();
         if (!manifest) {
           detected = true;
           technicalDetails.error = 'Manifest not accessible';
@@ -144,10 +153,11 @@ export class ExtensionLoadingDiagnostics {
         }
       }
     } catch (error) {
+      const errorMessage = getErrorMessage(error);
       detected = true;
-      technicalDetails.error = error.message;
+      technicalDetails.error = errorMessage;
       
-      reportLoadingError('Manifest access failed', { error: error.message });
+      reportLoadingError('Manifest access failed', { error: errorMessage });
     }
     
     return {
@@ -176,8 +186,9 @@ export class ExtensionLoadingDiagnostics {
     let technicalDetails: any = {};
     
     try {
-      if (chrome?.runtime) {
-        const manifest = chrome.runtime.getManifest();
+      const extensionAPI = this.getExtensionAPI();
+      if (extensionAPI?.runtime) {
+        const manifest = this.getManifest();
         const declaredPermissions = manifest.permissions || [];
         
         // Check if required permissions are declared
@@ -197,8 +208,8 @@ export class ExtensionLoadingDiagnostics {
         
         // Check if APIs are actually available
         const apiTests = [
-          { name: 'bookmarks', available: !!chrome.bookmarks },
-          { name: 'storage', available: !!chrome.storage }
+          { name: 'bookmarks', available: !!extensionAPI.bookmarks },
+          { name: 'storage', available: !!extensionAPI.storage }
         ];
         
         const unavailableAPIs = apiTests.filter(test => 
@@ -214,8 +225,9 @@ export class ExtensionLoadingDiagnostics {
         technicalDetails.apiAvailability = apiTests;
       }
     } catch (error) {
+      const errorMessage = getErrorMessage(error);
       detected = true;
-      technicalDetails.error = error.message;
+      technicalDetails.error = errorMessage;
     }
     
     return {
@@ -230,7 +242,7 @@ export class ExtensionLoadingDiagnostics {
         'Ensure bookmarks and storage permissions are declared',
         'Reload the extension after updating permissions',
         'Check if user has granted required permissions',
-        'Verify permissions in chrome://extensions/ details page'
+        'Verify permissions in the browser extension details page'
       ] : [],
       technicalDetails
     };
@@ -244,6 +256,11 @@ export class ExtensionLoadingDiagnostics {
     let technicalDetails: any = {};
     
     try {
+      const extensionAPI = this.getExtensionAPI();
+      if (!extensionAPI?.runtime) {
+        throw new Error('Extension runtime not available');
+      }
+
       // Check if critical files are accessible
       const criticalFiles = [
         'newtab.html',
@@ -253,18 +270,19 @@ export class ExtensionLoadingDiagnostics {
       const fileTests = await Promise.allSettled(
         criticalFiles.map(async (file) => {
           try {
-            const response = await fetch(chrome.runtime.getURL(file));
+            const response = await fetch(extensionAPI.runtime.getURL(file));
             return {
               file,
               status: response.status,
               accessible: response.ok
             };
           } catch (error) {
+            const errorMessage = getErrorMessage(error);
             return {
               file,
               status: 0,
               accessible: false,
-              error: error.message
+              error: errorMessage
             };
           }
         })
@@ -283,7 +301,7 @@ export class ExtensionLoadingDiagnostics {
             };
           }
         })
-        .filter(Boolean);
+        .filter((file): file is { file: string; status: number; accessible: boolean; error?: string } => Boolean(file));
       
       if (failedFiles.length > 0) {
         detected = true;
@@ -299,8 +317,9 @@ export class ExtensionLoadingDiagnostics {
       );
       
     } catch (error) {
+      const errorMessage = getErrorMessage(error);
       detected = true;
-      technicalDetails.error = error.message;
+      technicalDetails.error = errorMessage;
     }
     
     return {
@@ -322,17 +341,17 @@ export class ExtensionLoadingDiagnostics {
   }
 
   /**
-   * Check Chrome API availability
+   * Check extension API availability
    */
   private static async checkAPIAvailability(): Promise<LoadingDiagnostic> {
     let detected = false;
     let technicalDetails: any = {};
+    const extensionAPI = this.getExtensionAPI();
 
     const requiredAPIs = [
-      { name: 'chrome', api: typeof chrome !== 'undefined' },
-      { name: 'chrome.runtime', api: !!chrome?.runtime },
-      { name: 'chrome.bookmarks', api: !!chrome?.bookmarks },
-      { name: 'chrome.storage', api: !!chrome?.storage }
+      { name: 'extension.runtime', api: !!extensionAPI?.runtime },
+      { name: 'extension.bookmarks', api: !!extensionAPI?.bookmarks },
+      { name: 'extension.storage', api: !!extensionAPI?.storage }
     ];
 
     const unavailableAPIs = requiredAPIs.filter(api => !api.api);
@@ -342,25 +361,25 @@ export class ExtensionLoadingDiagnostics {
       technicalDetails.unavailableAPIs = unavailableAPIs.map(api => api.name);
 
       unavailableAPIs.forEach(api => {
-        reportLoadingError(`Chrome API not available: ${api.name}`, { api: api.name });
+        reportLoadingError(`Extension API not available: ${api.name}`, { api: api.name });
       });
     }
 
     technicalDetails.apiAvailability = requiredAPIs;
 
     return {
-      issue: 'Chrome API Availability',
+      issue: 'Extension API Availability',
       detected,
       severity: 'critical',
       description: detected
-        ? 'Required Chrome APIs are not available'
-        : 'All required Chrome APIs are available',
+        ? 'Required extension APIs are not available'
+        : 'All required extension APIs are available',
       solutions: detected ? [
-        'Ensure extension is running in Chrome browser',
+        'Ensure extension is running in the target browser',
         'Check if extension context is properly initialized',
         'Verify manifest permissions include required APIs',
         'Try reloading the extension',
-        'Check Chrome version compatibility'
+        'Check browser version compatibility'
       ] : [],
       technicalDetails
     };
@@ -374,16 +393,13 @@ export class ExtensionLoadingDiagnostics {
     let technicalDetails: any = {};
 
     try {
-      if (chrome?.runtime) {
+      const extensionAPI = this.getExtensionAPI();
+      if (extensionAPI?.runtime) {
         // Try to ping the service worker
-        const response = await new Promise((resolve) => {
-          const timeout = setTimeout(() => resolve(null), 5000);
-
-          chrome.runtime.sendMessage({ type: 'PING' }, (response) => {
-            clearTimeout(timeout);
-            resolve(response);
-          });
-        });
+        const response = await Promise.race([
+          sendRuntimeMessage({ type: 'PING' }),
+          new Promise((resolve) => setTimeout(() => resolve(null), 5000))
+        ]);
 
         if (!response) {
           detected = true;
@@ -397,14 +413,15 @@ export class ExtensionLoadingDiagnostics {
         }
       } else {
         detected = true;
-        technicalDetails.issue = 'Chrome runtime not available';
+        technicalDetails.issue = 'Extension runtime not available';
       }
     } catch (error) {
+      const errorMessage = getErrorMessage(error);
       detected = true;
-      technicalDetails.error = error.message;
+      technicalDetails.error = errorMessage;
 
       reportInitializationError('Service worker communication failed', {
-        error: error.message
+        error: errorMessage
       });
     }
 
@@ -416,7 +433,7 @@ export class ExtensionLoadingDiagnostics {
         ? 'Service worker is not responding or has issues'
         : 'Service worker is active and responding',
       solutions: detected ? [
-        'Check service worker console for errors in chrome://extensions/',
+        'Check the browser extension manager for service worker errors',
         'Verify service-worker.js file exists and is valid',
         'Try reloading the extension',
         'Check if service worker is registered in manifest.json',
@@ -446,9 +463,10 @@ export class ExtensionLoadingDiagnostics {
 
         technicalDetails.inlineStylesAllowed = true;
       } catch (error) {
+        const errorMessage = getErrorMessage(error);
         detected = true;
         technicalDetails.inlineStylesBlocked = true;
-        technicalDetails.inlineStylesError = error.message;
+        technicalDetails.inlineStylesError = errorMessage;
       }
 
       // Check if eval is available (often blocked by CSP)
@@ -461,8 +479,8 @@ export class ExtensionLoadingDiagnostics {
       }
 
       // Check manifest CSP settings
-      if (chrome?.runtime) {
-        const manifest = chrome.runtime.getManifest();
+      const manifest = this.getManifest();
+      if (manifest) {
         if (manifest.content_security_policy) {
           technicalDetails.csp = manifest.content_security_policy;
 
@@ -479,8 +497,9 @@ export class ExtensionLoadingDiagnostics {
       }
 
     } catch (error) {
+      const errorMessage = getErrorMessage(error);
       detected = true;
-      technicalDetails.error = error.message;
+      technicalDetails.error = errorMessage;
     }
 
     return {
@@ -511,12 +530,13 @@ export class ExtensionLoadingDiagnostics {
     const browserInfo = getBrowserInfo();
     technicalDetails.browserInfo = browserInfo;
 
-    // Check if running in Chrome
+    // Check for supported browser families
     const isChrome = browserInfo.userAgent.includes('Chrome') && !browserInfo.userAgent.includes('Edg');
     const isBrave = browserInfo.brave?.isBrave;
     const isEdge = browserInfo.userAgent.includes('Edg');
+    const isFirefox = browserInfo.userAgent.includes('Firefox');
 
-    if (!isChrome && !isBrave && !isEdge) {
+    if (!isChrome && !isBrave && !isEdge && !isFirefox) {
       detected = true;
       technicalDetails.unsupportedBrowser = true;
       technicalDetails.detectedBrowser = browserInfo.userAgent;
@@ -526,7 +546,7 @@ export class ExtensionLoadingDiagnostics {
       });
     }
 
-    // Check Chrome version if available
+    // Check Chromium version if available
     const chromeVersionMatch = browserInfo.userAgent.match(/Chrome\/(\d+)/);
     if (chromeVersionMatch) {
       const chromeVersion = parseInt(chromeVersionMatch[1]);
@@ -537,7 +557,7 @@ export class ExtensionLoadingDiagnostics {
         detected = true;
         technicalDetails.outdatedChrome = true;
 
-        reportLoadingError('Chrome version too old for extension', {
+        reportLoadingError('Chromium version too old for extension', {
           version: chromeVersion,
           minimumRequired: 88
         });
@@ -552,9 +572,9 @@ export class ExtensionLoadingDiagnostics {
         ? 'Browser compatibility issues detected'
         : 'Browser is compatible with extension',
       solutions: detected ? [
-        'Use Google Chrome, Microsoft Edge, or Brave browser',
-        'Update Chrome to the latest version',
-        'Check if browser supports Chrome extensions',
+        'Use Firefox, Google Chrome, Microsoft Edge, or Brave browser',
+        'Update the browser to the latest version',
+        'Check if browser supports the required extension APIs',
         'Verify manifest version compatibility with browser',
         'Consider using Manifest V2 for older browsers'
       ] : [],
@@ -572,7 +592,7 @@ export class ExtensionLoadingDiagnostics {
       switch (issue.issue) {
         case 'Extension Context':
           if (issue.detected) {
-            fixes.push('🔄 Reload the extension in chrome://extensions/');
+            fixes.push('🔄 Reload the extension in the browser extension manager');
           }
           break;
         case 'Manifest Issues':
@@ -590,9 +610,9 @@ export class ExtensionLoadingDiagnostics {
             fixes.push('🔧 Check service worker console for errors');
           }
           break;
-        case 'Chrome API Availability':
+        case 'Extension API Availability':
           if (issue.detected) {
-            fixes.push('🌐 Ensure running in supported Chrome browser');
+            fixes.push('🌐 Ensure running in a supported browser with extension API access');
           }
           break;
       }
@@ -636,7 +656,7 @@ export class ExtensionLoadingDiagnostics {
 
     // General troubleshooting steps
     solutions.push('🔧 GENERAL TROUBLESHOOTING STEPS:');
-    solutions.push('   • Open chrome://extensions/ and check for error messages');
+    solutions.push('   • Open the browser extension manager and check for error messages');
     solutions.push('   • Click "Errors" button next to the extension if available');
     solutions.push('   • Check browser console (F12) for JavaScript errors');
     solutions.push('   • Try disabling and re-enabling the extension');
@@ -694,7 +714,7 @@ Browser: ${report.systemInfo.browser.userAgent}
 Platform: ${report.systemInfo.browser.platform}
 Extension ID: ${report.systemInfo.extension.extensionId || 'N/A'}
 Extension URL: ${report.systemInfo.extension.url}
-Chrome APIs Available: ${JSON.stringify(report.systemInfo.browser.chrome, null, 2)}
+Extension APIs Available: ${JSON.stringify(report.systemInfo.browser.extensionApi, null, 2)}
 `;
 
     return output;

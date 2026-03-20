@@ -1,6 +1,8 @@
-import { test as base, chromium, type BrowserContext, type Page } from '@playwright/test';
+import { test as base, chromium, firefox, type BrowserContext, type Page } from '@playwright/test';
+import { copyFile, mkdir, mkdtemp, readFile, writeFile } from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { getExtensionProtocol, navigateToExtensionHome, resolveExtensionOrigin } from '../utils/extension-target';
 
 // ES module equivalent of __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -18,52 +20,170 @@ export interface ExtensionFixtures {
   newTabPage: Page;
 }
 
+function isEnvEnabled(name: string, defaultValue = false): boolean {
+  const value = process.env[name];
+  if (value === undefined) {
+    return defaultValue;
+  }
+
+  return value === '1' || value.toLowerCase() === 'true';
+}
+
+const FIREFOX_PROFILE_ROOT = path.join(process.cwd(), '.playwright');
+const FIREFOX_USER_PREFS = {
+  'extensions.autoDisableScopes': 0,
+  'extensions.enabledScopes': 15,
+  'xpinstall.signatures.required': false,
+  'xpinstall.whitelist.required': false,
+  'browser.aboutwelcome.enabled': false,
+  'trailhead.firstrun.branches': 'nofirstrun-empty',
+  'browser.startup.homepage_override.mstone': 'ignore',
+  'browser.startup.firstrunSkipsHomepage': true,
+  'startup.homepage_welcome_url': 'about:blank',
+  'startup.homepage_welcome_url.additional': '',
+  'browser.shell.checkDefaultBrowser': false,
+  'browser.shell.didSkipDefaultBrowserCheckOnFirstRun': true,
+  'browser.tabs.warnOnClose': false,
+  'datareporting.policy.dataSubmissionEnabled': false,
+  'datareporting.healthreport.uploadEnabled': false,
+  'datareporting.policy.firstRunURL': '',
+  'datareporting.policy.dataSubmissionPolicyAcceptedVersion': 2,
+  'toolkit.telemetry.reportingpolicy.firstRun': false,
+  'toolkit.telemetry.reportingpolicy.firstRunShown': true,
+  'toolkit.telemetry.enabled': false,
+  'browser.messaging-system.whatsNewPanel.enabled': false,
+  'browser.discovery.enabled': false,
+  'browser.newtabpage.activity-stream.asrouter.userprefs.cfr.addons': false,
+  'browser.newtabpage.activity-stream.asrouter.userprefs.cfr.features': false,
+  'devtools.debugger.remote-enabled': true,
+  'devtools.debugger.prompt-connection': false,
+  'toolkit.startup.max_resumed_crashes': -1
+} as const;
+
+async function getFirefoxAddonId(extensionPath: string): Promise<string> {
+  const manifestPath = path.join(extensionPath, 'manifest.json');
+  const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
+  const addonId = manifest.browser_specific_settings?.gecko?.id;
+
+  if (!addonId) {
+    throw new Error(`Firefox manifest is missing browser_specific_settings.gecko.id: ${manifestPath}`);
+  }
+
+  return addonId;
+}
+
+async function installFirefoxExtensionToProfile(extensionPath: string, profileDir: string): Promise<string> {
+  const addonId = await getFirefoxAddonId(extensionPath);
+  const extensionsDir = path.join(profileDir, 'extensions');
+  const packagedExtensionPath = path.join(process.cwd(), 'dist', 'favault-firefox.xpi');
+  const profileExtensionPath = path.join(extensionsDir, `${addonId}.xpi`);
+
+  await mkdir(extensionsDir, { recursive: true });
+  await copyFile(packagedExtensionPath, profileExtensionPath);
+
+  console.log(`Prepared Firefox profile add-on: ${profileExtensionPath}`);
+  return addonId;
+}
+
+async function prepareFirefoxProfile(extensionPath: string): Promise<{ profileDir: string; addonId: string }> {
+  await mkdir(FIREFOX_PROFILE_ROOT, { recursive: true });
+  const profileDir = await mkdtemp(path.join(FIREFOX_PROFILE_ROOT, 'firefox-extension-profile-'));
+
+  const userJs = `${Object.entries(FIREFOX_USER_PREFS)
+    .map(([key, value]) =>
+      typeof value === 'string'
+        ? `user_pref("${key}", ${JSON.stringify(value)});`
+        : `user_pref("${key}", ${value});`
+    )
+    .join('\n')}\n`;
+
+  await writeFile(path.join(profileDir, 'user.js'), userJs, 'utf8');
+  const addonId = await installFirefoxExtensionToProfile(extensionPath, profileDir);
+  return { profileDir, addonId };
+}
+
+async function launchFirefoxExtensionContext(pathToExtension: string): Promise<BrowserContext> {
+  const headless = isEnvEnabled('PLAYWRIGHT_FIREFOX_HEADLESS', false);
+  const executablePath = process.env.PLAYWRIGHT_FIREFOX_EXECUTABLE_PATH;
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      const { profileDir, addonId } = await prepareFirefoxProfile(pathToExtension);
+      console.log(`Launching Firefox extension context (attempt ${attempt}/2)...`);
+      console.log(`Using Firefox profile: ${profileDir}`);
+      console.log(`Using Firefox add-on ID: ${addonId}`);
+      const context = await firefox.launchPersistentContext(profileDir, {
+        headless,
+        executablePath,
+        acceptDownloads: true,
+        firefoxUserPrefs: FIREFOX_USER_PREFS,
+        viewport: { width: 1280, height: 720 },
+        recordVideo: {
+          dir: 'test-results/videos/',
+          size: { width: 1280, height: 720 }
+        }
+      });
+
+      const probePage = await context.newPage();
+      await probePage.goto('about:newtab');
+      await probePage.waitForLoadState('domcontentloaded');
+      await probePage.waitForTimeout(1000);
+      console.log(`Firefox new tab after profile preload: ${probePage.url()}`);
+      await probePage.close();
+      return context;
+    } catch (error) {
+      lastError = error;
+      console.warn(`Firefox extension launch/install attempt ${attempt} failed:`, error);
+      await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
+    }
+  }
+
+  throw lastError;
+}
+
 export const test = base.extend<ExtensionFixtures>({
   /**
    * Browser context with extension loaded
    */
-  context: async ({ }, use) => {
-    const pathToExtension = path.join(__dirname, '../../../dist/chrome');
-    
-    // Create persistent context with extension loaded
-    const context = await chromium.launchPersistentContext('', {
-      channel: 'chromium',
-      headless: false, // Extensions require headed mode for full functionality
-      args: [
-        `--disable-extensions-except=${pathToExtension}`,
-        `--load-extension=${pathToExtension}`,
-        '--disable-web-security',
-        '--disable-features=VizDisplayCompositor',
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-background-timer-throttling',
-        '--disable-backgrounding-occluded-windows',
-        '--disable-renderer-backgrounding'
-      ],
-      viewport: { width: 1280, height: 720 },
-      recordVideo: {
-        dir: 'test-results/videos/',
-        size: { width: 1280, height: 720 }
-      }
-    });
+  context: [async ({ browserName }, use) => {
+    const isFirefox = browserName === 'firefox';
+    const pathToExtension = path.join(__dirname, `../../../dist/${isFirefox ? 'firefox' : 'chrome'}`);
+
+    const context = isFirefox
+      ? await launchFirefoxExtensionContext(pathToExtension)
+      : await chromium.launchPersistentContext('', {
+          channel: 'chromium',
+          headless: false,
+          args: [
+            `--disable-extensions-except=${pathToExtension}`,
+            `--load-extension=${pathToExtension}`,
+            '--disable-web-security',
+            '--disable-features=VizDisplayCompositor',
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-background-timer-throttling',
+            '--disable-backgrounding-occluded-windows',
+            '--disable-renderer-backgrounding'
+          ],
+          viewport: { width: 1280, height: 720 },
+          recordVideo: {
+            dir: 'test-results/videos/',
+            size: { width: 1280, height: 720 }
+          }
+        });
 
     await use(context);
     await context.close();
-  },
+  }, { timeout: 90000 }],
 
   /**
    * Extension ID extracted from service worker
    */
-  extensionId: async ({ context }, use) => {
-    // Wait for service worker to be available
-    let serviceWorker = context.serviceWorkers()[0];
-    if (!serviceWorker) {
-      serviceWorker = await context.waitForEvent('serviceworker');
-    }
-
-    // Extract extension ID from service worker URL
-    const extensionId = serviceWorker.url().split('/')[2];
+  extensionId: async ({ context, browserName }, use) => {
+    const extensionOrigin = await resolveExtensionOrigin(context, browserName);
+    const extensionId = extensionOrigin ? new URL(extensionOrigin).hostname : '';
     console.log('Extension ID:', extensionId);
 
     await use(extensionId);
@@ -72,13 +192,19 @@ export const test = base.extend<ExtensionFixtures>({
   /**
    * Extension popup page
    */
-  extensionPage: async ({ context, extensionId }, use) => {
+  extensionPage: async ({ context, extensionId, browserName }, use) => {
     // Create new page for extension popup
     const page = await context.newPage();
+    const extensionOrigin = extensionId
+      ? `${getExtensionProtocol(browserName)}//${extensionId}`
+      : await resolveExtensionOrigin(context, browserName);
     
     // Navigate to extension popup (if it exists)
     // For new tab extensions, we'll use the new tab page
-    await page.goto(`chrome-extension://${extensionId}/newtab.html`);
+    if (!extensionOrigin) {
+      throw new Error('Unable to resolve extension origin for extension page');
+    }
+    await page.goto(`${extensionOrigin}/newtab.html`);
     
     // Wait for extension to load
     await page.waitForLoadState('networkidle');
@@ -90,11 +216,14 @@ export const test = base.extend<ExtensionFixtures>({
   /**
    * New tab page with extension loaded
    */
-  newTabPage: async ({ context, extensionId }, use) => {
+  newTabPage: async ({ context, extensionId, browserName }, use) => {
     const page = await context.newPage();
+    const extensionOrigin = extensionId
+      ? `${getExtensionProtocol(browserName)}//${extensionId}`
+      : await resolveExtensionOrigin(context, browserName);
     
     // Navigate to new tab (which should load our extension)
-    await page.goto('chrome://newtab/');
+    await navigateToExtensionHome(page, browserName, extensionOrigin);
     
     // Wait for extension content to load
     await page.waitForLoadState('networkidle');

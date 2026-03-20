@@ -1,6 +1,7 @@
 import { test, expect, ExtensionTestUtils } from '../fixtures/extension';
 import { BookmarkTestUtils } from '../utils/bookmark-utils';
 import { DragDropTestUtils } from '../utils/dragdrop-utils';
+import { navigateToExtensionHome } from '../utils/extension-target';
 
 // STORAGE KEY must match src/lib/folder-state.ts
 const STORAGE_KEY = 'favault-folder-expansion';
@@ -26,23 +27,22 @@ test.describe('Folder expansion persistence', () => {
   async function readExpansionMap(page) {
     return await page.evaluate(async (STORAGE_KEY) => {
       const result: any = { source: 'none', map: {} };
+      const extensionAPI = (window as any).browser || (window as any).chrome;
       try {
-        // Try chrome.storage.local first
-        if (typeof chrome !== 'undefined' && chrome.storage?.local?.get) {
-          const local = await chrome.storage.local.get(STORAGE_KEY);
+        if (extensionAPI?.storage?.local?.get) {
+          const local = await extensionAPI.storage.local.get(STORAGE_KEY);
           if (local && local[STORAGE_KEY] && Object.keys(local[STORAGE_KEY]).length) {
-            result.source = 'chrome.storage.local';
+            result.source = 'extension.storage.local';
             result.map = local[STORAGE_KEY];
             return result;
           }
         }
       } catch (_) {}
       try {
-        // Fallback to chrome.storage.sync
-        if (typeof chrome !== 'undefined' && chrome.storage?.sync?.get) {
-          const sync = await chrome.storage.sync.get(STORAGE_KEY);
+        if (extensionAPI?.storage?.sync?.get) {
+          const sync = await extensionAPI.storage.sync.get(STORAGE_KEY);
           if (sync && sync[STORAGE_KEY] && Object.keys(sync[STORAGE_KEY]).length) {
-            result.source = 'chrome.storage.sync';
+            result.source = 'extension.storage.sync';
             result.map = sync[STORAGE_KEY];
             return result;
           }
@@ -64,10 +64,11 @@ test.describe('Folder expansion persistence', () => {
   async function mapFolderTitlesToIds(page, titles: string[]) {
     return await page.evaluate(async (titles) => {
       const results: Record<string, string> = {};
-      if (typeof chrome === 'undefined' || !chrome.bookmarks?.getTree) {
+      const extensionAPI = (window as any).browser || (window as any).chrome;
+      if (!extensionAPI?.bookmarks?.getTree) {
         return results;
       }
-      const tree = await chrome.bookmarks.getTree();
+      const tree = await extensionAPI.bookmarks.getTree();
       const flat: any[] = [];
       const walk = (node: any) => {
         flat.push(node);
@@ -103,7 +104,7 @@ test.describe('Folder expansion persistence', () => {
     }
   }
 
-  test('persists expand/collapse immediately, across tabs, reloads, and modes', async ({ newTabPage, context, extensionPage }) => {
+  test('persists expand/collapse immediately, across tabs, reloads, and modes', async ({ newTabPage, context, extensionPage, browserName }) => {
     // 1) Setup: collect 3 folder titles visible in UI
     const titles = (await bookmarkUtils.getFolderTitles()).slice(0, 3);
     test.skip(titles.length < 2, 'Need at least 2 folders to run persistence test');
@@ -125,13 +126,14 @@ test.describe('Folder expansion persistence', () => {
       if (id) {
         await newTabPage.waitForFunction(({ STORAGE_KEY, id, expected }) => {
           return (async () => {
+            const extensionAPI = (window as any).browser || (window as any).chrome;
             try {
-              const local = await chrome.storage.local.get(STORAGE_KEY);
+              const local = await extensionAPI?.storage?.local?.get(STORAGE_KEY);
               const map = local?.[STORAGE_KEY] || {};
               if (id in map) return map[id] === expected;
             } catch {}
             try {
-              const sync = await chrome.storage.sync.get(STORAGE_KEY);
+              const sync = await extensionAPI?.storage?.sync?.get(STORAGE_KEY);
               const map = sync?.[STORAGE_KEY] || {};
               if (id in map) return map[id] === expected;
             } catch {}
@@ -169,7 +171,7 @@ test.describe('Folder expansion persistence', () => {
 
     // 4) Cross-tab consistency: open a brand new tab in same context and verify
     const tab2 = await context.newPage();
-    await tab2.goto('chrome://newtab/');
+    await navigateToExtensionHome(tab2, browserName);
     await ExtensionTestUtils.waitForExtensionReady(tab2);
     await (new BookmarkTestUtils(tab2)).waitForBookmarksToLoad();
 
@@ -225,8 +227,9 @@ test.describe('Folder expansion persistence', () => {
         const id = titleToId[candidate];
         await newTabPage.waitForFunction(({ STORAGE_KEY, id }) => {
           return (async () => {
+            const extensionAPI = (window as any).browser || (window as any).chrome;
             try {
-              const local = await chrome.storage.local.get(STORAGE_KEY);
+              const local = await extensionAPI?.storage?.local?.get(STORAGE_KEY);
               const map = local?.[STORAGE_KEY] || {};
               return id && map[id] === true;
             } catch {}
@@ -254,4 +257,3 @@ test.describe('Folder expansion persistence', () => {
     console.log('📊 Folder expansion persistence report:', JSON.stringify(report, null, 2));
   });
 });
-

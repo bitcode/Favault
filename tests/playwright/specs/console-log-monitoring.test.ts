@@ -1,6 +1,11 @@
 import { test, expect, chromium, type BrowserContext, type Page } from '@playwright/test';
 import path from 'path';
 import { execSync } from 'child_process';
+import {
+  getExtensionOriginFromContext,
+  getExtensionProtocol,
+  getNewTabUrl,
+} from '../utils/extension-target';
 
 interface ConsoleMessage {
   type: 'log' | 'warn' | 'error' | 'info' | 'debug';
@@ -24,6 +29,7 @@ test.describe('Console Log Monitoring', () => {
   let context: BrowserContext;
   let page: Page;
   let consoleMessages: ConsoleMessage[] = [];
+  const browserName = 'chromium';
   
   // Configuration
   const MAX_MESSAGES_PER_CLICK = 5;
@@ -32,7 +38,7 @@ test.describe('Console Log Monitoring', () => {
 
   test.beforeAll(async () => {
     // Build the extension first
-    console.log('Building Chrome extension...');
+    console.log('Building Chromium extension...');
     execSync('npm run build:chrome', { cwd: process.cwd(), stdio: 'inherit' });
     
     // Launch browser with extension
@@ -171,15 +177,15 @@ test.describe('Console Log Monitoring', () => {
   }
 
   test('should monitor console logs during various page interactions', async () => {
-    // Navigate to chrome://newtab first to trigger extension
-    await page.goto('chrome://newtab/');
+    // Navigate to the browser new tab page first to trigger the extension
+    await page.goto(getNewTabUrl(browserName));
     await page.waitForTimeout(1000);
 
     // Check if we're redirected to the extension's new tab page
     const currentUrl = page.url();
-    console.log(`Current URL after chrome://newtab: ${currentUrl}`);
+    console.log(`Current URL after new tab navigation: ${currentUrl}`);
 
-    if (currentUrl.includes('chrome-extension://')) {
+    if (currentUrl.startsWith(getExtensionProtocol(browserName))) {
       console.log('Extension new tab page loaded successfully');
     } else {
       // Try to find and navigate to the extension directly
@@ -188,7 +194,7 @@ test.describe('Console Log Monitoring', () => {
 
       for (const p of pages) {
         const url = p.url();
-        if (url.includes('chrome-extension://') && url.includes('newtab.html')) {
+        if (url.startsWith(getExtensionProtocol(browserName)) && url.includes('newtab.html')) {
           extensionPage = p;
           break;
         }
@@ -198,36 +204,21 @@ test.describe('Console Log Monitoring', () => {
         page = extensionPage;
         console.log(`Using existing extension page: ${page.url()}`);
       } else {
-        // Create a new tab and try to navigate to a generic extension URL pattern
+        // Create a new tab and try to navigate to the resolved extension origin
         const newPage = await context.newPage();
-        await newPage.goto('chrome://extensions/');
-        await newPage.waitForTimeout(1000);
+        const extensionOrigin = await getExtensionOriginFromContext(context);
 
-        // Get all extension IDs and try each one
-        const extensionIds = await newPage.evaluate(() => {
-          const items = Array.from(document.querySelectorAll('extensions-item'));
-          return items.map(item => item.getAttribute('id')).filter(Boolean);
-        });
-
-        console.log(`Found extension IDs: ${extensionIds.join(', ')}`);
-
-        // Try each extension ID
-        for (const id of extensionIds) {
-          try {
-            await newPage.goto(`chrome-extension://${id}/newtab.html`);
-            await newPage.waitForLoadState('domcontentloaded', { timeout: 2000 });
-            const title = await newPage.title();
-            if (title.includes('FaVault') || title.includes('Favault') || title.includes('New Tab')) {
-              page = newPage;
-              console.log(`Found FaVault extension at: chrome-extension://${id}/newtab.html`);
-              break;
-            }
-          } catch (e) {
-            // Continue to next ID
+        if (extensionOrigin) {
+          await newPage.goto(`${extensionOrigin}/newtab.html`);
+          await newPage.waitForLoadState('domcontentloaded', { timeout: 2000 });
+          const title = await newPage.title();
+          if (title.includes('FaVault') || title.includes('Favault') || title.includes('New Tab')) {
+            page = newPage;
+            console.log(`Found FaVault extension at: ${extensionOrigin}/newtab.html`);
           }
         }
 
-        if (page === newPage && !page.url().includes('chrome-extension://')) {
+        if (page === newPage && !page.url().startsWith(getExtensionProtocol(browserName))) {
           throw new Error('Could not find FaVault extension new tab page');
         }
       }

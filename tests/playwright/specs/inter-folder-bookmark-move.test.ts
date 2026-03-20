@@ -116,7 +116,7 @@ test.describe('Inter-Folder Favorites Drag-and-Drop', () => {
     expect(srcTitlesAfter).not.toContain(movedTitle!);
     expect(dstTitlesAfter).toContain(movedTitle!);
 
-    // Sanity: confirm chrome.bookmarks.move was called at least once
+    // Sanity: ensure the move completed without drag/drop-related console errors
     const errors = consoleUtils.getErrorMessages();
     expect(errors.filter(e => e.toLowerCase().includes('drag') || e.toLowerCase().includes('drop'))).toHaveLength(0);
   });
@@ -200,4 +200,3 @@ test.describe('Inter-Folder Favorites Drag-and-Drop', () => {
     expect(targetShowsDropZone).toBeGreaterThanOrEqual(0); // Presence optional depending on implementation
   });
 });
-

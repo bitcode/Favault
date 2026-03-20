@@ -1,6 +1,7 @@
 import Logger from './lib/logging';
 
 declare let self: ServiceWorkerGlobalScope;
+declare const browser: any;
 
 // Initialize the logger in the background (non-blocking)
 // This ensures the service worker can respond to health checks immediately
@@ -183,7 +184,7 @@ class ServiceWorkerLifecycleManager {
   private lastActivity: number = Date.now();
   private isActive: boolean = true;
   private activeOperations: Set<string> = new Set();
-  private keepAlivePort: chrome.runtime.Port | null = null;
+  private keepAlivePort: { disconnect(): void } | null = null;
 
   constructor() {
     this.setupLifecycleHandlers();

@@ -1,5 +1,5 @@
 // Service Worker Manager for handling lifecycle and reactivation
-import { ExtensionAPI } from './api';
+import { getExtensionAPI, sendRuntimeMessage } from './utils';
 
 export interface ServiceWorkerStatus {
   isActive: boolean;
@@ -21,6 +21,7 @@ export class ServiceWorkerManager {
   private reactivationAttempts = 0;
   private maxReactivationAttempts = 5;
   private listeners: Array<(status: ServiceWorkerStatus) => void> = [];
+  private extensionAPI = getExtensionAPI();
 
   private constructor() {
     this.startMonitoring();
@@ -58,8 +59,8 @@ export class ServiceWorkerManager {
    * Setup message listener for service worker pings
    */
   private setupMessageListener(): void {
-    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
-      chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (this.extensionAPI?.runtime?.onMessage) {
+      this.extensionAPI.runtime.onMessage.addListener((message: any, sender: any, sendResponse: any) => {
         if (message.type === 'SERVICE_WORKER_PING') {
           console.log('💓 Received service worker ping');
           this.status.lastPing = Date.now();
@@ -167,60 +168,32 @@ export class ServiceWorkerManager {
    * Ping the service worker
    */
   private async pingServiceWorker(): Promise<any> {
-    return new Promise((resolve, reject) => {
-      if (!chrome?.runtime) {
-        reject(new Error('Chrome runtime not available'));
-        return;
-      }
-
-      const timeout = setTimeout(() => {
-        reject(new Error('Service worker ping timeout'));
-      }, 5000);
-
-      chrome.runtime.sendMessage({ type: 'PING' }, (response) => {
-        clearTimeout(timeout);
-        
-        if (chrome.runtime.lastError) {
-          reject(new Error(chrome.runtime.lastError.message));
-        } else {
-          resolve(response);
-        }
-      });
-    });
+    return await Promise.race([
+      sendRuntimeMessage({ type: 'PING' }),
+      new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Service worker ping timeout')), 5000);
+      })
+    ]);
   }
 
   /**
    * Trigger service worker with bookmark request
    */
   private async triggerServiceWorkerWithBookmarkRequest(): Promise<any> {
-    return new Promise((resolve, reject) => {
-      if (!chrome?.runtime) {
-        reject(new Error('Chrome runtime not available'));
-        return;
-      }
-
-      const timeout = setTimeout(() => {
-        reject(new Error('Bookmark request timeout'));
-      }, 10000);
-
-      chrome.runtime.sendMessage({ type: 'GET_BOOKMARKS' }, (response) => {
-        clearTimeout(timeout);
-        
-        if (chrome.runtime.lastError) {
-          reject(new Error(chrome.runtime.lastError.message));
-        } else {
-          resolve(response);
-        }
-      });
-    });
+    return await Promise.race([
+      sendRuntimeMessage({ type: 'GET_BOOKMARKS' }),
+      new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Bookmark request timeout')), 10000);
+      })
+    ]);
   }
 
   /**
    * Send wakeup message
    */
   private async sendWakeupMessage(): Promise<void> {
-    if (chrome?.runtime) {
-      chrome.runtime.sendMessage({ 
+    if (this.extensionAPI?.runtime) {
+      this.extensionAPI.runtime.sendMessage({
         type: 'WAKEUP', 
         timestamp: Date.now() 
       });
@@ -232,9 +205,9 @@ export class ServiceWorkerManager {
    */
   private async performDummyOperation(): Promise<void> {
     try {
-      // Try to access chrome.bookmarks to wake the service worker
-      if (chrome?.bookmarks) {
-        await chrome.bookmarks.getTree();
+      // Touching the bookmarks API can wake background execution across browsers.
+      if (this.extensionAPI?.bookmarks) {
+        await this.extensionAPI.bookmarks.getTree();
       }
     } catch (error) {
       // Ignore errors, this is just to wake the service worker

@@ -186,9 +186,10 @@ test.describe('Bookmark Management', () => {
     // Inject script to simulate empty bookmarks
     await consoleUtils.injectTestScript(`
       // Mock empty bookmark tree
-      if (typeof chrome !== 'undefined' && chrome.bookmarks) {
-        const originalGetTree = chrome.bookmarks.getTree;
-        chrome.bookmarks.getTree = function() {
+      const extensionAPI = window.browser || window.chrome;
+      if (extensionAPI?.bookmarks) {
+        const originalGetTree = extensionAPI.bookmarks.getTree;
+        extensionAPI.bookmarks.getTree = function() {
           return Promise.resolve([{
             id: '0',
             title: '',
@@ -306,9 +307,10 @@ test.describe('Bookmark Management', () => {
     // Should handle large collections without critical errors
     const criticalErrors = consoleUtils.getNonFaviconErrorMessages();
     const faviconErrorCount = consoleUtils.getFaviconErrorCount();
+    const extensionProtocolPattern = /^(chrome|moz)-extension:\/\//;
     const relevantErrors = criticalErrors.filter(err => 
       !err.includes('net::ERR') &&
-      !err.includes('chrome-extension://')
+      !extensionProtocolPattern.test(err)
     );
     
     console.log(`📊 Performance test: ${faviconErrorCount} favicon errors filtered, ${relevantErrors.length} critical errors found`);

@@ -44,9 +44,6 @@ export default defineConfig({
 
   // Shared settings for all the projects below
   use: {
-    // Base URL for the extension
-    baseURL: 'chrome-extension://',
-
     // Collect trace when retrying the failed test
     trace: 'on-first-retry',
 
