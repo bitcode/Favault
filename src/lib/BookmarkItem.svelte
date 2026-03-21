@@ -1003,10 +1003,10 @@
 
   .delete-badge {
     position: absolute;
-    top: -8px;
-    right: -8px;
-    width: 20px;
-    height: 20px;
+    top: -12px;
+    right: -12px;
+    width: 28px;
+    height: 28px;
     background: #ef4444;
     color: white;
     border-radius: 50%;
@@ -1018,7 +1018,10 @@
     transform: scale(0.8);
     transition: all 0.2s ease;
     z-index: 20;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    /* Extend the hit area beyond the visible circle */
+    padding: 4px;
+    box-sizing: content-box;
   }
 
   :global(.app.edit-mode) .bookmark-item .delete-badge {
@@ -1027,13 +1030,15 @@
   }
 
   .delete-badge:hover {
-    transform: scale(1.1);
+    transform: scale(1.15);
     background: #dc2626;
   }
 
   .delete-badge svg {
-    width: 12px;
-    height: 12px;
+    width: 14px;
+    height: 14px;
+    /* Prevent the SVG from swallowing click events */
+    pointer-events: none;
   }
 
   .bookmark-item.editing {

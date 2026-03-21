@@ -1,8 +1,11 @@
-import { test as base, chromium, firefox, type BrowserContext, type Page } from '@playwright/test';
-import { copyFile, mkdir, mkdtemp, readFile, writeFile } from 'fs/promises';
+import { test as base, chromium, firefox, type BrowserContext, type Page, type TestInfo } from '@playwright/test';
+import { mkdir, mkdtemp, readFile, writeFile } from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { getExtensionProtocol, navigateToExtensionHome, resolveExtensionOrigin } from '../utils/extension-target';
+import { FIREFOX_USER_PREFS } from '../utils/firefox-prefs';
+
+export { FIREFOX_USER_PREFS };
 
 // ES module equivalent of __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -30,35 +33,6 @@ function isEnvEnabled(name: string, defaultValue = false): boolean {
 }
 
 const FIREFOX_PROFILE_ROOT = path.join(process.cwd(), '.playwright');
-const FIREFOX_USER_PREFS = {
-  'extensions.autoDisableScopes': 0,
-  'extensions.enabledScopes': 15,
-  'xpinstall.signatures.required': false,
-  'xpinstall.whitelist.required': false,
-  'browser.aboutwelcome.enabled': false,
-  'trailhead.firstrun.branches': 'nofirstrun-empty',
-  'browser.startup.homepage_override.mstone': 'ignore',
-  'browser.startup.firstrunSkipsHomepage': true,
-  'startup.homepage_welcome_url': 'about:blank',
-  'startup.homepage_welcome_url.additional': '',
-  'browser.shell.checkDefaultBrowser': false,
-  'browser.shell.didSkipDefaultBrowserCheckOnFirstRun': true,
-  'browser.tabs.warnOnClose': false,
-  'datareporting.policy.dataSubmissionEnabled': false,
-  'datareporting.healthreport.uploadEnabled': false,
-  'datareporting.policy.firstRunURL': '',
-  'datareporting.policy.dataSubmissionPolicyAcceptedVersion': 2,
-  'toolkit.telemetry.reportingpolicy.firstRun': false,
-  'toolkit.telemetry.reportingpolicy.firstRunShown': true,
-  'toolkit.telemetry.enabled': false,
-  'browser.messaging-system.whatsNewPanel.enabled': false,
-  'browser.discovery.enabled': false,
-  'browser.newtabpage.activity-stream.asrouter.userprefs.cfr.addons': false,
-  'browser.newtabpage.activity-stream.asrouter.userprefs.cfr.features': false,
-  'devtools.debugger.remote-enabled': true,
-  'devtools.debugger.prompt-connection': false,
-  'toolkit.startup.max_resumed_crashes': -1
-} as const;
 
 async function getFirefoxAddonId(extensionPath: string): Promise<string> {
   const manifestPath = path.join(extensionPath, 'manifest.json');
@@ -72,20 +46,7 @@ async function getFirefoxAddonId(extensionPath: string): Promise<string> {
   return addonId;
 }
 
-async function installFirefoxExtensionToProfile(extensionPath: string, profileDir: string): Promise<string> {
-  const addonId = await getFirefoxAddonId(extensionPath);
-  const extensionsDir = path.join(profileDir, 'extensions');
-  const packagedExtensionPath = path.join(process.cwd(), 'dist', 'favault-firefox.xpi');
-  const profileExtensionPath = path.join(extensionsDir, `${addonId}.xpi`);
-
-  await mkdir(extensionsDir, { recursive: true });
-  await copyFile(packagedExtensionPath, profileExtensionPath);
-
-  console.log(`Prepared Firefox profile add-on: ${profileExtensionPath}`);
-  return addonId;
-}
-
-async function prepareFirefoxProfile(extensionPath: string): Promise<{ profileDir: string; addonId: string }> {
+async function prepareFirefoxProfile(extensionPath: string): Promise<{ profileDir: string; addonId: string; policiesPath: string }> {
   await mkdir(FIREFOX_PROFILE_ROOT, { recursive: true });
   const profileDir = await mkdtemp(path.join(FIREFOX_PROFILE_ROOT, 'firefox-extension-profile-'));
 
@@ -98,26 +59,107 @@ async function prepareFirefoxProfile(extensionPath: string): Promise<{ profileDi
     .join('\n')}\n`;
 
   await writeFile(path.join(profileDir, 'user.js'), userJs, 'utf8');
-  const addonId = await installFirefoxExtensionToProfile(extensionPath, profileDir);
-  return { profileDir, addonId };
+
+  const addonId = await getFirefoxAddonId(extensionPath);
+
+  // Use Firefox Enterprise Policies to force-install the extension.
+  // The policy approach uses a different code path than normal XPI scanning —
+  // it bypasses signature requirements and installs the extension synchronously.
+  // Playwright's Firefox supports this via PLAYWRIGHT_FIREFOX_POLICIES_JSON env var.
+  const xpiPath = path.join(process.cwd(), 'dist', 'favault-firefox.xpi');
+  const policies = {
+    policies: {
+      ExtensionSettings: {
+        [addonId]: {
+          installation_mode: 'force_installed',
+          install_url: `file://${xpiPath}`
+        }
+      }
+    }
+  };
+  const policiesPath = path.join(profileDir, 'policies.json');
+  await writeFile(policiesPath, JSON.stringify(policies, null, 2), 'utf8');
+
+  console.log(`Prepared Firefox policies.json: ${policiesPath}`);
+  console.log(`  Force-installing: ${addonId} from ${xpiPath}`);
+
+  return { profileDir, addonId, policiesPath };
+}
+
+/**
+ * Wait for the Firefox XPI newtab override to become active, then return the extension origin.
+ *
+ * Firefox installs XPI extensions asynchronously after launch. The approach that works:
+ * 1. Open about:newtab immediately — this triggers Firefox to resolve the newtab handler,
+ *    which kicks off the XPI scanner if it hasn't started.
+ * 2. Wait a fixed idle period for the XPI to fully activate.
+ * 3. Probe about:newtab again — by now the extension newtab override is registered.
+ */
+async function waitForFirefoxExtensionReady(
+  context: BrowserContext,
+  idleWaitMs = 3000
+): Promise<string> {
+  // Open about:newtab immediately — this can trigger Firefox to process the extension proxy file.
+  const probe1 = await context.newPage();
+  try {
+    await probe1.goto('about:newtab', { waitUntil: 'domcontentloaded', timeout: 8000 });
+    await probe1.waitForTimeout(500);
+    const url1 = probe1.url();
+    if (url1.startsWith('moz-extension://')) {
+      return new URL(url1).origin;
+    }
+    console.log(`Firefox newtab first probe: ${url1}. Waiting ${idleWaitMs}ms...`);
+  } catch {
+    // ignore
+  } finally {
+    await probe1.close().catch(() => {});
+  }
+
+  await new Promise((resolve) => setTimeout(resolve, idleWaitMs));
+
+  const probe2 = await context.newPage();
+  try {
+    await probe2.goto('about:newtab', { waitUntil: 'domcontentloaded', timeout: 8000 });
+    const url2 = probe2.url();
+    console.log(`Firefox newtab second probe: ${url2}`);
+    if (url2.startsWith('moz-extension://')) {
+      return new URL(url2).origin;
+    }
+    return '';
+  } catch {
+    return '';
+  } finally {
+    await probe2.close().catch(() => {});
+  }
 }
 
 async function launchFirefoxExtensionContext(pathToExtension: string): Promise<BrowserContext> {
-  const headless = isEnvEnabled('PLAYWRIGHT_FIREFOX_HEADLESS', false);
+  // Default: headed locally, headless on CI. Override with PLAYWRIGHT_FIREFOX_HEADLESS=1.
+  const headless = isEnvEnabled('PLAYWRIGHT_FIREFOX_HEADLESS', !!process.env.CI);
   const executablePath = process.env.PLAYWRIGHT_FIREFOX_EXECUTABLE_PATH;
   let lastError: unknown;
 
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
-      const { profileDir, addonId } = await prepareFirefoxProfile(pathToExtension);
+      const { profileDir, addonId, policiesPath } = await prepareFirefoxProfile(pathToExtension);
       console.log(`Launching Firefox extension context (attempt ${attempt}/2)...`);
       console.log(`Using Firefox profile: ${profileDir}`);
       console.log(`Using Firefox add-on ID: ${addonId}`);
+
+      // Tell Playwright's Firefox to load our policies.json.
+      // We pass the path both via env var (used by playwright.cfg's getenv() call)
+      // and directly via firefoxUserPrefs (as a fallback).
+      process.env.PLAYWRIGHT_FIREFOX_POLICIES_JSON = policiesPath;
+
       const context = await firefox.launchPersistentContext(profileDir, {
         headless,
         executablePath,
         acceptDownloads: true,
-        firefoxUserPrefs: FIREFOX_USER_PREFS,
+        firefoxUserPrefs: {
+          ...FIREFOX_USER_PREFS,
+          // Directly set the policies path pref (Firefox reads this at startup).
+          'browser.policies.alternatePath': policiesPath
+        },
         viewport: { width: 1280, height: 720 },
         recordVideo: {
           dir: 'test-results/videos/',
@@ -125,12 +167,16 @@ async function launchFirefoxExtensionContext(pathToExtension: string): Promise<B
         }
       });
 
-      const probePage = await context.newPage();
-      await probePage.goto('about:newtab');
-      await probePage.waitForLoadState('domcontentloaded');
-      await probePage.waitForTimeout(1000);
-      console.log(`Firefox new tab after profile preload: ${probePage.url()}`);
-      await probePage.close();
+      // Close any pages Firefox auto-opened (welcome tabs, tour pages, etc.) before
+      // Playwright gets control. These interfere with extension test navigation.
+      await closeFirefoxWelcomeTabs(context);
+
+      // Wait for the XPI newtab override to become active before returning the context.
+      // Any downstream fixture (page, newTabPage, etc.) will then see the extension URL
+      // when navigating to about:newtab, regardless of which fixtures the test requests.
+      const extensionOrigin = await waitForFirefoxExtensionReady(context);
+      console.log(`Firefox extension active: ${extensionOrigin || '(not detected — tests will navigate directly)'}`);
+
       return context;
     } catch (error) {
       lastError = error;
@@ -142,18 +188,50 @@ async function launchFirefoxExtensionContext(pathToExtension: string): Promise<B
   throw lastError;
 }
 
+/**
+ * Close any tabs Firefox automatically opens on startup (welcome page, tour, etc.)
+ * that are not part of the extension. These can block test navigation.
+ */
+async function closeFirefoxWelcomeTabs(context: BrowserContext): Promise<void> {
+  const welcomePatterns = [
+    'about:welcome',
+    'about:home',
+    'https://www.mozilla.org',
+    'firefox.com',
+    'support.mozilla.org'
+  ];
+
+  const pages = context.pages();
+  for (const page of pages) {
+    const url = page.url();
+    const isWelcomePage = welcomePatterns.some((pattern) => url.includes(pattern));
+    if (isWelcomePage) {
+      console.log(`Closing Firefox welcome tab: ${url}`);
+      try {
+        await page.close();
+      } catch {
+        // Page may have already closed
+      }
+    }
+  }
+}
+
 export const test = base.extend<ExtensionFixtures>({
   /**
    * Browser context with extension loaded
    */
-  context: [async ({ browserName }, use) => {
+  context: [async ({ browserName }, use, testInfo: TestInfo) => {
     const isFirefox = browserName === 'firefox';
-    const pathToExtension = path.join(__dirname, `../../../dist/${isFirefox ? 'firefox' : 'chrome'}`);
+    // browserName is always 'chromium' for Edge — detect Edge via the project's channel setting
+    const projectChannel = (testInfo.project.use as { channel?: string }).channel;
+    const isEdge = projectChannel === 'msedge';
+    const distDir = isFirefox ? 'firefox' : isEdge ? 'edge' : 'chrome';
+    const pathToExtension = path.join(__dirname, `../../../dist/${distDir}`);
 
     const context = isFirefox
       ? await launchFirefoxExtensionContext(pathToExtension)
       : await chromium.launchPersistentContext('', {
-          channel: 'chromium',
+          channel: isEdge ? 'msedge' : 'chromium',
           headless: false,
           args: [
             `--disable-extensions-except=${pathToExtension}`,

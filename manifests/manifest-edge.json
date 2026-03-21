@@ -17,7 +17,8 @@
     "newtab": "newtab.html"
   },
   "background": {
-    "service_worker": "service-worker.js"
+    "service_worker": "service-worker.js",
+    "type": "module"
   },
   "commands": {
     "toggle-search": {

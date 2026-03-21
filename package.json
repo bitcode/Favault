@@ -52,7 +52,7 @@
     "test:build-and-validate": "npm run build:chrome && npm run test:simple",
     "test:chrome": "playwright test --project=chromium-extension",
     "test:edge": "playwright test --project=edge-extension",
-    "test:firefox": "playwright test --project=firefox-extension",
+    "test:firefox": "playwright test --project=firefox-extension --workers=2",
     "test:report": "playwright show-report",
     "test:install": "playwright install",
     "test:build-and-test": "npm run build:chrome && npm run test",

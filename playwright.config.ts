@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { FIREFOX_USER_PREFS } from './tests/playwright/utils/firefox-prefs';
 
 // ES module equivalent of __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -98,16 +99,17 @@ export default defineConfig({
       },
     },
 
-    // Firefox extension testing (requires different approach)
+    // Firefox extension testing — extension loading is handled by the custom fixture
+    // (tests/playwright/fixtures/extension.ts) via launchPersistentContext + XPI profile.
+    // Run with --workers=2 (enforced in package.json test:firefox script) because each
+    // worker launches a full Firefox instance; too many in parallel cause XPI activation
+    // timeouts. The prefs here apply for tests that bypass the custom fixture.
     {
       name: 'firefox-extension',
       use: {
         ...devices['Desktop Firefox'],
         launchOptions: {
-          firefoxUserPrefs: {
-            'extensions.autoDisableScopes': 0,
-            'extensions.enabledScopes': 15,
-          },
+          firefoxUserPrefs: { ...FIREFOX_USER_PREFS },
         },
       },
     },

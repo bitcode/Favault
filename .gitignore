@@ -76,6 +76,7 @@ test-results/
 playwright-report/
 blob-report/
 playwright/.auth/
+.playwright/
 
 # Mocha
 .mocha/

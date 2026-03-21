@@ -1,4 +1,4 @@
-import { test, expect, devices } from '@playwright/test';
+import { test, expect } from '../fixtures/extension';
 import { BookmarkTestUtils } from '../utils/bookmark-utils';
 import { DragDropTestUtils } from '../utils/dragdrop-utils';
 import { ConsoleTestUtils } from '../utils/console-utils';
@@ -14,25 +14,21 @@ const browserConfigs = [
   {
     name: 'Chrome',
     project: 'chrome-extension',
-    device: devices['Desktop Chrome'],
     extensionPath: 'dist/chrome'
   },
   {
     name: 'Chromium',
     project: 'chromium-extension',
-    device: devices['Desktop Chrome'],
     extensionPath: 'dist/chrome'
   },
   {
     name: 'Edge',
     project: 'edge-extension',
-    device: devices['Desktop Edge'],
     extensionPath: 'dist/edge'
   },
   {
     name: 'Firefox',
     project: 'firefox-extension',
-    device: devices['Desktop Firefox'],
     extensionPath: 'dist/firefox'
   }
 ];
@@ -44,15 +40,8 @@ for (const config of browserConfigs) {
       test.skip(projectName !== config.project, `Only runs in ${config.project}`);
     };
 
-    const assertSupportedBrowser = (browserName: string) => {
-      test.fixme(browserName === 'firefox', 'Firefox extension launch path is not wired into Playwright yet.');
-    };
-
-    // Note: test.use() moved to individual tests to avoid worker conflicts
-
     test(`should load extension correctly in ${config.name}`, async ({ page, browserName }, testInfo) => {
       assertMatchingProject(testInfo.project.name);
-      assertSupportedBrowser(browserName);
 
       const consoleUtils = new ConsoleTestUtils(page);
       await consoleUtils.startMonitoring();
@@ -87,7 +76,7 @@ for (const config of browserConfigs) {
 
     test(`should handle bookmarks consistently in ${config.name}`, async ({ page, browserName }, testInfo) => {
       assertMatchingProject(testInfo.project.name);
-      assertSupportedBrowser(browserName);
+
 
       const bookmarkUtils = new BookmarkTestUtils(page);
       const consoleUtils = new ConsoleTestUtils(page);
@@ -134,7 +123,7 @@ for (const config of browserConfigs) {
 
     test(`should support keyboard shortcuts in ${config.name}`, async ({ page, browserName }, testInfo) => {
       assertMatchingProject(testInfo.project.name);
-      assertSupportedBrowser(browserName);
+
 
       const bookmarkUtils = new BookmarkTestUtils(page);
       
@@ -172,7 +161,7 @@ for (const config of browserConfigs) {
 
     test(`should handle drag-and-drop in ${config.name}`, async ({ page, browserName }, testInfo) => {
       assertMatchingProject(testInfo.project.name);
-      assertSupportedBrowser(browserName);
+
 
       const bookmarkUtils = new BookmarkTestUtils(page);
       const dragDropUtils = new DragDropTestUtils(page);
@@ -221,7 +210,7 @@ for (const config of browserConfigs) {
 
     test(`should handle responsive design in ${config.name}`, async ({ page, browserName }, testInfo) => {
       assertMatchingProject(testInfo.project.name);
-      assertSupportedBrowser(browserName);
+
 
       const bookmarkUtils = new BookmarkTestUtils(page);
       
@@ -255,7 +244,7 @@ for (const config of browserConfigs) {
 
     test(`should maintain performance standards in ${config.name}`, async ({ page, browserName }, testInfo) => {
       assertMatchingProject(testInfo.project.name);
-      assertSupportedBrowser(browserName);
+
 
       const bookmarkUtils = new BookmarkTestUtils(page);
       const consoleUtils = new ConsoleTestUtils(page);
@@ -300,7 +289,7 @@ for (const config of browserConfigs) {
 
     test(`should handle browser-specific APIs in ${config.name}`, async ({ page, browserName }, testInfo) => {
       assertMatchingProject(testInfo.project.name);
-      assertSupportedBrowser(browserName);
+
 
       const consoleUtils = new ConsoleTestUtils(page);
       await consoleUtils.startMonitoring();
