@@ -54,6 +54,9 @@
       };
 
       const onDocMouseDown = (e: MouseEvent | PointerEvent) => {
+        // Only allow drag operations in edit mode
+        if (!document.body.classList.contains('edit-mode')) return;
+
         // Only process bookmark items for the global DnD bridge
         const t = e.target as HTMLElement | null;
         if (!t) return;
@@ -128,8 +131,9 @@
 
       const onDocMouseUp = async (e: MouseEvent | PointerEvent) => {
         try {
-          if (!(window as any).__fav_isDragging) {
+          if (!document.body.classList.contains('edit-mode') || !(window as any).__fav_isDragging) {
             (window as any).__fav_dragCandidate = null;
+            (window as any).__fav_isDragging = false;
             return;
           }
 
@@ -247,6 +251,11 @@
       document.addEventListener("pointerup", onDocMouseUp as any, false);
       // HTML5 drag-n-drop fallbacks to catch native drag sequences
       const onDocDragStart = (e: DragEvent) => {
+        // Block bookmark drags outside edit mode
+        if (!document.body.classList.contains('edit-mode')) {
+          e.preventDefault();
+          return;
+        }
         const t = e.target as HTMLElement | null;
         if (!t) return;
         const itemEl = t.closest?.(
@@ -281,6 +290,8 @@
       };
       const onDocDrop = async (e: DragEvent) => {
         try {
+          // Block bookmark drops outside edit mode
+          if (!document.body.classList.contains('edit-mode')) return;
           document.querySelector(".app")?.classList.remove("drag-active");
           const container = resolveDropContainer(e as unknown as MouseEvent);
           const gc = (window as any).__fav_dragCandidate || {};
@@ -395,9 +406,7 @@
   import SettingsPanel from "./lib/SettingsPanel.svelte";
   import EditModeToggle from "./lib/EditModeToggle.svelte";
   import KeyboardShortcuts from "./lib/KeyboardShortcuts.svelte";
-  import ErrorReportButton from "./lib/ErrorReportButton.svelte";
-  import ServiceWorkerDiagnostics from "./lib/ServiceWorkerDiagnostics.svelte";
-  import LogViewer from "./lib/LogViewer.svelte";
+  import TabsPanel from "./lib/TabsPanel.svelte";
   import { BraveDebugger } from "./lib/brave-debug";
   import { BookmarkManager } from "./lib/bookmarks";
   import { EnhancedDragDropManager } from "./lib/dragdrop-enhanced";
@@ -416,6 +425,7 @@
     settingsManager,
     editMode,
     userSettings,
+    settingsVisible,
   } from "./lib/stores";
   import { ExtensionAPI, BookmarkEditAPI, browserAPI } from "./lib/api";
   import { getTheme, getThemeStyle } from "./lib/themes";
@@ -2000,8 +2010,6 @@
   let refreshInProgress = false;
   const REFRESH_DEBOUNCE_MS = 300; // Wait 300ms before refreshing
 
-  // Log viewer state
-  let showLogViewer = false;
 
   // Create folder state
   let isCreatingFolder = false;
@@ -2162,27 +2170,21 @@
   data-color-mode={activeTheme.mode}
   style={themeStyle}
 >
-  <!-- Top Right Control Panel -->
-  <div class="top-controls-panel">
-    <!-- Service Worker Diagnostics -->
-    <ServiceWorkerDiagnostics />
+  <!-- Open Tabs Side Panel -->
+  <TabsPanel />
 
-    <!-- Error Report Button -->
-    <ErrorReportButton />
-
-    <!-- Log Viewer Button -->
-    <button
-      class="log-viewer-toggle"
-      on:click={() => (showLogViewer = !showLogViewer)}
-      title="View Console Logs"
-      aria-label="Toggle log viewer"
-    >
-      📝
-    </button>
-
-    <!-- Edit Mode Controls -->
-    <EditModeToggle />
-  </div>
+  <!-- Settings Button (fixed top-right) -->
+  <button
+    class="settings-fab"
+    on:click={() => settingsVisible.set(true)}
+    title="Settings"
+    aria-label="Open settings"
+  >
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+      <circle cx="12" cy="12" r="3"></circle>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+    </svg>
+  </button>
 
   <!-- Settings Panel -->
   <SettingsPanel />
@@ -2190,16 +2192,16 @@
   <!-- Keyboard Shortcuts Help -->
   <KeyboardShortcuts />
 
-  <!-- Log Viewer -->
-  <LogViewer bind:visible={showLogViewer} />
-
   <div class="container">
     <header class="header">
       <h1 class="title">FaVault</h1>
       <p class="subtitle">Your personalized bookmark hub</p>
     </header>
 
-    <SearchBar bind:this={searchBarComponent} />
+    <div class="search-row">
+      <SearchBar bind:this={searchBarComponent} />
+      <EditModeToggle />
+    </div>
 
     {#if $isLoading}
       <div class="loading">
@@ -2388,6 +2390,20 @@
     margin-bottom: 3rem;
   }
 
+  .search-row {
+    display: flex;
+    align-items: stretch;
+    gap: 0.75rem;
+    max-width: 660px;
+    margin: 0 auto 2rem;
+  }
+
+  .search-row :global(.search-container) {
+    flex: 1;
+    margin: 0;
+    max-width: none;
+  }
+
   .title {
     font-size: 3rem;
     font-weight: 700;
@@ -2429,39 +2445,35 @@
     }
   }
 
-  .top-controls-panel {
+  .settings-fab {
     position: fixed;
     top: 1rem;
     right: 1rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
     z-index: 1000;
-    align-items: flex-end;
-  }
-
-  .log-viewer-toggle {
-    background: var(--theme-panel);
-    border: 1px solid var(--theme-border);
-    color: var(--theme-text-primary);
-    padding: 0.5rem 0.75rem;
-    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    background: var(--theme-input-bg, rgba(255,255,255,0.9));
+    border: 1px solid var(--theme-border, transparent);
+    border-radius: 12px;
     cursor: pointer;
-    font-size: 1.2rem;
-    transition: all 0.2s ease;
+    color: var(--theme-input-text, #333);
+    box-shadow: 0 4px 20px var(--theme-shadow, rgba(0,0,0,0.1));
     backdrop-filter: blur(10px);
-    box-shadow: 0 2px 8px var(--theme-shadow);
+    transition: all 0.2s ease;
   }
 
-  .log-viewer-toggle:hover {
-    background: var(--theme-panel-muted);
-    border-color: var(--theme-border-strong);
+  .settings-fab:hover {
+    box-shadow: 0 6px 30px var(--theme-shadow, rgba(0,0,0,0.15));
+    border-color: var(--theme-border-strong, transparent);
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px var(--theme-shadow);
   }
 
-  .log-viewer-toggle:active {
-    transform: translateY(0);
+  .settings-fab svg {
+    width: 18px;
+    height: 18px;
   }
 
   .error {
@@ -2662,10 +2674,9 @@
       margin-bottom: 2rem;
     }
 
-    .top-controls-panel {
+    .settings-fab {
       top: 0.5rem;
       right: 0.5rem;
-      gap: 0.5rem;
     }
   }
 

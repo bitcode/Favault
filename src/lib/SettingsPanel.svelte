@@ -1,6 +1,21 @@
 <script lang="ts">
+  import { onMount, onDestroy } from 'svelte';
   import { settingsVisible, userSettings, editMode, settingsManager } from './stores';
   import { themes } from './themes';
+  import { serviceWorkerManager, type ServiceWorkerStatus } from './service-worker-manager';
+
+  let swStatus: ServiceWorkerStatus = { isActive: false, lastPing: 0, consecutiveFailures: 0 };
+
+  function handleSwStatus(s: ServiceWorkerStatus) { swStatus = s; }
+
+  onMount(() => {
+    swStatus = serviceWorkerManager.getStatus();
+    serviceWorkerManager.addStatusListener(handleSwStatus);
+  });
+
+  onDestroy(() => {
+    serviceWorkerManager.removeStatusListener(handleSwStatus);
+  });
   
   let activeTab = 'general';
   
@@ -80,12 +95,19 @@
         >
           Theme
         </button>
-        <button 
-          class="tab-button" 
+        <button
+          class="tab-button"
           class:active={activeTab === 'layout'}
           on:click={() => switchTab('layout')}
         >
           Layout
+        </button>
+        <button
+          class="tab-button"
+          class:active={activeTab === 'diagnostics'}
+          on:click={() => switchTab('diagnostics')}
+        >
+          Diagnostics
         </button>
       </div>
       
@@ -186,8 +208,40 @@
             </div>
           </div>
         {/if}
+        {#if activeTab === 'diagnostics'}
+          <div class="settings-section">
+            <h3>Service Worker</h3>
+            <div class="diag-row">
+              <span
+                class="sw-dot"
+                class:sw-ok={swStatus.isActive && swStatus.consecutiveFailures === 0}
+                class:sw-warn={swStatus.isActive && swStatus.consecutiveFailures > 0}
+                class:sw-err={!swStatus.isActive}
+              ></span>
+              <span class="diag-label">
+                {swStatus.isActive ? 'Active' : 'Inactive'}
+                {#if swStatus.consecutiveFailures > 0}
+                  &nbsp;· {swStatus.consecutiveFailures} failure{swStatus.consecutiveFailures > 1 ? 's' : ''}
+                {/if}
+              </span>
+            </div>
+            {#if swStatus.lastPing}
+              <p class="setting-description" style="margin-left:0">
+                Last ping: {new Date(swStatus.lastPing).toLocaleTimeString()}
+              </p>
+            {/if}
+            <div class="diag-actions">
+              <button class="diag-btn" on:click={() => serviceWorkerManager.forceStatusCheck()}>
+                Check Now
+              </button>
+              <button class="diag-btn" on:click={() => serviceWorkerManager.ensureActive()}>
+                Ensure Active
+              </button>
+            </div>
+          </div>
+        {/if}
       </div>
-      
+
       <div class="settings-footer">
         <button class="reset-button" on:click={resetAllSettings}>
           Reset to Defaults
@@ -570,5 +624,51 @@
   
   .theme-section-description {
     margin: 0 0 1rem;
+  }
+
+  .diag-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .sw-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: var(--theme-border, #aaa);
+  }
+
+  .sw-dot.sw-ok { background: #10b981; }
+  .sw-dot.sw-warn { background: #f59e0b; }
+  .sw-dot.sw-err { background: #ef4444; }
+
+  .diag-label {
+    font-size: 0.9rem;
+    color: var(--theme-text-primary, #333);
+    font-weight: 500;
+  }
+
+  .diag-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+  }
+
+  .diag-btn {
+    padding: 0.5rem 1rem;
+    background: var(--theme-panel-muted, rgba(0,0,0,0.05));
+    border: 1px solid var(--theme-border, rgba(0,0,0,0.1));
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: var(--theme-text-primary, #333);
+    transition: background 0.15s ease;
+  }
+
+  .diag-btn:hover {
+    background: var(--theme-panel, rgba(0,0,0,0.08));
   }
 </style>

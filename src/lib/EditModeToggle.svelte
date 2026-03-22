@@ -1,135 +1,73 @@
 <script lang="ts">
-  import { editMode, settingsVisible, settingsManager } from './stores';
-  
-  // Toggle edit mode
+  import { editMode, settingsManager } from './stores';
+
   async function toggleEditMode() {
     const newEditMode = !$editMode;
     await settingsManager.updateEditMode({ enabled: newEditMode });
   }
-  
-  // Open settings panel
-  function openSettings() {
-    settingsVisible.set(true);
-  }
 </script>
 
-<div class="edit-mode-controls">
-  <button 
-    class="edit-toggle" 
-    class:active={$editMode}
-    on:click={toggleEditMode}
-    title={$editMode ? 'Exit edit mode (Ctrl+E)' : 'Enter edit mode (Ctrl+E)'}
-  >
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+<button
+  class="edit-toggle"
+  class:active={$editMode}
+  on:click={toggleEditMode}
+  title={$editMode ? 'Exit edit mode (Ctrl+E)' : 'Enter edit mode (Ctrl+E)'}
+>
+  {#if $editMode}
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <polyline points="20,6 9,17 4,12"></polyline>
+    </svg>
+    <span>Done</span>
+  {:else}
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
       <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
     </svg>
-    <span>{$editMode ? 'Exit Edit' : 'Edit'}</span>
-  </button>
-  
-  <button 
-    class="settings-button"
-    on:click={openSettings}
-    title="Open settings"
-  >
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-      <circle cx="12" cy="12" r="3"></circle>
-      <path d="m12 1 1.68 3.36L17 6.64l-1.68 3.36L12 11.68 8.32 10 5 6.64l3.32-1.68L12 1z"></path>
-      <path d="m12 12.32 3.68 1.68L19 17.36l-3.68 1.68L12 22.32 8.32 19 5 17.36l3.32-1.68L12 12.32z"></path>
-    </svg>
-  </button>
-</div>
+    <span>Edit</span>
+  {/if}
+</button>
 
 <style>
-  .edit-mode-controls {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-  }
-  
   .edit-toggle {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1rem;
-    background: var(--theme-panel, rgba(255, 255, 255, 0.9));
-    border: 1px solid var(--theme-border, rgba(0, 0, 0, 0.1));
-    border-radius: 12px;
-    cursor: pointer;
-    font-size: 0.9rem;
-    font-weight: 500;
-    color: var(--theme-text-primary, #333);
-    backdrop-filter: blur(10px);
-    transition: all 0.2s ease;
-    box-shadow: 0 4px 12px var(--theme-shadow, rgba(0, 0, 0, 0.1));
-  }
-  
-  .edit-toggle:hover {
-    background: var(--theme-panel-muted, rgba(255, 255, 255, 0.95));
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px var(--theme-shadow, rgba(0, 0, 0, 0.15));
-  }
-  
-  .edit-toggle.active {
-    background: var(--theme-accent, #667eea);
-    color: var(--theme-accent-contrast, white);
-    border-color: var(--theme-accent, #667eea);
-  }
-  
-  .edit-toggle.active:hover {
-    background: var(--theme-accent-hover, #5a6fd8);
-  }
-  
-  .edit-toggle svg {
-    width: 18px;
-    height: 18px;
-  }
-  
-  .settings-button {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 0.75rem;
-    background: var(--theme-panel, rgba(255, 255, 255, 0.9));
-    border: 1px solid var(--theme-border, rgba(0, 0, 0, 0.1));
+    gap: 0.5rem;
+    padding: 0.75rem 1.1rem;
+    background: var(--theme-input-bg, rgba(255,255,255,0.9));
+    border: 1px solid var(--theme-border, transparent);
     border-radius: 12px;
     cursor: pointer;
-    color: var(--theme-text-primary, #333);
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--theme-input-text, #333);
+    box-shadow: 0 4px 20px var(--theme-shadow, rgba(0,0,0,0.1));
     backdrop-filter: blur(10px);
     transition: all 0.2s ease;
-    box-shadow: 0 4px 12px var(--theme-shadow, rgba(0, 0, 0, 0.1));
+    white-space: nowrap;
   }
-  
-  .settings-button:hover {
-    background: var(--theme-panel-muted, rgba(255, 255, 255, 0.95));
+
+  .edit-toggle:hover {
+    box-shadow: 0 6px 30px var(--theme-shadow, rgba(0,0,0,0.15));
+    border-color: var(--theme-border-strong, transparent);
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px var(--theme-shadow, rgba(0, 0, 0, 0.15));
   }
-  
-  .settings-button svg {
-    width: 18px;
-    height: 18px;
+
+  .edit-toggle.active {
+    background: var(--theme-accent, #667eea);
+    border-color: var(--theme-accent, #667eea);
+    color: var(--theme-accent-contrast, #fff);
+    box-shadow: 0 4px 20px var(--theme-shadow, rgba(0,0,0,0.15));
   }
-  
-  @media (max-width: 768px) {
-    .edit-toggle {
-      padding: 0.5rem 0.75rem;
-      font-size: 0.8rem;
-    }
 
-    .edit-toggle span {
-      display: none;
-    }
-
-    .settings-button {
-      padding: 0.5rem;
-    }
-
-    .edit-toggle svg,
-    .settings-button svg {
-      width: 16px;
-      height: 16px;
-    }
+  .edit-toggle.active:hover {
+    filter: brightness(1.08);
+    transform: translateY(-2px);
   }
-  
+
+  .edit-toggle svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+  }
 </style>
