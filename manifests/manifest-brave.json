@@ -12,6 +12,7 @@
   "permissions": [
     "bookmarks",
     "storage",
+    "tabs",
     "activeTab",
     "scripting"
   ],

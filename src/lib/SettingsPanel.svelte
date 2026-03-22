@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { settingsVisible, userSettings, editMode, settingsManager } from './stores';
+  import { settingsVisible, userSettings, settingsManager } from './stores';
   import { themes } from './themes';
   import { serviceWorkerManager, type ServiceWorkerStatus } from './service-worker-manager';
 
@@ -20,10 +20,7 @@
   let activeTab = 'general';
   
   // Close settings panel
-  function closeSettings(event?: Event) {
-    if (event && event.target !== event.currentTarget) {
-      return;
-    }
+  function closeSettings() {
     settingsVisible.set(false);
   }
   
@@ -32,15 +29,8 @@
     activeTab = tab;
   }
   
-  // Handle edit mode toggle
-  async function toggleEditMode() {
-    const newEditMode = !$editMode;
-    editMode.set(newEditMode);
-    await settingsManager.updateEditMode({ enabled: newEditMode });
-  }
-  
   // Handle layout mode change
-  async function changeLayoutMode(mode: 'compact' | 'grid' | 'tags') {
+  async function changeLayoutMode(mode: 'compact' | 'grid') {
     await settingsManager.updateLayout({ viewMode: mode });
   }
   
@@ -68,8 +58,9 @@
 <svelte:window on:keydown={handleKeydown} />
 
 {#if $settingsVisible}
-  <button class="settings-overlay" on:click={closeSettings} on:keydown|self={handleKeydown}>
-    <div class="settings-panel" role="document">
+  <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+  <div class="settings-overlay" on:click|self={closeSettings}>
+    <div class="settings-panel" role="document" on:click|stopPropagation>
       <div class="settings-header">
         <h2>Settings</h2>
         <button class="close-button" on:click={closeSettings} title="Close settings">
@@ -114,26 +105,11 @@
       <div class="settings-content">
         {#if activeTab === 'general'}
           <div class="settings-section">
-            <h3>Edit Mode</h3>
+            <h3>Behavior</h3>
             <div class="setting-item">
               <label class="setting-label">
-                <input 
-                  type="checkbox" 
-                  checked={$editMode}
-                  on:change={toggleEditMode}
-                />
-                <span class="checkbox-custom"></span>
-                Enable edit mode
-              </label>
-              <p class="setting-description">
-                Allow editing bookmarks, reordering, and customization
-              </p>
-            </div>
-            
-            <div class="setting-item">
-              <label class="setting-label">
-                <input 
-                  type="checkbox" 
+                <input
+                  type="checkbox"
                   checked={$userSettings.editMode.autoSave}
                   on:change={() => settingsManager.updateEditMode({ autoSave: !$userSettings.editMode.autoSave })}
                 />
@@ -141,7 +117,10 @@
                 Auto-save changes
               </label>
               <p class="setting-description">
-                Automatically save changes without confirmation
+                Automatically save bookmark changes as you make them. Changes are saved to your
+                browser's local storage — to sync across devices, make sure you're signed in to
+                your browser profile with sync enabled. If you're not signed in, use the export
+                feature to back up your bookmarks manually.
               </p>
             </div>
           </div>
@@ -150,10 +129,6 @@
         {#if activeTab === 'theme'}
           <div class="settings-section">
             <h3>Theme Selection</h3>
-            <p class="setting-description theme-section-description">
-              Three light/dark pairs are available now. The JM pair is scaffolded and ready to
-              be refined once the final brand palette is confirmed from the PDF.
-            </p>
             <div class="theme-grid">
               {#each themes as theme}
                 <button
@@ -189,21 +164,16 @@
                 <div class="layout-icon grid-icon"></div>
                 <span>Grid</span>
               </button>
-              <button 
-                class="layout-option" 
+              <!-- TODO: Compact mode — dense list view with smaller bookmark rows, no favicons, tighter spacing -->
+              <button
+                class="layout-option"
                 class:active={$userSettings.layout.viewMode === 'compact'}
                 on:click={() => changeLayoutMode('compact')}
+                title="Compact view (coming soon)"
               >
                 <div class="layout-icon list-icon"></div>
                 <span>Compact</span>
-              </button>
-              <button 
-                class="layout-option" 
-                class:active={$userSettings.layout.viewMode === 'tags'}
-                on:click={() => changeLayoutMode('tags')}
-              >
-                <div class="layout-icon tags-icon"></div>
-                <span>Tags</span>
+                <small class="layout-badge">Soon</small>
               </button>
             </div>
           </div>
@@ -244,11 +214,11 @@
 
       <div class="settings-footer">
         <button class="reset-button" on:click={resetAllSettings}>
-          Reset to Defaults
+          Reset to defaults
         </button>
       </div>
     </div>
-  </button>
+  </div>
 {/if}
 
 <style>
@@ -265,12 +235,7 @@
     align-items: center;
     justify-content: center;
     animation: fadeIn 0.2s ease-out;
-    border: none;
-    padding: 0;
-    font: inherit;
-    text-align: inherit;
     cursor: default;
-    width: 100%;
   }
   
   .settings-panel {
@@ -359,7 +324,7 @@
   
   .settings-content {
     padding: 2rem;
-    max-height: 400px;
+    max-height: 440px;
     overflow-y: auto;
   }
   
@@ -425,8 +390,8 @@
   
   .theme-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 1rem;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
   }
 
   .theme-option {
@@ -456,7 +421,7 @@
 
   .theme-preview {
     width: 100%;
-    height: 82px;
+    height: 68px;
     border-radius: 10px;
     margin-bottom: 0.25rem;
     padding: 0.75rem;
@@ -554,33 +519,35 @@
     background: repeating-linear-gradient(to bottom, var(--theme-border, #ddd) 0px 4px, transparent 4px 8px);
   }
   
-  .tags-icon {
-    background: radial-gradient(circle at 25% 25%, var(--theme-border, #ddd) 2px, transparent 2px),
-                radial-gradient(circle at 75% 25%, var(--theme-border, #ddd) 2px, transparent 2px),
-                radial-gradient(circle at 25% 75%, var(--theme-border, #ddd) 2px, transparent 2px);
-    background-size: 15px 15px;
+  .layout-badge {
+    font-size: 0.7rem;
+    color: var(--theme-text-muted, #666);
+    margin-top: 0.15rem;
+    opacity: 0.7;
   }
-  
+
   .settings-footer {
-    padding: 1.5rem 2rem;
+    padding: 1rem 2rem;
     border-top: 1px solid var(--theme-border, rgba(0, 0, 0, 0.1));
     display: flex;
-    justify-content: flex-end;
+    justify-content: flex-start;
   }
-  
+
   .reset-button {
-    padding: 0.75rem 1.5rem;
-    background: var(--theme-danger, #f44336);
-    color: #fff;
-    border: none;
+    padding: 0.5rem 1rem;
+    background: transparent;
+    color: var(--theme-text-muted, #888);
+    border: 1px solid var(--theme-border, rgba(0, 0, 0, 0.15));
     border-radius: 8px;
     cursor: pointer;
-    font-weight: 500;
-    transition: background-color 0.2s ease;
+    font-size: 0.8rem;
+    font-weight: 400;
+    transition: color 0.2s ease, border-color 0.2s ease;
   }
   
   .reset-button:hover {
-    filter: brightness(0.92);
+    color: var(--theme-danger, #ef4444);
+    border-color: var(--theme-danger, #ef4444);
   }
   
   @keyframes fadeIn {
@@ -615,6 +582,7 @@
     
     .theme-grid {
       grid-template-columns: repeat(2, 1fr);
+      gap: 0.5rem;
     }
     
     .layout-options {
@@ -622,10 +590,6 @@
     }
   }
   
-  .theme-section-description {
-    margin: 0 0 1rem;
-  }
-
   .diag-row {
     display: flex;
     align-items: center;

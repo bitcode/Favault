@@ -160,28 +160,28 @@ export const themes: ThemeDefinition[] = [
     name: 'JM Dark',
     mode: 'dark',
     colors: {
-      bgStart: '#05254E',
-      bgEnd: '#031A36',
-      bgAccent: '#468FCD',
-      bgAccentSoft: '#D22C7C',
+      bgStart: '#05254E',   // Navy — JM primary
+      bgEnd: '#020D1C',     // Deep navy for gradient depth
+      bgAccent: '#468FCD',  // Blue — JM secondary
+      bgAccentSoft: '#D22C7C', // Cranberry — JM secondary
       panel: 'rgba(5, 37, 78, 0.9)',
-      panelSolid: '#0B325F',
-      panelMuted: 'rgba(70, 143, 205, 0.18)',
+      panelSolid: '#0A2D56',
+      panelMuted: 'rgba(70, 143, 205, 0.15)',
       textPrimary: '#FFFFFF',
-      textSecondary: '#F1F5F9',
-      textMuted: '#CBD5E1',
-      border: 'rgba(203, 213, 225, 0.28)',
+      textSecondary: '#F1F5F9',  // Grey 20
+      textMuted: '#CBD5E1',       // Steel
+      border: 'rgba(226, 232, 240, 0.22)',   // Grey 30 base
       borderStrong: 'rgba(70, 143, 205, 0.62)',
-      accent: '#468FCD',
-      accentHover: '#D22C7C',
+      accent: '#468FCD',     // Blue
+      accentHover: '#D22C7C', // Cranberry
       accentContrast: '#FFFFFF',
       success: '#468FCD',
       danger: '#D22C7C',
-      inputBg: 'rgba(11, 50, 95, 0.82)',
+      inputBg: 'rgba(10, 45, 86, 0.82)',
       inputText: '#FFFFFF',
-      inputPlaceholder: '#94A3B8',
-      overlay: 'rgba(2, 12, 28, 0.66)',
-      shadow: 'rgba(1, 10, 24, 0.34)',
+      inputPlaceholder: '#94A3B8',  // Grey 50
+      overlay: 'rgba(2, 9, 18, 0.68)',
+      shadow: 'rgba(1, 7, 16, 0.38)',
     },
   },
   {
@@ -189,28 +189,28 @@ export const themes: ThemeDefinition[] = [
     name: 'JM Light',
     mode: 'light',
     colors: {
-      bgStart: '#F8FAFC',
-      bgEnd: '#F1F5F9',
-      bgAccent: '#468FCD',
-      bgAccentSoft: '#D22C7C',
+      bgStart: '#F8FAFC',  // Grey 10
+      bgEnd: '#F1F5F9',    // Grey 20
+      bgAccent: '#468FCD', // Blue — JM secondary
+      bgAccentSoft: '#D22C7C', // Cranberry — JM secondary
       panel: 'rgba(255, 255, 255, 0.92)',
       panelSolid: '#FFFFFF',
-      panelMuted: 'rgba(241, 245, 249, 0.96)',
-      textPrimary: '#05254E',
-      textSecondary: '#468FCD',
-      textMuted: '#94A3B8',
-      border: 'rgba(203, 213, 225, 0.9)',
-      borderStrong: 'rgba(5, 37, 78, 0.22)',
-      accent: '#05254E',
-      accentHover: '#468FCD',
+      panelMuted: 'rgba(241, 245, 249, 0.96)',  // Grey 20 base
+      textPrimary: '#05254E',   // Navy — JM primary
+      textSecondary: '#468FCD', // Blue — JM secondary
+      textMuted: '#94A3B8',     // Grey 50
+      border: 'rgba(226, 232, 240, 0.95)',      // Grey 30
+      borderStrong: 'rgba(5, 37, 78, 0.25)',    // Navy
+      accent: '#05254E',     // Navy
+      accentHover: '#468FCD', // Blue
       accentContrast: '#FFFFFF',
       success: '#468FCD',
-      danger: '#D22C7C',
-      inputBg: 'rgba(248, 250, 252, 0.96)',
+      danger: '#D22C7C',     // Cranberry
+      inputBg: 'rgba(248, 250, 252, 0.96)',  // Grey 10 base
       inputText: '#05254E',
-      inputPlaceholder: '#94A3B8',
-      overlay: 'rgba(5, 37, 78, 0.12)',
-      shadow: 'rgba(5, 37, 78, 0.12)',
+      inputPlaceholder: '#94A3B8',  // Grey 50
+      overlay: 'rgba(5, 37, 78, 0.1)',
+      shadow: 'rgba(5, 37, 78, 0.1)',
     },
   },
 ];

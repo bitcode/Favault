@@ -4,7 +4,7 @@ import DragDropLogger from './logging/drag-drop-logger';
 
 // Drag and drop data types
 export interface DragData {
-  type: 'bookmark' | 'folder';
+  type: 'bookmark' | 'folder' | 'new-tab';
   id: string;
   title: string;
   parentId?: string;
@@ -165,7 +165,7 @@ export class DragDropManager {
       onDragEnter?: (data: DragData, zone: DropZoneData) => void;
       onDragLeave?: (data: DragData, zone: DropZoneData) => void;
       onDrop?: (data: DragData, zone: DropZoneData) => Promise<boolean>;
-      acceptTypes?: ('bookmark' | 'folder')[];
+      acceptTypes?: ('bookmark' | 'folder' | 'new-tab')[];
     } = {}
   ): void {
     // CRITICAL FIX: Always cleanup existing listeners first to prevent accumulation
@@ -176,9 +176,15 @@ export class DragDropManager {
 
     let dragEnterCounter = 0;
 
+    // Helper: is this drop zone allowed even outside edit mode?
+    // Only new-tab drags (from the TabsPanel) are accepted outside edit mode.
+    const allowedOutsideEditMode = () =>
+      dropZoneData.type === 'folder' &&
+      acceptTypes.includes('new-tab');
+
     // Drag enter handler
     const handleDragEnter = (e: DragEvent) => {
-      if (!this.isEditModeEnabled() && !(dropZoneData.type === 'folder' && acceptTypes.includes('bookmark'))) return;
+      if (!this.isEditModeEnabled() && !allowedOutsideEditMode()) return;
 
       dragEnterCounter++;
       e.preventDefault();
@@ -200,15 +206,17 @@ export class DragDropManager {
 
     // Drag over handler
     const handleDragOver = (e: DragEvent) => {
-      if (!this.isEditModeEnabled() && !(dropZoneData.type === 'folder' && acceptTypes.includes('bookmark'))) return;
+      if (!this.isEditModeEnabled() && !allowedOutsideEditMode()) return;
 
       e.preventDefault();
-      e.dataTransfer!.dropEffect = 'move';
+      // Show 'copy' cursor for new-tab drags (creates a new bookmark, not a move)
+      const dragData = this.getDragData(e);
+      e.dataTransfer!.dropEffect = dragData?.type === 'new-tab' ? 'copy' : 'move';
     };
 
     // Drag leave handler
     const handleDragLeave = (e: DragEvent) => {
-      if (!this.isEditModeEnabled() && !(dropZoneData.type === 'folder' && acceptTypes.includes('bookmark'))) return;
+      if (!this.isEditModeEnabled() && !allowedOutsideEditMode()) return;
 
       dragEnterCounter--;
 
@@ -232,7 +240,7 @@ export class DragDropManager {
 
     // Drop handler
     const handleDrop = async (e: DragEvent) => {
-      const allowed = this.isEditModeEnabled() || (dropZoneData.type === 'folder' && acceptTypes.includes('bookmark'));
+      const allowed = this.isEditModeEnabled() || allowedOutsideEditMode();
       if (!allowed) {
         console.warn('[DragDropManager] Drop ignored - not allowed for this drop zone', {
           dropZoneType: dropZoneData.type,
@@ -265,6 +273,12 @@ export class DragDropManager {
         const errorMsg = `Drop rejected - unsupported drag type: ${dragData.type}`;
         console.warn('[DragDropManager]', errorMsg, { acceptTypes, dropZoneData });
         await DragDropLogger.logDropError(errorMsg, dropZoneData);
+        return;
+      }
+
+      // Block bookmark moves when not in edit mode — only new-tab drags are permitted outside edit mode
+      if (!this.isEditModeEnabled() && dragData.type === 'bookmark') {
+        console.warn('[DragDropManager] Bookmark drop rejected - not in edit mode');
         return;
       }
 
@@ -632,6 +646,29 @@ export class DragDropManager {
         }
       });
     }
+  }
+
+  /**
+   * Register an external drag (e.g. from TabsPanel) into the shared drag state.
+   * Call this in the draggable element's dragstart handler.
+   */
+  static startExternalDrag(data: DragData): void {
+    dragState.isDragging = true;
+    dragState.dragData = data;
+    dragState.dragElement = null;
+    document.body.classList.add('drag-active');
+  }
+
+  /**
+   * Clear an external drag from shared state.
+   * Call this in the draggable element's dragend handler.
+   */
+  static endExternalDrag(): void {
+    dragState.isDragging = false;
+    dragState.dragData = null;
+    dragState.dragElement = null;
+    document.body.classList.remove('drag-active');
+    document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
   }
 
   /**

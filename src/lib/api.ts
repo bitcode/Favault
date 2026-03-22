@@ -850,3 +850,45 @@ export class BookmarkEditAPI extends ExtensionAPI {
     }
   }
 }
+
+// Open tab data structure
+export interface OpenTab {
+  id: number;
+  title: string;
+  url: string;
+  favIconUrl?: string;
+  active: boolean;
+}
+
+/**
+ * Tabs API — queries open tabs in the current window and filters
+ * out ones already bookmarked.
+ */
+export class TabsAPI {
+  private static readonly SKIP_PREFIXES = [
+    'chrome://', 'about:', 'moz-extension://', 'chrome-extension://'
+  ];
+
+  static async getUnbookmarkedTabs(bookmarkedUrls: Set<string>): Promise<OpenTab[]> {
+    try {
+      const tabs = await (browserAPI as any).tabs.query({ currentWindow: true });
+      return (tabs as any[])
+        .filter((tab) => {
+          if (!tab.url || !tab.title) return false;
+          if (TabsAPI.SKIP_PREFIXES.some(p => tab.url.startsWith(p))) return false;
+          const normalized = tab.url.replace(/\/$/, '');
+          return !bookmarkedUrls.has(tab.url) && !bookmarkedUrls.has(normalized);
+        })
+        .map((tab) => ({
+          id: tab.id,
+          title: tab.title || tab.url,
+          url: tab.url,
+          favIconUrl: tab.favIconUrl || undefined,
+          active: tab.active
+        }));
+    } catch (err) {
+      console.error('TabsAPI: failed to query tabs', err);
+      return [];
+    }
+  }
+}

@@ -51,6 +51,7 @@
   }
 
   function onGridDragOver(e: DragEvent, index: number) {
+    if (!isEditMode) return;
     // Check if we are dragging a bookmark (either internal or external)
     const hasBookmarkData =
       e.dataTransfer?.types.includes("application/x-favault-bookmark") ||
@@ -82,6 +83,7 @@
   }
 
   async function onGridDrop(e: DragEvent, index: number) {
+    if (!isEditMode) return;
     e.preventDefault();
     e.stopPropagation(); // Stop bubbling to container/folder handlers
 
@@ -383,6 +385,7 @@
   let headerDragEnterCount = 0;
 
   function onHeaderDragEnter(e: DragEvent) {
+    if (!isEditMode) return;
     const payload = getBookmarkDragPayload(e);
     if (payload) {
       e.preventDefault();
@@ -395,6 +398,7 @@
     }
   }
   function onHeaderDragOver(e: DragEvent) {
+    if (!isEditMode) return;
     const payload = getBookmarkDragPayload(e);
     if (payload) {
       e.preventDefault();
@@ -403,6 +407,7 @@
     }
   }
   async function onHeaderDrop(e: DragEvent) {
+    if (!isEditMode) return;
     const payload = getBookmarkDragPayload(e);
     if (payload) {
       e.preventDefault();
@@ -473,6 +478,7 @@
 
   // Mouse-based fallback: if a drag candidate exists, treat mouseup on header as drop-at-beginning
   async function onHeaderMouseUp(_e: MouseEvent) {
+    if (!isEditMode) return;
     // Only act if a real drag (mouse moved while held) actually occurred
     if (!(window as any).__fav_isDragging) {
       if (typeof window !== "undefined")
@@ -551,6 +557,7 @@
   let containerDragEnterCount = 0;
 
   function onContainerDragEnter(e: DragEvent) {
+    if (!isEditMode) return;
     const payload = getBookmarkDragPayload(e);
     if (payload) {
       e.preventDefault();
@@ -563,6 +570,7 @@
     }
   }
   function onContainerDragOver(e: DragEvent) {
+    if (!isEditMode) return;
     const payload = getBookmarkDragPayload(e);
     if (payload) {
       e.preventDefault();
@@ -571,6 +579,7 @@
     }
   }
   async function onContainerDrop(e: DragEvent) {
+    if (!isEditMode) return;
     const payload = getBookmarkDragPayload(e);
     if (payload) {
       e.preventDefault();
@@ -627,6 +636,7 @@
   }
   // Mouse-based fallback: if a drag candidate exists, treat mouseup on container as drop-append
   async function onContainerMouseUp(_e: MouseEvent) {
+    if (!isEditMode) return;
     // Only act if a real drag (mouse moved while held) actually occurred
     if (!(window as any).__fav_isDragging) {
       if (typeof window !== "undefined")
@@ -794,7 +804,7 @@
         folderHeader as HTMLElement,
         { type: "folder", targetId: folder.id, targetIndex: 0 },
         {
-          acceptTypes: ["bookmark"],
+          acceptTypes: ["bookmark", "new-tab"],
           onDragEnter: () => {
             console.log(
               "📥 Drag enter on folder header:",
@@ -825,45 +835,35 @@
               dragData,
             );
             try {
-              console.log(
-                "🟣 ENHANCED HEADER DROP: Processing bookmark drop via enhanced system",
-              );
-              console.log("🟣 DEBUG: Enhanced header drop parameters:", {
-                bookmarkId: dragData.id,
-                targetFolderId: folder.id,
-                targetIndex: 0,
-                folderTitle: folder.title,
-                dragDataTitle: dragData.title,
-              });
-
-              const result = await BookmarkEditAPI.moveBookmark(dragData.id, {
-                parentId: folder.id,
-                index: 0,
-              });
-
-              console.log("🟣 DEBUG: Enhanced header drop API result:", result);
-
-              if (result.success) {
-                // Instant optimistic update — no full re-render
-                optimisticMove(
-                  dragData.id,
-                  dragData.parentId || null,
-                  folder.id,
-                  0,
-                );
-                // Reconcile silently in background after 1.5 s
-                scheduleSilentSync();
+              if (dragData.type === "new-tab") {
+                // CREATE: tab panel drag — new bookmark at beginning of folder
+                const result = await BookmarkEditAPI.createBookmark({
+                  parentId: folder.id,
+                  index: 0,
+                  title: dragData.title,
+                  url: dragData.url,
+                });
+                if (result.success) {
+                  scheduleSilentSync();
+                } else {
+                  console.error("🟣 ❌ Failed to create bookmark from tab (header):", result.error);
+                }
               } else {
-                console.error(
-                  "🟣 ❌ FAILED: Failed to move bookmark on enhanced header drop:",
-                  result.error,
-                );
+                // MOVE: existing bookmark (original behaviour)
+                console.log("🟣 ENHANCED HEADER DROP: Processing bookmark move");
+                const result = await BookmarkEditAPI.moveBookmark(dragData.id, {
+                  parentId: folder.id,
+                  index: 0,
+                });
+                if (result.success) {
+                  optimisticMove(dragData.id, dragData.parentId || null, folder.id, 0);
+                  scheduleSilentSync();
+                } else {
+                  console.error("🟣 ❌ FAILED: Failed to move bookmark on enhanced header drop:", result.error);
+                }
               }
             } catch (err) {
-              console.error(
-                "🟣 🚨 ERROR: Error moving bookmark on enhanced header drop:",
-                err,
-              );
+              console.error("🟣 🚨 ERROR: Error on enhanced header drop:", err);
             }
             folderHeader.classList.remove("drop-zone-active", "drop-target");
             (folderHeader as HTMLElement).removeAttribute("data-drop-active");
@@ -880,7 +880,7 @@
         folderElement as HTMLElement,
         { type: "folder", targetId: folder.id },
         {
-          acceptTypes: ["bookmark"],
+          acceptTypes: ["bookmark", "new-tab"],
           onDragEnter: () => {
             console.log(
               "\ud83d\udce5 Drag enter on folder container:",
@@ -911,52 +911,40 @@
               dragData,
             );
             try {
-              console.log(
-                "🟪 ENHANCED CONTAINER DROP: Processing bookmark drop via enhanced system",
-              );
-              // Append to end by default
               const appendIndex = Array.isArray(folder.bookmarks)
                 ? folder.bookmarks.length
                 : undefined;
 
-              console.log("🟪 DEBUG: Enhanced container drop parameters:", {
-                bookmarkId: dragData.id,
-                targetFolderId: folder.id,
-                appendIndex: appendIndex,
-                folderTitle: folder.title,
-                folderBookmarkCount: folder.bookmarks.length,
-                dragDataTitle: dragData.title,
-              });
-
-              const result = await BookmarkEditAPI.moveBookmark(dragData.id, {
-                parentId: folder.id,
-                index: appendIndex,
-              });
-
-              console.log(
-                "🟪 DEBUG: Enhanced container drop API result:",
-                result,
-              );
-
-              if (result.success) {
-                // Instant optimistic update — no full re-render
-                optimisticMove(
-                  dragData.id,
-                  dragData.parentId || null,
-                  folder.id,
-                  appendIndex,
-                );
-                // Reconcile silently in background after 1.5 s
-                scheduleSilentSync();
+              if (dragData.type === "new-tab") {
+                // CREATE: tab panel drag — append new bookmark to end of folder
+                const result = await BookmarkEditAPI.createBookmark({
+                  parentId: folder.id,
+                  index: appendIndex,
+                  title: dragData.title,
+                  url: dragData.url,
+                });
+                if (result.success) {
+                  scheduleSilentSync();
+                } else {
+                  console.error("🟪 ❌ Failed to create bookmark from tab (container):", result.error);
+                }
               } else {
-                console.error(
-                  "🟪 ❌ FAILED: Failed to move bookmark on enhanced container drop:",
-                  result.error,
-                );
+                // MOVE: existing bookmark (original behaviour)
+                console.log("🟪 ENHANCED CONTAINER DROP: Processing bookmark move");
+                const result = await BookmarkEditAPI.moveBookmark(dragData.id, {
+                  parentId: folder.id,
+                  index: appendIndex,
+                });
+                if (result.success) {
+                  optimisticMove(dragData.id, dragData.parentId || null, folder.id, appendIndex);
+                  scheduleSilentSync();
+                } else {
+                  console.error("🟪 ❌ FAILED: Failed to move bookmark on enhanced container drop:", result.error);
+                }
               }
             } catch (err) {
               console.error(
-                "🟪 🚨 ERROR: Error moving bookmark on enhanced container drop:",
+                "🟪 🚨 ERROR: Error on enhanced container drop:",
                 err,
               );
             }
@@ -1057,6 +1045,9 @@
         (window as any).__fav_isDragging = false;
         (window as any).__fav_dragCandidate = null;
 
+        // Only allow drag initiation in edit mode
+        if (!isEditMode) return;
+
         _mouseDownX = e.clientX;
         _mouseDownY = e.clientY;
 
@@ -1112,8 +1103,9 @@
     ) {
       const onDocMouseUp = async (e: MouseEvent) => {
         try {
-          if (!(window as any).__fav_isDragging) {
+          if (!isEditMode || !(window as any).__fav_isDragging) {
             (window as any).__fav_dragCandidate = null;
+            (window as any).__fav_isDragging = false;
             return;
           }
 

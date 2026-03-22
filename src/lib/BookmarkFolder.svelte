@@ -154,6 +154,12 @@
       console.log('Disabling drag-drop for folder:', folder.title);
       DragDropManager.disableEditMode();
     }
+
+    // Always initialize folder drop zones so new-tab drags work even outside edit mode
+    setTimeout(() => {
+      initializeFolderDropZones();
+      initializeFolderHeaderDropZone();
+    }, 0);
   }
 
   // Initialize comprehensive folder drop zones
@@ -164,11 +170,8 @@
       folderId: folder.id
     });
 
-    if (!folderElement || !isEditMode) {
-      console.log('❌ Cannot initialize folder drop zones:', {
-        folderElement: !!folderElement,
-        isEditMode
-      });
+    if (!folderElement) {
+      console.log('❌ Cannot initialize folder drop zones: folderElement not ready');
       return;
     }
 
@@ -184,9 +187,9 @@
     console.log('🎯 Setting up folder drop zone with data:', folderDropZone);
 
     DragManager.initializeDropZone(folderElement, folderDropZone, {
-      acceptTypes: ['bookmark'],
+      acceptTypes: ['bookmark', 'new-tab'],
       onDragEnter: (dragData, dropZone) => {
-        console.log('🎯 Bookmark entering folder:', dragData.title, 'into', folder.title);
+        console.log('🎯 Item entering folder:', dragData.title, 'into', folder.title);
         folderElement.classList.add('folder-drop-zone-active');
 
         // Auto-expand folder if collapsed
@@ -199,63 +202,73 @@
         showFolderDropIndicator(dragData);
       },
       onDragLeave: (dragData, dropZone) => {
-        console.log('🚪 Bookmark leaving folder:', dragData.title, 'from', folder.title);
+        console.log('🚪 Item leaving folder:', dragData.title, 'from', folder.title);
         folderElement.classList.remove('folder-drop-zone-active');
         hideFolderDropIndicator();
       },
       onDrop: async (dragData, dropZone) => {
-        console.log('Dropping bookmark into folder:', dragData.title, 'into', folder.title);
+        console.log('Dropping item into folder:', dragData.title, 'into', folder.title);
+
+        const targetIndex = Array.isArray(folder.bookmarks) ? folder.bookmarks.length : 0;
 
         try {
-          // Ensure we have a valid index for appending to end
-          const targetIndex = Array.isArray(folder.bookmarks) ? folder.bookmarks.length : 0;
+          if (dragData.type === 'new-tab') {
+            // CREATE: tab panel drag — create a new bookmark in this folder
+            const result = await BookmarkEditAPI.createBookmark({
+              parentId: folder.id,
+              index: targetIndex,
+              title: dragData.title,
+              url: dragData.url
+            });
 
-          console.log('🎯 Moving bookmark to folder:', {
-            bookmarkId: dragData.id,
-            bookmarkTitle: dragData.title,
-            targetFolderId: folder.id,
-            targetFolderTitle: folder.title,
-            targetIndex,
-            currentBookmarkCount: folder.bookmarks?.length || 0
-          });
-
-          // Move bookmark to this folder (append to end)
-          const result = await BookmarkEditAPI.moveBookmark(dragData.id, {
-            parentId: folder.id,
-            index: targetIndex
-          });
-
-          if (result.success) {
-            console.log('Successfully moved bookmark to folder:', dragData.title);
-
-            // Clear cache immediately and force refresh for inter-folder moves
-            BookmarkManager.clearCache();
-
-            // Add delay to allow Chrome API to propagate changes
-            await new Promise(resolve => setTimeout(resolve, 200));
-
-            // Force refresh bookmarks
-            await refreshBookmarks(true);
-
-            // Show success message
-            showInterSectionMoveSuccess(dragData.title, folder.title);
-
-            // Dispatch custom event for additional refresh if needed
-            document?.dispatchEvent(new CustomEvent('favault-bookmark-moved', {
-              detail: {
-                bookmarkId: dragData.id,
-                fromFolder: dragData.parentId,
-                toFolder: folder.id,
-                type: 'inter-folder'
-              }
-            }));
+            if (result.success) {
+              console.log('✅ Created new bookmark in folder:', dragData.title, '->', folder.title);
+              BookmarkManager.clearCache();
+              await new Promise(resolve => setTimeout(resolve, 200));
+              await refreshBookmarks(true);
+              showInterSectionMoveSuccess(dragData.title, folder.title);
+            } else {
+              console.error('Failed to create bookmark in folder:', result.error);
+              showInterSectionMoveError(result.error || 'Failed to add bookmark');
+            }
           } else {
-            console.error('Failed to move bookmark to folder:', result.error);
-            showInterSectionMoveError(result.error || 'Failed to move bookmark');
+            // MOVE: existing bookmark drag (original behavior)
+            console.log('🎯 Moving bookmark to folder:', {
+              bookmarkId: dragData.id,
+              bookmarkTitle: dragData.title,
+              targetFolderId: folder.id,
+              targetFolderTitle: folder.title,
+              targetIndex,
+              currentBookmarkCount: folder.bookmarks?.length || 0
+            });
+
+            const result = await BookmarkEditAPI.moveBookmark(dragData.id, {
+              parentId: folder.id,
+              index: targetIndex
+            });
+
+            if (result.success) {
+              console.log('Successfully moved bookmark to folder:', dragData.title);
+              BookmarkManager.clearCache();
+              await new Promise(resolve => setTimeout(resolve, 200));
+              await refreshBookmarks(true);
+              showInterSectionMoveSuccess(dragData.title, folder.title);
+              document?.dispatchEvent(new CustomEvent('favault-bookmark-moved', {
+                detail: {
+                  bookmarkId: dragData.id,
+                  fromFolder: dragData.parentId,
+                  toFolder: folder.id,
+                  type: 'inter-folder'
+                }
+              }));
+            } else {
+              console.error('Failed to move bookmark to folder:', result.error);
+              showInterSectionMoveError(result.error || 'Failed to move bookmark');
+            }
           }
         } catch (error) {
-          console.error('Error during inter-section bookmark move:', error);
-          showInterSectionMoveError('An error occurred while moving the bookmark');
+          console.error('Error during folder drop:', error);
+          showInterSectionMoveError('An error occurred');
         }
 
         // Clean up visual indicators
@@ -274,11 +287,8 @@
       isEditMode
     });
 
-    if (!folderHeader || !isEditMode) {
-      console.log('❌ Cannot initialize folder header drop zone:', {
-        folderHeader: !!folderHeader,
-        isEditMode
-      });
+    if (!folderHeader) {
+      console.log('❌ Cannot initialize folder header drop zone: folderHeader not ready');
       return;
     }
 
@@ -294,64 +304,75 @@
     console.log('🎯 Setting up folder header drop zone with data:', headerDropZone);
 
     DragManager.initializeDropZone(folderHeader, headerDropZone, {
-      acceptTypes: ['bookmark'],
+      acceptTypes: ['bookmark', 'new-tab'],
       onDragEnter: (dragData, dropZone) => {
-        console.log('🎯 Bookmark entering folder header:', dragData.title, 'into', folder.title);
+        console.log('🎯 Item entering folder header:', dragData.title, 'into', folder.title);
         folderHeader.classList.add('folder-header-drop-zone-active');
         showFolderHeaderDropIndicator(dragData);
       },
       onDragLeave: (dragData, dropZone) => {
-        console.log('🚪 Bookmark leaving folder header:', dragData.title, 'from', folder.title);
+        console.log('🚪 Item leaving folder header:', dragData.title, 'from', folder.title);
         folderHeader.classList.remove('folder-header-drop-zone-active');
         hideFolderHeaderDropIndicator();
       },
       onDrop: async (dragData, dropZone) => {
-        console.log('Dropping bookmark at beginning of folder:', dragData.title, 'into', folder.title);
+        console.log('Dropping item at beginning of folder:', dragData.title, 'into', folder.title);
 
         try {
-          console.log('🎯 Moving bookmark to beginning of folder:', {
-            bookmarkId: dragData.id,
-            bookmarkTitle: dragData.title,
-            targetFolderId: folder.id,
-            targetFolderTitle: folder.title,
-            targetIndex: 0,
-            currentBookmarkCount: folder.bookmarks?.length || 0
-          });
+          if (dragData.type === 'new-tab') {
+            // CREATE: tab panel drag — create new bookmark at beginning of folder
+            const result = await BookmarkEditAPI.createBookmark({
+              parentId: folder.id,
+              index: 0,
+              title: dragData.title,
+              url: dragData.url
+            });
 
-          // Move bookmark to beginning of this folder
-          const result = await BookmarkEditAPI.moveBookmark(dragData.id, {
-            parentId: folder.id,
-            index: 0 // Insert at beginning
-          });
-
-          if (result.success) {
-            console.log('Successfully moved bookmark to beginning of folder:', dragData.title);
-
-            // Clear cache immediately and force refresh for inter-folder moves
-            BookmarkManager.clearCache();
-
-            // Add delay to allow Chrome API to propagate changes
-            await new Promise(resolve => setTimeout(resolve, 200));
-
-            // Force refresh bookmarks
-            await refreshBookmarks(true);
-
-            // Show success message
-            showInterSectionMoveSuccess(dragData.title, folder.title, 'beginning');
-
-            // Dispatch custom event for additional refresh if needed
-            document?.dispatchEvent(new CustomEvent('favault-bookmark-moved', {
-              detail: {
-                bookmarkId: dragData.id,
-                fromFolder: dragData.parentId,
-                toFolder: folder.id,
-                type: 'inter-folder',
-                position: 'beginning'
-              }
-            }));
+            if (result.success) {
+              console.log('✅ Created bookmark at beginning of folder:', dragData.title, '->', folder.title);
+              BookmarkManager.clearCache();
+              await new Promise(resolve => setTimeout(resolve, 200));
+              await refreshBookmarks(true);
+              showInterSectionMoveSuccess(dragData.title, folder.title, 'beginning');
+            } else {
+              console.error('Failed to create bookmark at folder beginning:', result.error);
+              showInterSectionMoveError(result.error || 'Failed to add bookmark');
+            }
           } else {
-            console.error('Failed to move bookmark to folder beginning:', result.error);
-            showInterSectionMoveError(result.error || 'Failed to move bookmark');
+            // MOVE: existing bookmark (original behavior)
+            console.log('🎯 Moving bookmark to beginning of folder:', {
+              bookmarkId: dragData.id,
+              bookmarkTitle: dragData.title,
+              targetFolderId: folder.id,
+              targetFolderTitle: folder.title,
+              targetIndex: 0,
+              currentBookmarkCount: folder.bookmarks?.length || 0
+            });
+
+            const result = await BookmarkEditAPI.moveBookmark(dragData.id, {
+              parentId: folder.id,
+              index: 0
+            });
+
+            if (result.success) {
+              console.log('Successfully moved bookmark to beginning of folder:', dragData.title);
+              BookmarkManager.clearCache();
+              await new Promise(resolve => setTimeout(resolve, 200));
+              await refreshBookmarks(true);
+              showInterSectionMoveSuccess(dragData.title, folder.title, 'beginning');
+              document?.dispatchEvent(new CustomEvent('favault-bookmark-moved', {
+                detail: {
+                  bookmarkId: dragData.id,
+                  fromFolder: dragData.parentId,
+                  toFolder: folder.id,
+                  type: 'inter-folder',
+                  position: 'beginning'
+                }
+              }));
+            } else {
+              console.error('Failed to move bookmark to folder beginning:', result.error);
+              showInterSectionMoveError(result.error || 'Failed to move bookmark');
+            }
           }
         } catch (error) {
           console.error('Error during header drop:', error);

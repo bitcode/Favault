@@ -163,3 +163,15 @@ export const settingsManager = {
     await ExtensionAPI.saveSettings(defaultSettings);
   }
 };
+
+// Open Tabs Panel stores
+export const tabsPanelCollapsed = writable<boolean>(true);
+export const openTabs = writable<OpenTab[]>([]);
+
+export interface OpenTab {
+  id: number;
+  title: string;
+  url: string;
+  favIconUrl?: string;
+  active: boolean;
+}

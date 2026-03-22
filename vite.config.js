@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { resolve } from 'path';
-import { copyFileSync, mkdirSync, existsSync, readFileSync, writeFileSync } from 'fs';
+import { copyFileSync, mkdirSync, existsSync, readFileSync, writeFileSync, readdirSync } from 'fs';
 import { fileURLToPath, URL } from 'node:url';
 import { fixServiceWorkerPlugin } from './vite-plugin-fix-service-worker.js';
 
@@ -74,21 +74,17 @@ function copyExtensionAssets(mode) {
         console.warn(`Failed to copy webextension-polyfill: ${error.message}`);
       }
 
-      // Copy icons directory if it exists
+      // Copy all PNG files from icons/ directory
       try {
         if (existsSync('icons')) {
           if (!existsSync(`${outDir}/icons`)) {
             mkdirSync(`${outDir}/icons`, { recursive: true });
           }
-          // Copy icon files
-          const iconSizes = ['16', '32', '48', '128'];
-          iconSizes.forEach(size => {
-            const iconSrc = `icons/icon${size}.png`;
-            const iconDest = `${outDir}/icons/icon${size}.png`;
-            if (existsSync(iconSrc)) {
-              copyFileSync(iconSrc, iconDest);
-            }
-          });
+          readdirSync('icons')
+            .filter(f => f.endsWith('.png') || f.endsWith('.svg'))
+            .forEach(file => {
+              copyFileSync(`icons/${file}`, `${outDir}/icons/${file}`);
+            });
         }
       } catch (error) {
         console.warn(`Failed to copy icons: ${error.message}`);

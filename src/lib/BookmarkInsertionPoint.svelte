@@ -79,7 +79,7 @@
     };
 
     DragManager.initializeDropZone(insertionElement, dropZoneData, {
-      acceptTypes: ['bookmark'],
+      acceptTypes: ['bookmark', 'new-tab'],
       onDragEnter: (dragData, dropZone) => {
         // PERFORMANCE FIX: Reduced logging during drag operations
         
@@ -123,48 +123,60 @@
         const targetIndex = dropZone.targetIndex;
  
         try {
-          // Log the drop event through the structured drag-drop logger so that
-          // standard/brave handler paths emit operation: "drop" with the
-          // requested insertion index.
-          try {
-            await DragDropLogger.logDrop(dropZone, targetIndex);
-          } catch (logErr) {
-            console.warn('[InsertionPoint] Failed to log drop event', logErr);
-          }
- 
-          // Perform the bookmark move operation
-          const result = await BookmarkEditAPI.moveBookmark(dragData.id, {
-            parentId: dropZone.parentId,
-            index: targetIndex
-          });
- 
-          if (result.success) {
-            console.log('✅ MOVE SUCCESS at insertion point:', {
-              bookmarkTitle: dragData.title,
-              bookmarkId: dragData.id,
-              from: { parentId: dragData.parentId, index: dragData.index },
-              to: { parentId: dropZone.parentId, index: targetIndex },
-              actualResult: result.bookmark,
-              indexMatch: result.bookmark?.index === targetIndex
+          let result;
+
+          if (dragData.type === 'new-tab') {
+            // CREATE: tab from the tabs panel — create a new bookmark
+            result = await BookmarkEditAPI.createBookmark({
+              parentId: dropZone.parentId,
+              index: targetIndex,
+              title: dragData.title,
+              url: dragData.url
             });
- 
-            // CRITICAL FIX: Don't manually refresh here!
-            // The Chrome bookmarks.onMoved event will trigger an automatic debounced refresh
-            // Manual refresh here causes race conditions and incorrect positioning
-            console.log('🔄 Skipping manual refresh - relying on automatic onMoved event refresh');
- 
-            showInsertionSuccess(dragData.title, insertIndex);
-          } else {
-            console.error('Failed to move bookmark to insertion point:', result.error);
-            try {
-              await DragDropLogger.logDropError(
-                result.error || 'Failed to move bookmark via insertion point',
-                dropZone
-              );
-            } catch (logErr) {
-              console.warn('[InsertionPoint] Failed to log drop error', logErr);
+
+            if (result.success) {
+              console.log('✅ CREATE SUCCESS at insertion point:', dragData.title);
+              showInsertionSuccess(dragData.title, insertIndex);
+            } else {
+              console.error('Failed to create bookmark at insertion point:', result.error);
+              showInsertionError(result.error || 'Failed to add bookmark');
             }
-            showInsertionError(result.error || 'Failed to move bookmark');
+          } else {
+            // MOVE: existing bookmark drag (original behavior)
+            try {
+              await DragDropLogger.logDrop(dropZone, targetIndex);
+            } catch (logErr) {
+              console.warn('[InsertionPoint] Failed to log drop event', logErr);
+            }
+
+            result = await BookmarkEditAPI.moveBookmark(dragData.id, {
+              parentId: dropZone.parentId,
+              index: targetIndex
+            });
+
+            if (result.success) {
+              console.log('✅ MOVE SUCCESS at insertion point:', {
+                bookmarkTitle: dragData.title,
+                bookmarkId: dragData.id,
+                from: { parentId: dragData.parentId, index: dragData.index },
+                to: { parentId: dropZone.parentId, index: targetIndex },
+                actualResult: result.bookmark,
+                indexMatch: result.bookmark?.index === targetIndex
+              });
+              console.log('🔄 Skipping manual refresh - relying on automatic onMoved event refresh');
+              showInsertionSuccess(dragData.title, insertIndex);
+            } else {
+              console.error('Failed to move bookmark to insertion point:', result.error);
+              try {
+                await DragDropLogger.logDropError(
+                  result.error || 'Failed to move bookmark via insertion point',
+                  dropZone
+                );
+              } catch (logErr) {
+                console.warn('[InsertionPoint] Failed to log drop error', logErr);
+              }
+              showInsertionError(result.error || 'Failed to move bookmark');
+            }
           }
         } catch (error) {
           console.error('Error during insertion point drop:', error);
