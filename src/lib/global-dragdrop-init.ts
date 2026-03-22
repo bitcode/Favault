@@ -232,10 +232,16 @@ if (typeof document !== 'undefined') {
     // Mouseup handler: determine drop target and perform move
     const onDocMouseUp = async (e: MouseEvent) => {
       try {
-        if (!(window as any).__fav_isDragging) {
+        if (!document.body.classList.contains('edit-mode') || !(window as any).__fav_isDragging) {
+          const draggedEl = (window as any).__fav_draggedEl as HTMLElement | null;
+          if (draggedEl) {
+            draggedEl.classList.remove('dragging');
+            draggedEl.removeAttribute('data-dragging');
+          }
           (window as any).__fav_dragCandidate = null;
           (window as any).__fav_draggedEl = null;
           (window as any).__fav_lastHoveredFolderId = null;
+          (window as any).__fav_isDragging = false;
           return;
         }
 
@@ -468,8 +474,33 @@ if (typeof document !== 'undefined') {
       try {
         isMouseDown = true;
         (window as any).__fav_isDragging = false;
+        (window as any).__fav_dragCandidate = null;
+        (window as any).__fav_pendingCandidate = false;
         (window as any).__fav_lastMouseDown = { x: e.clientX, y: e.clientY };
+
+        // Only allow drag initiation in edit mode
+        if (!document.body.classList.contains('edit-mode')) return;
+
         const target = e.target as HTMLElement | null;
+
+        // Don't initiate drag when clicking on interactive elements (buttons, inputs, etc.)
+        if (target?.closest('button, input, a, select, textarea, [role="button"]')) {
+          // Temporarily disable draggable on the bookmark item to prevent the browser's
+          // native HTML5 dragstart from firing for this press, then restore on mouseup.
+          const bItem = target.closest('.bookmark-item') as HTMLElement | null;
+          if (bItem) {
+            bItem.setAttribute('draggable', 'false');
+            const restore = () => {
+              bItem.setAttribute('draggable', 'true');
+              document.removeEventListener('mouseup', restore, true);
+              document.removeEventListener('pointerup', restore, true);
+            };
+            document.addEventListener('mouseup', restore, true);
+            document.addEventListener('pointerup', restore, true);
+          }
+          return;
+        }
+
         let item = target?.closest('.bookmark-item, [data-testid="bookmark-item"]') as HTMLElement | null;
 
         // If pointer-events disabled prevented target from being inside the item, detect by geometry
@@ -497,8 +528,7 @@ if (typeof document !== 'undefined') {
         const title = item.getAttribute('data-title') || item.querySelector('.bookmark-title')?.textContent?.trim() || '';
         (window as any).__fav_dragCandidate = { id, parentId, title, startedAt: Date.now() };
         (window as any).__fav_draggedEl = item;
-        item.classList.add('dragging');
-        item.setAttribute('data-dragging', 'true');
+        // Don't add 'dragging' class yet — wait until mouse actually moves
         try {
           const body = document.body;
           if (body) {
@@ -513,6 +543,8 @@ if (typeof document !== 'undefined') {
 
     const onDocMouseMove = (e: MouseEvent) => {
       if (!isMouseDown) return;
+      // Block drag tracking outside edit mode
+      if (!document.body.classList.contains('edit-mode')) return;
       updateLastHoveredFolder(e);
       if ((window as any).__fav_dragCandidate && !(window as any).__fav_isDragging) {
         const pos = (window as any).__fav_lastMouseDown as { x: number; y: number } | undefined;
@@ -521,6 +553,12 @@ if (typeof document !== 'undefined') {
           const dy = Math.abs(e.clientY - pos.y);
           if (dx > 4 || dy > 4) {
             (window as any).__fav_isDragging = true;
+            // Only now add the dragging class — actual drag gesture confirmed
+            const draggedEl = (window as any).__fav_draggedEl as HTMLElement | null;
+            if (draggedEl) {
+              draggedEl.classList.add('dragging');
+              draggedEl.setAttribute('data-dragging', 'true');
+            }
           }
         }
       }
@@ -545,6 +583,7 @@ if (typeof document !== 'undefined') {
               (window as any).__fav_draggedEl = item;
               item.classList.add('dragging');
               item.setAttribute('data-dragging', 'true');
+              (window as any).__fav_isDragging = true;
               (window as any).__fav_pendingCandidate = false;
               console.log('[Global DnD] Candidate resolved on mousemove from stored position:', { id, parentId, title });
             }
@@ -565,6 +604,11 @@ if (typeof document !== 'undefined') {
 
     // Native HTML5 DnD hooks as an additional safety net
     document.addEventListener('dragstart', (e: DragEvent) => {
+      // Block drag initiation outside edit mode
+      if (!document.body.classList.contains('edit-mode')) {
+        e.preventDefault();
+        return;
+      }
       const t = e.target as HTMLElement | null;
       const item = t?.closest('.bookmark-item, [data-testid="bookmark-item"]') as HTMLElement | null;
       if (!item) return;
@@ -588,6 +632,8 @@ if (typeof document !== 'undefined') {
 
    document.addEventListener('drop', async (e: DragEvent) => {
      try {
+       // Block drops outside edit mode
+       if (!document.body.classList.contains('edit-mode')) return;
        const t = e.target as HTMLElement | null;
        const container = (t?.closest(
          '[data-testid="bookmark-folder"][data-folder-id], .folder-header[data-folder-id], .bookmarks-grid[data-folder-id], .folder-container[data-folder-id]'

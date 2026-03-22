@@ -61,6 +61,22 @@
         const t = e.target as HTMLElement | null;
         if (!t) return;
 
+        // Don't initiate drag from buttons or other interactive elements
+        if (t.closest('button, input, a, select, textarea, [role="button"]')) {
+          const bItem = t.closest('.bookmark-item') as HTMLElement | null;
+          if (bItem) {
+            bItem.setAttribute('draggable', 'false');
+            const restore = () => {
+              bItem.setAttribute('draggable', 'true');
+              document.removeEventListener('mouseup', restore, true);
+              document.removeEventListener('pointerup', restore, true);
+            };
+            document.addEventListener('mouseup', restore, true);
+            document.addEventListener('pointerup', restore, true);
+          }
+          return;
+        }
+
         // Check if this is actually a bookmark item (not a folder)
         const itemEl = t.closest?.(
           '.bookmark-item[data-bookmark-id], [data-testid="bookmark-item"][data-bookmark-id]',
@@ -1349,6 +1365,24 @@
       console.log("[Global DnD] Installing document-level mouse bridge");
       const onDocMouseDown = (e: MouseEvent | PointerEvent) => {
         const t = e.target as HTMLElement | null;
+        if (!t) return;
+
+        // Don't initiate drag from buttons or other interactive elements
+        if (t.closest('button, input, a, select, textarea, [role="button"]')) {
+          const bItem = t.closest('.bookmark-item') as HTMLElement | null;
+          if (bItem) {
+            bItem.setAttribute('draggable', 'false');
+            const restore = () => {
+              bItem.setAttribute('draggable', 'true');
+              document.removeEventListener('mouseup', restore, true);
+              document.removeEventListener('pointerup', restore, true);
+            };
+            document.addEventListener('mouseup', restore, true);
+            document.addEventListener('pointerup', restore, true);
+          }
+          return;
+        }
+
         const itemEl =
           t &&
           (t.closest?.(
@@ -2161,7 +2195,22 @@
 
   $: activeTheme = getTheme($userSettings.theme.selectedTheme);
   $: themeStyle = getThemeStyle(activeTheme);
+
+  const ICON_PALETTES: Record<string, { outer: string; ring: string; inner: string; mech: string; center: string; knob: string; shadow: string }> = {
+    'jm-dark':       { outer: '#05254E', ring: '#D1E3F3', inner: '#468FCD', mech: '#05254E', center: '#F1F5F9', knob: '#CBD5E1', shadow: '#020D1C' },
+    'jm-light':      { outer: '#05254E', ring: '#E2E8F0', inner: '#F8FAFC', mech: '#05254E', center: '#FFFFFF', knob: '#94A3B8', shadow: '#05254E' },
+    'ayu-dark-mode': { outer: '#0F1419', ring: '#253340', inner: '#36A3D9', mech: '#0F1419', center: '#1C2B38', knob: '#5C6773', shadow: '#07090C' },
+    'ayu-light-mode':{ outer: '#5C6773', ring: '#FAFAFA', inner: '#F0EEE4', mech: '#5C6773', center: '#FFFFFF', knob: '#ABB0B6', shadow: '#3A4550' },
+    'gruvbox-dark':  { outer: '#1d2021', ring: '#504945', inner: '#458588', mech: '#1d2021', center: '#32302f', knob: '#7c6f64', shadow: '#0d0f0f' },
+    'gruvbox-light': { outer: '#3c3836', ring: '#fbf1c7', inner: '#f2e5bc', mech: '#3c3836', center: '#fdf4c1', knob: '#a89984', shadow: '#1d1d1b' },
+  };
+  $: iconPalette = ICON_PALETTES[activeTheme.id] ?? ICON_PALETTES['jm-dark'];
 </script>
+
+<svelte:head>
+  <link rel="icon" type="image/png" sizes="32x32" href="./icons/icon-{activeTheme.id}-32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="./icons/icon-{activeTheme.id}-16.png" />
+</svelte:head>
 
 <main
   class="app"
@@ -2194,7 +2243,44 @@
 
   <div class="container">
     <header class="header">
-      <h1 class="title">FaVault</h1>
+      <h1 class="title">
+        <svg class="title-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" aria-hidden="true">
+          <defs>
+            <filter id="title-shadow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="1.5" dy="2.5" stdDeviation="1.5" flood-color={iconPalette.shadow} flood-opacity="0.28" />
+            </filter>
+          </defs>
+          <circle cx="50" cy="50" r="49" fill={iconPalette.outer} />
+          <circle cx="50" cy="50" r="44" fill={iconPalette.ring} />
+          <circle cx="50" cy="50" r="33" fill={iconPalette.inner} />
+          <g filter="url(#title-shadow)">
+            <g stroke={iconPalette.mech} stroke-width="5.5" stroke-linecap="round">
+              <line x1="50" y1="50" x2="50" y2="10" />
+              <line x1="50" y1="50" x2="50" y2="10" transform="rotate(90 50 50)" />
+              <line x1="50" y1="50" x2="50" y2="10" transform="rotate(180 50 50)" />
+              <line x1="50" y1="50" x2="50" y2="10" transform="rotate(270 50 50)" />
+              <line x1="50" y1="50" x2="50" y2="22" transform="rotate(45 50 50)" />
+              <line x1="50" y1="50" x2="50" y2="22" transform="rotate(135 50 50)" />
+              <line x1="50" y1="50" x2="50" y2="22" transform="rotate(225 50 50)" />
+              <line x1="50" y1="50" x2="50" y2="22" transform="rotate(315 50 50)" />
+            </g>
+            <circle cx="50" cy="50" r="18" fill={iconPalette.center} stroke={iconPalette.mech} stroke-width="2.5" />
+            <g stroke={iconPalette.mech} stroke-width="1.5" stroke-linecap="round">
+              <line x1="50" y1="33.5" x2="50" y2="36.5" transform="rotate(-60 50 50)" />
+              <line x1="50" y1="33.5" x2="50" y2="36.5" transform="rotate(-45 50 50)" />
+              <line x1="50" y1="33.5" x2="50" y2="36.5" transform="rotate(-30 50 50)" />
+              <line x1="50" y1="33.5" x2="50" y2="36.5" transform="rotate(-15 50 50)" />
+              <line x1="50" y1="33.5" x2="50" y2="36.5" transform="rotate(0 50 50)" />
+              <line x1="50" y1="33.5" x2="50" y2="36.5" transform="rotate(15 50 50)" />
+              <line x1="50" y1="33.5" x2="50" y2="36.5" transform="rotate(30 50 50)" />
+              <line x1="50" y1="33.5" x2="50" y2="36.5" transform="rotate(45 50 50)" />
+              <line x1="50" y1="33.5" x2="50" y2="36.5" transform="rotate(60 50 50)" />
+            </g>
+            <circle cx="50" cy="50" r="8.5" fill={iconPalette.knob} stroke={iconPalette.mech} stroke-width="2" />
+          </g>
+        </svg>
+        FaVault
+      </h1>
       <p class="subtitle">Your personalized bookmark hub</p>
     </header>
 
@@ -2302,6 +2388,10 @@
       </div>
     {/if}
   </div>
+
+  <footer class="jm-footer">
+    <span>With ❤️ from 💎 Jewelers Mutual</span>
+  </footer>
 </main>
 
 <style>
@@ -2411,6 +2501,17 @@
     margin: 0 0 0.5rem 0;
     text-shadow: 0 2px 10px var(--theme-shadow);
     letter-spacing: -0.02em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+  }
+
+  .title-icon {
+    width: 2.6rem;
+    height: 2.6rem;
+    flex-shrink: 0;
+    filter: drop-shadow(0 2px 6px var(--theme-shadow));
   }
 
   .subtitle {
@@ -2718,5 +2819,20 @@
     transform: translateZ(0);
     /* Hint to browser about upcoming changes */
     will-change: transform;
+  }
+
+  .jm-footer {
+    text-align: center;
+    padding: 2rem 1rem 1rem;
+    font-size: 0.8rem;
+    letter-spacing: 0.04em;
+    color: var(--theme-text-muted);
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+    user-select: none;
+  }
+
+  .jm-footer:hover {
+    opacity: 1;
   }
 </style>

@@ -95,6 +95,7 @@
     width: 100%;
     max-width: 600px;
     margin: 0 auto 2rem;
+    position: relative;
   }
   
   .search-wrapper {
@@ -162,15 +163,23 @@
   }
   
   .search-results-info {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
     text-align: center;
     margin-top: 0.5rem;
     color: var(--theme-text-secondary, rgba(255, 255, 255, 0.8));
     font-size: 0.9rem;
   }
-  
+
   .no-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
     text-align: center;
-    margin-top: 1rem;
+    margin-top: 0.5rem;
     color: var(--theme-text-muted, rgba(255, 255, 255, 0.7));
     font-size: 1rem;
   }

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, onDestroy } from "svelte";
+  import { onMount, onDestroy, tick } from "svelte";
   import type { BookmarkItem } from "./api";
   import {
     DragDropManager,
@@ -24,10 +24,12 @@
   export let bookmark: BookmarkItem;
 
   let bookmarkElement: HTMLElement;
+  let titleInputElement: HTMLInputElement;
   let isEditMode = false;
   let isEditing = false;
   let newTitle = "";
   let newUrl = "";
+  let urlCopied = false;
   let autoSaveManager: AutoSaveManager | null = null;
   let validationResult: ValidationResult | null = null;
   let realTimeValidator: ReturnType<typeof createRealTimeValidator> | null =
@@ -114,7 +116,7 @@
   }
 
   // Start inline editing
-  function startEditing() {
+  async function startEditing() {
     if (!isEditMode) return;
     isEditing = true;
     newTitle = bookmark.title;
@@ -125,6 +127,11 @@
     realTimeValidator = createRealTimeValidator((result) => {
       validationResult = result;
     });
+
+    // Focus the title input after the DOM updates
+    await tick();
+    titleInputElement?.focus();
+    titleInputElement?.select();
 
     // Initialize auto-save manager
     autoSaveManager = new AutoSaveManager({
@@ -239,6 +246,10 @@
 
   // Minimal HTML5 drag handlers to satisfy tests and ensure dataTransfer
   function handleHtml5DragStart(e: DragEvent) {
+    if (!isEditMode) {
+      e.preventDefault();
+      return;
+    }
     console.log("[BookmarkItem] dragstart for:", bookmark.title, bookmark.id);
     const data = {
       type: "bookmark",
@@ -281,9 +292,8 @@
 
   // Bridge for Playwright mouse-based drag to HTML5 DnD
   function handleMouseDownBridge(e: MouseEvent) {
-    // If global edit mode is enabled, prevent default to stop focus-induced auto-scroll
-    // Do not preventDefault here; it breaks native dragstart.
-    // Allow fallback drag bridge even if edit mode isn't toggled (Playwright compatibility)
+    // Only allow drag operations in edit mode
+    if (!isEditMode) return;
     if (isEditing) return;
     if (e.button !== 0) return; // left-click only
     try {
@@ -646,6 +656,33 @@
     }
   }
 
+  // Clear any drag state that may have been set by capture-phase global bridges
+  function clearDragState() {
+    if (bookmarkElement) {
+      bookmarkElement.classList.remove('dragging', 'dragging-bookmark');
+      bookmarkElement.removeAttribute('data-dragging');
+      bookmarkElement.setAttribute('draggable', 'true');
+    }
+    document.body.classList.remove('drag-active', 'bookmark-drag-active', 'dragging-bookmark-active');
+    if (typeof window !== 'undefined') {
+      (window as any).__fav_isDragging = false;
+      (window as any).__fav_dragCandidate = null;
+      (window as any).__fav_draggedEl = null;
+    }
+  }
+
+  // Copy bookmark URL to clipboard
+  async function copyUrl() {
+    if (!bookmark.url) return;
+    try {
+      await navigator.clipboard.writeText(bookmark.url);
+      urlCopied = true;
+      setTimeout(() => { urlCopied = false; }, 1500);
+    } catch (error) {
+      console.error("Failed to copy URL:", error);
+    }
+  }
+
   // Handle save-all-edits event
   function handleSaveAllEdits() {
     if (isEditing) {
@@ -820,7 +857,7 @@
   on:mousedown={handleMouseDownBridge}
   tabindex={isEditMode ? -1 : 0}
   role="button"
-  draggable={!isEditMode}
+  draggable={isEditMode}
   on:dragstart={handleHtml5DragStart}
   on:dragend={handleHtml5DragEnd}
   data-bookmark-id={bookmark.id}
@@ -831,23 +868,60 @@
   data-index={bookmark.index || 0}
 >
   {#if isEditMode}
-    <div
-      class="delete-badge"
-      on:click|stopPropagation={deleteBookmark}
-      role="button"
-      tabindex="0"
-      on:keydown={(e) => e.key === "Enter" && deleteBookmark()}
-      title="Delete bookmark"
-      aria-label="Delete bookmark"
-    >
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-        <path
-          d="M18 6L6 18M6 6l12 12"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        />
-      </svg>
+    <div class="badge-group" on:pointerup={clearDragState}>
+      {#if !isEditing}
+        {#if bookmark.url}
+          <button
+            class="badge-btn copy-badge-btn"
+            class:copied={urlCopied}
+            on:click|stopPropagation={copyUrl}
+            on:mousedown|stopPropagation
+            title={urlCopied ? "Copied!" : "Copy URL"}
+            aria-label="Copy URL"
+          >
+            {#if urlCopied}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <polyline points="20,6 9,17 4,12"></polyline>
+              </svg>
+            {:else}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+            {/if}
+          </button>
+        {/if}
+        <button
+          class="badge-btn edit-badge-btn"
+          on:click|stopPropagation={startEditing}
+          on:mousedown|stopPropagation
+          title="Edit bookmark"
+          aria-label="Edit bookmark"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+            <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+          </svg>
+        </button>
+      {/if}
+      <div
+        class="delete-badge"
+        on:click|stopPropagation={deleteBookmark}
+        role="button"
+        tabindex="0"
+        on:keydown={(e) => e.key === "Enter" && deleteBookmark()}
+        title="Delete bookmark"
+        aria-label="Delete bookmark"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path
+            d="M18 6L6 18M6 6l12 12"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </div>
     </div>
   {/if}
   <div class="favicon-container">
@@ -875,12 +949,14 @@
       <!-- Inline editing mode -->
       <div class="edit-form">
         <input
+          bind:this={titleInputElement}
           class="edit-title-input"
           type="text"
           bind:value={newTitle}
           on:input={debouncedTitleInput}
           on:keydown={handleEditKeydown}
           on:click|stopPropagation
+          on:mousedown|stopPropagation
           placeholder="Bookmark title"
         />
         <input
@@ -890,6 +966,7 @@
           on:input={debouncedUrlInput}
           on:keydown={handleEditKeydown}
           on:click|stopPropagation
+          on:mousedown|stopPropagation
           placeholder="URL (optional)"
         />
         <div class="edit-actions">
@@ -939,20 +1016,7 @@
     {/if}
   </div>
 
-  <!-- Edit button (only visible in edit mode) -->
-  {#if isEditMode && !isEditing}
-    <button
-      class="edit-button"
-      on:click|stopPropagation={startEditing}
-      title="Edit bookmark"
-    >
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
-        ></path>
-        <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-      </svg>
-    </button>
-  {/if}
+
 </div>
 
 <style>
@@ -1001,10 +1065,63 @@
     }
   }
 
-  .delete-badge {
+  .badge-group {
     position: absolute;
     top: -12px;
     right: -12px;
+    display: flex;
+    flex-direction: row;
+    gap: 6px;
+    align-items: center;
+    z-index: 20;
+  }
+
+  .badge-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    padding: 4px;
+    box-sizing: content-box;
+  }
+
+  .badge-btn svg {
+    width: 14px;
+    height: 14px;
+    pointer-events: none;
+  }
+
+  .edit-badge-btn {
+    background: #3b82f6;
+    color: white;
+  }
+
+  .edit-badge-btn:hover {
+    background: #2563eb;
+    transform: scale(1.15);
+  }
+
+  .copy-badge-btn {
+    background: #6b7280;
+    color: white;
+  }
+
+  .copy-badge-btn:hover {
+    background: #4b5563;
+    transform: scale(1.15);
+  }
+
+  .copy-badge-btn.copied {
+    background: #10b981;
+  }
+
+  .delete-badge {
     width: 28px;
     height: 28px;
     background: #ef4444;
@@ -1014,19 +1131,10 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    opacity: 0;
-    transform: scale(0.8);
     transition: all 0.2s ease;
-    z-index: 20;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-    /* Extend the hit area beyond the visible circle */
     padding: 4px;
     box-sizing: content-box;
-  }
-
-  :global(.app.edit-mode) .bookmark-item .delete-badge {
-    opacity: 1;
-    transform: scale(1);
   }
 
   .delete-badge:hover {
@@ -1037,7 +1145,6 @@
   .delete-badge svg {
     width: 14px;
     height: 14px;
-    /* Prevent the SVG from swallowing click events */
     pointer-events: none;
   }
 
@@ -1194,35 +1301,6 @@
     height: 12px;
   }
 
-  .edit-button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 24px;
-    height: 24px;
-    background: rgba(255, 255, 255, 0.1);
-    border: none;
-    border-radius: 4px;
-    color: rgba(0, 0, 0, 0.5);
-    cursor: pointer;
-    transition: all 0.2s ease;
-    opacity: 0;
-    margin-left: 0.5rem;
-  }
-
-  .bookmark-item:hover .edit-button {
-    opacity: 1;
-  }
-
-  .edit-button:hover {
-    background: rgba(0, 0, 0, 0.1);
-    color: rgba(0, 0, 0, 0.7);
-  }
-
-  .edit-button svg {
-    width: 12px;
-    height: 12px;
-  }
 
   .bookmark-url {
     font-size: 0.8rem;
@@ -1324,15 +1402,6 @@
       padding: 0.25rem 0.375rem;
     }
 
-    .edit-button {
-      width: 20px;
-      height: 20px;
-    }
-
-    .edit-button svg {
-      width: 10px;
-      height: 10px;
-    }
   }
 
   @media (prefers-color-scheme: dark) {
@@ -1377,16 +1446,6 @@
     .edit-url-input:focus {
       border-color: #3b82f6;
       box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
-    }
-
-    .edit-button {
-      background: rgba(255, 255, 255, 0.05);
-      color: rgba(255, 255, 255, 0.5);
-    }
-
-    .edit-button:hover {
-      background: rgba(255, 255, 255, 0.1);
-      color: rgba(255, 255, 255, 0.7);
     }
 
     :global(.app.edit-mode) .bookmark-item {
