@@ -84,7 +84,7 @@
     class="tabs-toggle"
     on:click={() => {
       tabsPanelCollapsed.update(v => !v);
-      if ($tabsPanelCollapsed) loadTabs();
+      if (!$tabsPanelCollapsed) loadTabs();
     }}
     title={$tabsPanelCollapsed ? 'Show open tabs' : 'Hide open tabs'}
     aria-label={$tabsPanelCollapsed ? 'Show open tabs panel' : 'Hide open tabs panel'}
@@ -196,6 +196,7 @@
     transition: width 0.25s ease, box-shadow 0.2s ease;
     overflow: hidden;
   }
+
 
   .tabs-panel.collapsed {
     width: 40px;

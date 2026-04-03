@@ -5,6 +5,7 @@
 import { BookmarkEditAPI, type BookmarkItem, type BookmarkFolder, browserAPI } from './api';
 import { bookmarkFolders } from './stores';
 import { getExtensionProtocol } from './utils';
+import { DragDropManager } from './dragdrop';
 
 // Enhanced interfaces with console script features
 export interface DragData {
@@ -1960,6 +1961,15 @@ export class EnhancedDragDropManager {
             }
             return;
           }
+
+          // Allow new-tab drags from TabsPanel (managed by DragDropManager shared state)
+          const sharedState = DragDropManager.getDragState();
+          if (sharedState.isDragging && sharedState.dragData?.type === 'new-tab') {
+            e.preventDefault();
+            if (e.dataTransfer) {
+              e.dataTransfer.dropEffect = 'copy';
+            }
+          }
         };
 
         (folder as any)._dragenterHandler = (e: DragEvent) => {
@@ -1971,10 +1981,17 @@ export class EnhancedDragDropManager {
 
           if (this.dragEnterCounters.get(folderId) === 1) {
             // Folder reordering is now handled by insertion points, not folder drop zones
-            // Only handle bookmark drops into folders
+            // Handle bookmark drops into folders
             if (this.currentDragData?.type === 'bookmark' &&
               bookmarkId && !this.protectedFolderIds.has(bookmarkId)) {
               this.debugLog(`🦁 BOOKMARK DROP TARGET: "${folderTitle}"`);
+              folder.classList.add('drop-zone-bookmark-target', 'drop-zone', 'drop-target');
+              folder.setAttribute('data-drop-zone', 'true');
+            }
+
+            // Handle new-tab drags from TabsPanel
+            const sharedState = DragDropManager.getDragState();
+            if (sharedState.isDragging && sharedState.dragData?.type === 'new-tab') {
               folder.classList.add('drop-zone-bookmark-target', 'drop-zone', 'drop-target');
               folder.setAttribute('data-drop-zone', 'true');
             }
@@ -2000,6 +2017,9 @@ export class EnhancedDragDropManager {
 
         // Drop handler with error handling
         (folder as any)._dropHandler = async (e: DragEvent) => {
+          // Skip if already handled by another handler (Svelte inline or DragDropManager)
+          if ((e as any)._favaultHandled) return;
+
           // If the drop originated from inside this folder's own bookmarks grid, the
           // Svelte grid handler (onGridDrop / onContainerDrop) has already processed it
           // and called e.stopPropagation() on the bubbling phase.  However this handler
@@ -2016,6 +2036,7 @@ export class EnhancedDragDropManager {
 
           e.preventDefault();
           e.stopPropagation();
+          (e as any)._favaultHandled = true;
 
           const folderId = `folder-${folderIndex}`;
           this.dragEnterCounters.set(folderId, 0);
@@ -2115,6 +2136,28 @@ export class EnhancedDragDropManager {
               setTimeout(() => {
                 this.cleanupAllDropZones();
               }, 200);
+            }
+            return;
+          }
+
+          // --- New-tab drop: create a bookmark from a TabsPanel drag ---
+          const sharedState = DragDropManager.getDragState();
+          if (sharedState.isDragging && sharedState.dragData?.type === 'new-tab' && bookmarkId) {
+            try {
+              const tabData = sharedState.dragData;
+              const result = await BookmarkEditAPI.createBookmark({
+                parentId: bookmarkId,
+                title: tabData.title,
+                url: tabData.url,
+              });
+              if (result.success) {
+                this.showNotification(`Tab "${tabData.title}" saved to "${folderTitle}"`);
+                this.showRefreshPrompt();
+              } else {
+                console.error('Failed to create bookmark from tab:', result.error);
+              }
+            } catch (err) {
+              console.error('Error creating bookmark from tab drop:', err);
             }
             return;
           }

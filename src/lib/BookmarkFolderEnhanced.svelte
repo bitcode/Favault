@@ -52,7 +52,7 @@
 
   function onGridDragOver(e: DragEvent, index: number) {
     if (!isEditMode) return;
-    // Check if we are dragging a bookmark (either internal or external)
+    // Check if we are dragging a bookmark or tab (either internal or external)
     const hasBookmarkData =
       e.dataTransfer?.types.includes("application/x-favault-bookmark") ||
       !!draggingBookmarkId;
@@ -60,7 +60,10 @@
     if (!hasBookmarkData) return;
 
     e.preventDefault();
-    e.dataTransfer!.dropEffect = "move";
+    // Use 'copy' for new-tab drags (effectAllowed='copy'), 'move' for bookmarks
+    const sharedState = DragDropManager.getDragState();
+    const isNewTab = sharedState.isDragging && sharedState.dragData?.type === "new-tab";
+    e.dataTransfer!.dropEffect = isNewTab ? "copy" : "move";
 
     const target = e.currentTarget as HTMLElement;
     const rect = target.getBoundingClientRect();
@@ -84,41 +87,60 @@
 
   async function onGridDrop(e: DragEvent, index: number) {
     if (!isEditMode) return;
+    if ((e as any)._favaultHandled) return;
     e.preventDefault();
     e.stopPropagation(); // Stop bubbling to container/folder handlers
+    (e as any)._favaultHandled = true;
 
     if (dropTargetIndex === null || !dropPosition) return;
-
-    let bookmarkId = draggingBookmarkId;
-
-    // If not local drag, try to get from dataTransfer
-    if (!bookmarkId) {
-      try {
-        const data = e.dataTransfer?.getData("application/x-favault-bookmark");
-        if (data) {
-          const parsed = JSON.parse(data);
-          bookmarkId = parsed.id;
-        }
-      } catch (err) {
-        console.error("Failed to parse drag data", err);
-      }
-    }
-
-    if (!bookmarkId) return;
 
     // Calculate insertion index
     let targetIndex = index + (dropPosition === "right" ? 1 : 0);
 
-    console.log(
-      `Grid Drop: Moving ${bookmarkId} to index ${targetIndex} in folder ${folder.id}`,
-    );
+    // Check for new-tab drag (from TabsPanel)
+    let parsed: any = null;
+    try {
+      const data = e.dataTransfer?.getData("application/x-favault-bookmark");
+      if (data) parsed = JSON.parse(data);
+    } catch {}
+    if (!parsed) {
+      const sharedState = DragDropManager.getDragState();
+      if (sharedState.isDragging && sharedState.dragData) parsed = sharedState.dragData;
+    }
+
+    if (parsed?.type === "new-tab") {
+      try {
+        const result = await BookmarkEditAPI.createBookmark({
+          parentId: folder.id,
+          index: targetIndex,
+          title: parsed.title,
+          url: parsed.url,
+        });
+        if (result.success) {
+          scheduleSilentSync();
+        } else {
+          console.error("Failed to create bookmark from tab (grid):", result.error);
+        }
+      } catch (err) {
+        console.error("Grid drop (new-tab) failed", err);
+      }
+      draggingBookmarkId = null;
+      dropTargetIndex = null;
+      dropPosition = null;
+      return;
+    }
+
+    let bookmarkId = draggingBookmarkId;
+
+    // If not local drag, try to get from dataTransfer
+    if (!bookmarkId && parsed) {
+      bookmarkId = parsed.id;
+    }
+
+    if (!bookmarkId) return;
 
     // Grab source parent from drag payload for optimistic move
-    let fromParentId: string | null = null;
-    try {
-      const raw = e.dataTransfer?.getData("application/x-favault-bookmark");
-      if (raw) fromParentId = JSON.parse(raw).parentId ?? null;
-    } catch {}
+    let fromParentId: string | null = parsed?.parentId ?? null;
 
     try {
       const result = await BookmarkEditAPI.moveBookmark(bookmarkId, {
@@ -126,9 +148,7 @@
         index: targetIndex,
       });
       if (result.success) {
-        // Instant optimistic update — no full re-render
         optimisticMove(bookmarkId, fromParentId, folder.id, targetIndex);
-        // Reconcile silently in background after 1.5 s
         scheduleSilentSync();
       } else {
         console.error("Move failed:", result.error);
@@ -259,7 +279,7 @@
   }
 
   // Minimal native HTML5 DnD handlers to satisfy tests' expectations on dragenter/over/drop
-  function getBookmarkDragPayload(e: DragEvent): any | null {
+  function getDragPayload(e: DragEvent): any | null {
     try {
       const dt = e.dataTransfer;
       let raw = (
@@ -274,12 +294,15 @@
           payload = JSON.parse(raw);
         } catch {}
       }
+      // Accept bookmark and new-tab payloads; ignore folder payloads entirely
+      if (payload && payload.id && (payload.type === "bookmark" || payload.type === "new-tab")) return payload;
+      // Fallback: check DragDropManager shared state (new-tab drags from TabsPanel)
+      const sharedState = DragDropManager.getDragState();
+      if (sharedState.isDragging && sharedState.dragData?.type === "new-tab") return sharedState.dragData;
       const gc =
         typeof window !== "undefined"
           ? (window as any).__fav_dragCandidate
           : null;
-      // Only accept explicit bookmark payloads; ignore folder payloads entirely
-      if (payload && payload.id && payload.type === "bookmark") return payload;
       if (gc && gc.id) return { id: gc.id, parentId: gc.parentId || null };
     } catch {}
     return null;
@@ -386,7 +409,7 @@
 
   function onHeaderDragEnter(e: DragEvent) {
     if (!isEditMode) return;
-    const payload = getBookmarkDragPayload(e);
+    const payload = getDragPayload(e);
     if (payload) {
       e.preventDefault();
       headerDragEnterCount++;
@@ -399,54 +422,47 @@
   }
   function onHeaderDragOver(e: DragEvent) {
     if (!isEditMode) return;
-    const payload = getBookmarkDragPayload(e);
+    const payload = getDragPayload(e);
     if (payload) {
       e.preventDefault();
-      (e.dataTransfer as DataTransfer).dropEffect = "move";
-      // Don't call markDropActive here to avoid redundant calls
+      (e.dataTransfer as DataTransfer).dropEffect = payload.type === "new-tab" ? "copy" : "move";
     }
   }
   async function onHeaderDrop(e: DragEvent) {
     if (!isEditMode) return;
-    const payload = getBookmarkDragPayload(e);
+    if ((e as any)._favaultHandled) return;
+    const payload = getDragPayload(e);
     if (payload) {
       e.preventDefault();
+      e.stopPropagation();
+      (e as any)._favaultHandled = true;
       try {
-        console.log(
-          "🟦 HEADER DROP: Processing bookmark drop on folder header",
-        );
-        console.log("🟦 DEBUG: Drop parameters:", {
-          bookmarkId: payload.id,
-          targetFolderId: folder.id,
-          targetIndex: 0,
-          folderTitle: folder.title,
-          bookmarkParentId: payload.parentId,
-        });
-
-        // Perform move to beginning of folder when dropping on header
-        const result = await BookmarkEditAPI.moveBookmark(payload.id, {
-          parentId: folder.id,
-          index: 0,
-        });
-
-        console.log("🟦 DEBUG: Header drop API result:", result);
-
-        if (result.success) {
-          // Instant optimistic update — no full re-render
-          optimisticMove(payload.id, payload.parentId || null, folder.id, 0);
-          // Reconcile silently in background after 1.5 s
-          scheduleSilentSync();
+        if (payload.type === "new-tab") {
+          const result = await BookmarkEditAPI.createBookmark({
+            parentId: folder.id,
+            index: 0,
+            title: payload.title,
+            url: payload.url,
+          });
+          if (result.success) {
+            scheduleSilentSync();
+          } else {
+            console.error("Failed to create bookmark from tab (header):", result.error);
+          }
         } else {
-          console.error(
-            "🟦 ❌ FAILED: Failed to move bookmark via native header drop:",
-            result.error,
-          );
+          const result = await BookmarkEditAPI.moveBookmark(payload.id, {
+            parentId: folder.id,
+            index: 0,
+          });
+          if (result.success) {
+            optimisticMove(payload.id, payload.parentId || null, folder.id, 0);
+            scheduleSilentSync();
+          } else {
+            console.error("Failed to move bookmark via header drop:", result.error);
+          }
         }
       } catch (err) {
-        console.error(
-          "🟦 🚨 ERROR: Error during native header drop move:",
-          err,
-        );
+        console.error("Error during header drop:", err);
       } finally {
         markDropActive(folderHeader as HTMLElement, false);
       }
@@ -541,7 +557,7 @@
   }
   function onHeaderDragLeave(e: DragEvent) {
     // Only decrement if we have a valid payload
-    const payload = getBookmarkDragPayload(e);
+    const payload = getDragPayload(e);
     if (payload) {
       headerDragEnterCount--;
 
@@ -558,7 +574,7 @@
 
   function onContainerDragEnter(e: DragEvent) {
     if (!isEditMode) return;
-    const payload = getBookmarkDragPayload(e);
+    const payload = getDragPayload(e);
     if (payload) {
       e.preventDefault();
       containerDragEnterCount++;
@@ -571,64 +587,56 @@
   }
   function onContainerDragOver(e: DragEvent) {
     if (!isEditMode) return;
-    const payload = getBookmarkDragPayload(e);
+    const payload = getDragPayload(e);
     if (payload) {
       e.preventDefault();
-      (e.dataTransfer as DataTransfer).dropEffect = "move";
-      // Don't call markDropActive here to avoid redundant calls
+      (e.dataTransfer as DataTransfer).dropEffect = payload.type === "new-tab" ? "copy" : "move";
     }
   }
   async function onContainerDrop(e: DragEvent) {
     if (!isEditMode) return;
-    const payload = getBookmarkDragPayload(e);
+    if ((e as any)._favaultHandled) return;
+    const payload = getDragPayload(e);
     if (payload) {
       e.preventDefault();
+      e.stopPropagation();
+      (e as any)._favaultHandled = true;
       try {
-        console.log(
-          "🟨 CONTAINER DROP: Processing bookmark drop on folder container",
-        );
-        // Append to end by default when dropping on container
         const appendIndex = Array.isArray(folder.bookmarks)
           ? folder.bookmarks.length
           : undefined;
 
-        console.log("🟨 DEBUG: Container drop parameters:", {
-          bookmarkId: payload.id,
-          targetFolderId: folder.id,
-          appendIndex: appendIndex,
-          folderTitle: folder.title,
-          folderBookmarkCount: folder.bookmarks.length,
-          bookmarkParentId: payload.parentId,
-        });
-
-        const result = await BookmarkEditAPI.moveBookmark(payload.id, {
-          parentId: folder.id,
-          index: appendIndex,
-        });
-
-        console.log("🟨 DEBUG: Container drop API result:", result);
-
-        if (result.success) {
-          // Instant optimistic update — no full re-render
-          optimisticMove(
-            payload.id,
-            payload.parentId || null,
-            folder.id,
-            appendIndex,
-          );
-          // Reconcile silently in background after 1.5 s
-          scheduleSilentSync();
+        if (payload.type === "new-tab") {
+          const result = await BookmarkEditAPI.createBookmark({
+            parentId: folder.id,
+            index: appendIndex,
+            title: payload.title,
+            url: payload.url,
+          });
+          if (result.success) {
+            scheduleSilentSync();
+          } else {
+            console.error("Failed to create bookmark from tab (container):", result.error);
+          }
         } else {
-          console.error(
-            "🟨 ❌ FAILED: Failed to move bookmark via native container drop:",
-            result.error,
-          );
+          const result = await BookmarkEditAPI.moveBookmark(payload.id, {
+            parentId: folder.id,
+            index: appendIndex,
+          });
+          if (result.success) {
+            optimisticMove(
+              payload.id,
+              payload.parentId || null,
+              folder.id,
+              appendIndex,
+            );
+            scheduleSilentSync();
+          } else {
+            console.error("Failed to move bookmark via container drop:", result.error);
+          }
         }
       } catch (err) {
-        console.error(
-          "🟨 🚨 ERROR: Error during native container drop move:",
-          err,
-        );
+        console.error("Error during container drop:", err);
       } finally {
         markDropActive(folderElement as HTMLElement, false);
       }
@@ -704,7 +712,7 @@
   }
   function onContainerDragLeave(e: DragEvent) {
     // Only decrement if we have a valid payload
-    const payload = getBookmarkDragPayload(e);
+    const payload = getDragPayload(e);
     if (payload) {
       containerDragEnterCount--;
 

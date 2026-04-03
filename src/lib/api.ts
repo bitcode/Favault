@@ -866,7 +866,7 @@ export interface OpenTab {
  */
 export class TabsAPI {
   private static readonly SKIP_PREFIXES = [
-    'chrome://', 'about:', 'moz-extension://', 'chrome-extension://'
+    'chrome://', 'about:', 'moz-extension://', 'chrome-extension://', 'edge://'
   ];
 
   static async getUnbookmarkedTabs(bookmarkedUrls: Set<string>): Promise<OpenTab[]> {

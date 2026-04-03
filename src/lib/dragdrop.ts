@@ -240,6 +240,7 @@ export class DragDropManager {
 
     // Drop handler
     const handleDrop = async (e: DragEvent) => {
+      if ((e as any)._favaultHandled) return;
       const allowed = this.isEditModeEnabled() || allowedOutsideEditMode();
       if (!allowed) {
         console.warn('[DragDropManager] Drop ignored - not allowed for this drop zone', {
@@ -254,6 +255,7 @@ export class DragDropManager {
       console.log('[DragDropManager] drop received on element:', element.className, 'zone:', dropZoneData);
 
       e.preventDefault();
+      (e as any)._favaultHandled = true;
       dragEnterCounter = 0;
 
       element.classList.remove('drag-over');
